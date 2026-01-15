@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Bolilla Garras - Sistema de pronósticos de partidos del Athletic Club, Athletic Femenino y Bilbao Athletic para la Peña Garras Taldea de Sestao">
+    <meta name="theme-color" content="#E41E26">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <title>Bolilla Garras | Peña Garras Taldea Sestao</title>
+
+    <!-- Favicon -->
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦁</text></svg>">
+
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <!-- LOGIN PAGE -->
+    <div id="login-page" class="login-container">
+        <div class="login-card">
+            <div class="login-logo">
+                <span class="icon">🦁</span>
+                <h1>BOLILLA GARRAS</h1>
+                <p>Peña Garras Taldea Sestao</p>
+            </div>
+
+            <div id="error-message" class="error-message"></div>
+
+            <!-- Login Form -->
+            <form id="login-form" autocomplete="on">
+                <div class="form-group">
+                    <label for="login-username">Usuario</label>
+                    <input type="text" id="login-username" placeholder="Introduce tu usuario" autocomplete="username"
+                        required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Contraseña</label>
+                    <input type="password" id="login-password" placeholder="Introduce tu contraseña"
+                        autocomplete="current-password" required>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    Iniciar Sesión
+                </button>
+            </form>
+
+            <!-- Register Form (hidden by default) -->
+            <form id="register-form" style="display: none;" autocomplete="off">
+                <div class="form-group">
+                    <label for="register-name">Nombre Completo</label>
+                    <input type="text" id="register-name" placeholder="Ej: Patxi García" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-username">Usuario</label>
+                    <input type="text" id="register-username" placeholder="Ej: patxi" autocomplete="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-password">Contraseña</label>
+                    <input type="password" id="register-password" placeholder="Mínimo 4 caracteres"
+                        autocomplete="new-password" required>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    Crear Cuenta
+                </button>
+            </form>
+
+            <div class="login-toggle">
+                <span id="toggle-register">¿Primera vez? <a href="#">Regístrate aquí</a></span>
+                <span id="toggle-login" style="display: none;">¿Ya tienes cuenta? <a href="#">Inicia sesión</a></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="app" class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-logo">
+                <span class="icon">🦁</span>
+                <h1>BOLILLA GARRAS</h1>
+            </div>
+            <div class="header-user">
+                <span>Hola, <strong id="user-name"></strong></span>
+                <button id="change-password-btn" class="btn btn-secondary btn-sm">🔐 Contraseña</button>
+                <button id="logout-btn" class="btn btn-secondary btn-sm">Cerrar Sesión</button>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav-tabs" role="tablist">
+            <button class="nav-tab active" data-tab="predictions" role="tab" aria-selected="true">
+                ⚽ Pronósticos
+            </button>
+            <button class="nav-tab" data-tab="leaderboard" role="tab" aria-selected="false">
+                🏆 Clasificación
+            </button>
+            <button class="nav-tab" data-tab="history" role="tab" aria-selected="false">
+                📊 Mi Historial
+            </button>
+            <button class="nav-tab" data-tab="admin" id="admin-tab" style="display: none;" role="tab"
+                aria-selected="false">
+                ⚙️ Administración
+            </button>
+            <button class="nav-tab" data-tab="match-history" id="match-history-tab" style="display: none;" role="tab"
+                aria-selected="false">
+                📜 Historial Partidos
+            </button>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- PREDICTIONS TAB -->
+            <section id="tab-predictions" class="tab-content active" role="tabpanel">
+                <h2 class="section-title">⚽ Partidos Pendientes</h2>
+                <div id="matches-container">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- LEADERBOARD TAB -->
+            <section id="tab-leaderboard" class="tab-content" role="tabpanel">
+                <h2 class="section-title">🏆 Clasificación General</h2>
+                <div id="leaderboard-container">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- HISTORY TAB -->
+            <section id="tab-history" class="tab-content" role="tabpanel">
+                <h2 class="section-title">📊 Mi Historial</h2>
+                <div id="history-container">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ADMIN TAB -->
+            <section id="tab-admin" class="tab-content" role="tabpanel">
+                <h2 class="section-title">⚙️ Panel de Administración</h2>
+
+                <!-- Add Match Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">➕ Añadir Nuevo Partido</h3>
+                    </div>
+                    <form id="add-match-form" class="admin-form">
+                        <div class="admin-form-row">
+                            <div class="form-group">
+                                <label>Equipo</label>
+                                <select id="match-team" required>
+                                    <option value="Athletic Club">🔴 Athletic Club</option>
+                                    <option value="Athletic Femenino">🔴 Athletic Femenino</option>
+                                    <option value="Bilbao Athletic">🔴 Bilbao Athletic</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Rival</label>
+                                <select id="match-opponent" required>
+                                    <optgroup label="⚽ La Liga">
+                                        <option value="Alavés">Alavés</option>
+                                        <option value="Almería">Almería</option>
+                                        <option value="Atlético de Madrid">Atlético de Madrid</option>
+                                        <option value="Barcelona">Barcelona</option>
+                                        <option value="Betis">Betis</option>
+                                        <option value="Celta de Vigo">Celta de Vigo</option>
+                                        <option value="Espanyol">Espanyol</option>
+                                        <option value="Getafe">Getafe</option>
+                                        <option value="Girona">Girona</option>
+                                        <option value="Granada">Granada</option>
+                                        <option value="Las Palmas">Las Palmas</option>
+                                        <option value="Leganés">Leganés</option>
+                                        <option value="Mallorca">Mallorca</option>
+                                        <option value="Osasuna">Osasuna</option>
+                                        <option value="Rayo Vallecano">Rayo Vallecano</option>
+                                        <option value="Real Madrid">Real Madrid</option>
+                                        <option value="Real Sociedad">Real Sociedad</option>
+                                        <option value="Sevilla">Sevilla</option>
+                                        <option value="Valencia">Valencia</option>
+                                        <option value="Valladolid">Valladolid</option>
+                                        <option value="Villarreal">Villarreal</option>
+                                    </optgroup>
+                                    <optgroup label="🔵 Primera RFEF">
+                                        <option value="Alcorcón">Alcorcón</option>
+                                        <option value="Amorebieta">Amorebieta</option>
+                                        <option value="Andorra">Andorra</option>
+                                        <option value="Arenteiro">Arenteiro</option>
+                                        <option value="Atlético Baleares">Atlético Baleares</option>
+                                        <option value="Barakaldo">Barakaldo</option>
+                                        <option value="Barcelona Atlètic">Barcelona Atlètic</option>
+                                        <option value="Castellón">Castellón</option>
+                                        <option value="Celta B">Celta B</option>
+                                        <option value="Ceuta">Ceuta</option>
+                                        <option value="Conquense">Conquense</option>
+                                        <option value="Córdoba">Córdoba</option>
+                                        <option value="Cultural Leonesa">Cultural Leonesa</option>
+                                        <option value="Deportivo de La Coruña">Deportivo de La Coruña</option>
+                                        <option value="Eibar">Eibar</option>
+                                        <option value="Elche">Elche</option>
+                                        <option value="Eldense">Eldense</option>
+                                        <option value="FC Cartagena">FC Cartagena</option>
+                                        <option value="Fuenlabrada">Fuenlabrada</option>
+                                        <option value="Gimnàstic">Gimnàstic</option>
+                                        <option value="Ibiza">Ibiza</option>
+                                        <option value="Intercity">Intercity</option>
+                                        <option value="Lugo">Lugo</option>
+                                        <option value="Marbella">Marbella</option>
+                                        <option value="Numancia">Numancia</option>
+                                        <option value="Ourense">Ourense</option>
+                                        <option value="Ponferradina">Ponferradina</option>
+                                        <option value="Racing de Ferrol">Racing de Ferrol</option>
+                                        <option value="Racing de Santander">Racing de Santander</option>
+                                        <option value="Real Murcia">Real Murcia</option>
+                                        <option value="Real Unión">Real Unión</option>
+                                        <option value="Recreativo de Huelva">Recreativo de Huelva</option>
+                                        <option value="Sabadell">Sabadell</option>
+                                        <option value="San Fernando">San Fernando</option>
+                                        <option value="Sestao River">Sestao River</option>
+                                        <option value="Tarazona">Tarazona</option>
+                                        <option value="Unionistas">Unionistas</option>
+                                    </optgroup>
+                                    <optgroup label="🔴 Liga F">
+                                        <option value="Athletic Femenino">Athletic Femenino</option>
+                                        <option value="Atlético Femenino">Atlético Femenino</option>
+                                        <option value="Barcelona Femení">Barcelona Femení</option>
+                                        <option value="Betis Féminas">Betis Féminas</option>
+                                        <option value="Costa Adeje Tenerife">Costa Adeje Tenerife</option>
+                                        <option value="Deportivo Femenino">Deportivo Femenino</option>
+                                        <option value="Eibar Femenino">Eibar Femenino</option>
+                                        <option value="Granada Femenino">Granada Femenino</option>
+                                        <option value="Levante Las Planas">Levante Las Planas</option>
+                                        <option value="Levante UD">Levante UD</option>
+                                        <option value="Madrid CFF">Madrid CFF</option>
+                                        <option value="Real Madrid Femenino">Real Madrid Femenino</option>
+                                        <option value="Real Sociedad Femenino">Real Sociedad Femenino</option>
+                                        <option value="Sevilla FC Femenino">Sevilla FC Femenino</option>
+                                        <option value="Valencia Femenino">Valencia Femenino</option>
+                                        <option value="Villarreal Femenino">Villarreal Femenino</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="admin-form-row">
+                            <div class="form-group">
+                                <label>Condición</label>
+                                <select id="match-home">
+                                    <option value="1">🏠 Local (en casa)</option>
+                                    <option value="0">✈️ Visitante (fuera)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Fecha del Partido</label>
+                                <input type="datetime-local" id="match-date" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Fecha Límite Pronósticos</label>
+                                <input type="datetime-local" id="match-deadline" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            Añadir Partido
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Manage Matches Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">📋 Gestionar Partidos</h3>
+                    </div>
+                    <div id="admin-matches-container" class="admin-match-list">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Management Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">👥 Gestionar Usuarios</h3>
+                    </div>
+                    <div id="admin-users-container">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- MATCH HISTORY TAB (Admin Only) -->
+            <section id="tab-match-history" class="tab-content" role="tabpanel">
+                <h2 class="section-title">📜 Historial de Partidos</h2>
+
+                <!-- Athletic Club -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">🔴 Athletic Club</h3>
+                    </div>
+                    <div id="history-athletic-club" class="match-history-list">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Athletic Femenino -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">🔴 Athletic Femenino</h3>
+                    </div>
+                    <div id="history-athletic-femenino" class="match-history-list">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bilbao Athletic -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">🔴 Bilbao Athletic</h3>
+                    </div>
+                    <div id="history-bilbao-athletic" class="match-history-list">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Password Change Modal -->
+    <div id="password-modal" class="modal" style="display: none;">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <h3>🔐 Cambiar Contraseña</h3>
+            <form id="change-password-form">
+                <div class="form-group">
+                    <label>Contraseña actual</label>
+                    <input type="password" id="current-password" placeholder="Tu contraseña actual" required>
+                </div>
+                <div class="form-group">
+                    <label>Nueva contraseña</label>
+                    <input type="password" id="new-password" placeholder="Nueva contraseña (mín. 4 caracteres)"
+                        required>
+                </div>
+                <div class="form-group">
+                    <label>Confirmar nueva contraseña</label>
+                    <input type="password" id="confirm-password" placeholder="Repite la nueva contraseña" required>
+                </div>
+                <div style="display: flex; gap: 12px; margin-top: 24px;">
+                    <button type="button" id="cancel-password-btn" class="btn btn-secondary"
+                        style="flex: 1;">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
