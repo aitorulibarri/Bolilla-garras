@@ -1371,3 +1371,479 @@ body::before {
     transform: translateY(0) scale(1);
   }
 }
+
+/* ==================== RESPONSIVE - TABLET ==================== */
+
+@media (max-width: 768px) {
+
+  /* Header */
+  .header {
+    padding: 12px 16px;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .header-logo h1 {
+    font-size: 18px;
+  }
+
+  .header-logo .icon {
+    font-size: 28px;
+  }
+
+  .header-user {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .header-user span {
+    font-size: 13px;
+  }
+
+  .header-user .btn-sm {
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+
+  /* Navigation */
+  .nav-tabs {
+    padding: 12px 16px;
+    gap: 6px;
+    justify-content: flex-start;
+  }
+
+  .nav-tab {
+    padding: 10px 16px;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  /* Main Content */
+  .main-content {
+    padding: 16px;
+  }
+
+  .section-title {
+    font-size: 22px;
+    margin-bottom: 20px;
+  }
+
+  /* Cards */
+  .card {
+    padding: 20px;
+  }
+
+  .card-title {
+    font-size: 18px;
+  }
+
+  /* Match Cards */
+  .match-card {
+    padding: 20px;
+  }
+
+  .match-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .match-teams {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .match-team-name {
+    font-size: 18px;
+  }
+
+  .match-vs {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  .goal-input {
+    width: 70px;
+    height: 60px;
+    font-size: 28px;
+  }
+
+  .prediction-separator {
+    font-size: 24px;
+  }
+
+  /* Leaderboard */
+  .leaderboard-item {
+    padding: 14px 16px;
+    flex-wrap: wrap;
+  }
+
+  .leaderboard-rank {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+    margin-right: 12px;
+  }
+
+  .leaderboard-name {
+    flex: 1;
+    min-width: 100px;
+  }
+
+  .leaderboard-stats {
+    width: 100%;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  /* Admin Form */
+  .admin-form-row {
+    flex-direction: column;
+  }
+
+  .admin-form-row .form-group {
+    width: 100%;
+  }
+
+  .admin-result-form {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .admin-result-form input {
+    width: 50px;
+  }
+
+  /* History */
+  .history-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .history-result {
+    width: 100%;
+  }
+
+  /* Login */
+  .login-card {
+    padding: 32px 24px;
+    margin: 16px;
+  }
+
+  .login-logo .icon {
+    font-size: 56px;
+  }
+
+  .login-logo h1 {
+    font-size: 26px;
+  }
+
+  /* Modal */
+  .modal-content {
+    margin: 16px;
+    padding: 24px;
+    max-width: calc(100% - 32px);
+  }
+}
+
+/* ==================== RESPONSIVE - MOBILE ==================== */
+
+@media (max-width: 480px) {
+
+  /* Header */
+  .header {
+    padding: 10px 12px;
+  }
+
+  .header-logo h1 {
+    font-size: 16px;
+    letter-spacing: 0.5px;
+  }
+
+  .header-logo .icon {
+    font-size: 24px;
+  }
+
+  .header-user {
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .header-user span {
+    width: 100%;
+    text-align: center;
+    margin-bottom: 4px;
+  }
+
+  .header-user .btn-sm {
+    padding: 6px 10px;
+    font-size: 10px;
+    flex: 1;
+  }
+
+  /* Navigation */
+  .nav-tabs {
+    padding: 10px 12px;
+    gap: 4px;
+  }
+
+  .nav-tab {
+    padding: 8px 12px;
+    font-size: 11px;
+    border-radius: var(--radius-md);
+  }
+
+  /* Main Content */
+  .main-content {
+    padding: 12px;
+  }
+
+  .section-title {
+    font-size: 18px;
+    margin-bottom: 16px;
+    gap: 10px;
+  }
+
+  .section-title::after {
+    display: none;
+  }
+
+  /* Cards */
+  .card {
+    padding: 16px;
+    border-radius: var(--radius-lg);
+  }
+
+  .card-header {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+  }
+
+  .card-title {
+    font-size: 16px;
+  }
+
+  /* Match Cards */
+  .match-card {
+    padding: 16px;
+    margin-bottom: 16px;
+    border-radius: var(--radius-lg);
+  }
+
+  .match-team-badge {
+    font-size: 10px;
+    padding: 6px 12px;
+  }
+
+  .match-date {
+    font-size: 11px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .match-team-name {
+    font-size: 16px;
+  }
+
+  .goal-input {
+    width: 60px;
+    height: 55px;
+    font-size: 24px;
+    border-width: 2px;
+  }
+
+  .prediction-separator {
+    font-size: 20px;
+  }
+
+  .match-prediction-form {
+    gap: 12px;
+  }
+
+  .match-deadline,
+  .match-saved {
+    padding: 10px 16px;
+    font-size: 12px;
+  }
+
+  .countdown {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+
+  /* Buttons */
+  .btn {
+    padding: 12px 20px;
+    font-size: 13px;
+  }
+
+  .btn-sm {
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+
+  .save-prediction-btn {
+    width: 100%;
+  }
+
+  /* Leaderboard */
+  .leaderboard-item {
+    padding: 12px;
+  }
+
+  .leaderboard-rank {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+    margin-right: 10px;
+  }
+
+  .leaderboard-name {
+    font-size: 14px;
+  }
+
+  .leaderboard-stat-value {
+    font-size: 18px;
+  }
+
+  .leaderboard-stat-label {
+    font-size: 10px;
+  }
+
+  /* Admin */
+  .admin-match-item {
+    padding: 12px;
+  }
+
+  .admin-match-info h4 {
+    font-size: 14px;
+  }
+
+  .admin-match-info p {
+    font-size: 12px;
+  }
+
+  .admin-result-form input {
+    width: 45px;
+    height: 40px;
+    font-size: 16px;
+  }
+
+  /* History */
+  .history-match-teams {
+    font-size: 14px;
+  }
+
+  .history-match-date {
+    font-size: 11px;
+  }
+
+  .history-result-score {
+    font-size: 18px;
+  }
+
+  .history-points-value {
+    font-size: 20px;
+  }
+
+  /* Login */
+  .login-card {
+    padding: 24px 20px;
+    border-radius: var(--radius-xl);
+  }
+
+  .login-logo {
+    margin-bottom: 28px;
+  }
+
+  .login-logo .icon {
+    font-size: 48px;
+  }
+
+  .login-logo h1 {
+    font-size: 22px;
+  }
+
+  .login-logo p {
+    font-size: 12px;
+  }
+
+  .form-group {
+    margin-bottom: 18px;
+  }
+
+  .form-group label {
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+
+  .form-group input,
+  .form-group select {
+    padding: 14px 16px;
+    font-size: 15px;
+  }
+
+  .login-toggle {
+    font-size: 13px;
+  }
+
+  /* Modal */
+  .modal-content {
+    padding: 20px;
+  }
+
+  .modal-content h3 {
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
+
+  /* Toast */
+  .toast {
+    padding: 12px 16px;
+    font-size: 13px;
+    margin: 8px;
+    max-width: calc(100vw - 16px);
+  }
+
+  /* Empty State */
+  .empty-state {
+    padding: 32px 16px;
+  }
+
+  .empty-state-icon {
+    font-size: 48px;
+  }
+
+  .empty-state h3 {
+    font-size: 18px;
+  }
+
+  .empty-state p {
+    font-size: 13px;
+  }
+}
+
+/* ==================== SAFE AREA (notch/gestures) ==================== */
+
+@supports (padding: max(0px)) {
+  .header {
+    padding-top: max(12px, env(safe-area-inset-top));
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+
+  .nav-tabs {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+
+  .main-content {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+}
