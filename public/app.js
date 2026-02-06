@@ -15,7 +15,21 @@ const tabContents = document.querySelectorAll('.tab-content');
 // Admin names (can add more)
 const ADMIN_NAMES = ['admin', 'aitor', 'Admin', 'Aitor'];
 
-// ==================== INIT ====================
+// ==================== FETCH WITH RETRY (for cold starts) ====================
+async function fetchWithRetry(url, options = {}, retries = 3, delay = 1000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const res = await fetch(url, options);
+      if (res.ok || res.status < 500) return res;
+      // Server error, retry
+      if (i < retries - 1) await new Promise(r => setTimeout(r, delay));
+    } catch (err) {
+      if (i === retries - 1) throw err;
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+  return fetch(url, options); // Final attempt
+}
 document.addEventListener('DOMContentLoaded', async () => {
   checkSavedUser();
   setupEventListeners();
@@ -165,7 +179,7 @@ async function loadMatches() {
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
   try {
-    const res = await fetch('/api/matches/upcoming');
+    const res = await fetchWithRetry('/api/matches/upcoming');
     const matches = await res.json();
 
     if (matches.length === 0) {
@@ -180,7 +194,7 @@ async function loadMatches() {
     }
 
     // Get user predictions
-    const predictionsRes = await fetch(`/api/predictions/${encodeURIComponent(currentUser.name)}`);
+    const predictionsRes = await fetchWithRetry(`/api/predictions/${encodeURIComponent(currentUser.name)}`);
     const userPredictions = await predictionsRes.json();
     const predictionMap = {};
     userPredictions.forEach(p => { predictionMap[p.match_id] = p; });
@@ -321,7 +335,7 @@ async function loadLeaderboard() {
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
   try {
-    const res = await fetch('/api/leaderboard');
+    const res = await fetchWithRetry('/api/leaderboard');
     const leaderboard = await res.json();
 
     if (leaderboard.length === 0) {
@@ -367,7 +381,7 @@ async function loadHistory() {
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
   try {
-    const res = await fetch(`/api/predictions/${encodeURIComponent(currentUser.name)}`);
+    const res = await fetchWithRetry(`/api/predictions/${encodeURIComponent(currentUser.name)}`);
     const predictions = await res.json();
 
     if (predictions.length === 0) {
@@ -430,7 +444,7 @@ async function loadAdminMatches() {
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
   try {
-    const res = await fetch('/api/matches');
+    const res = await fetchWithRetry('/api/matches');
     const matches = await res.json();
 
     if (matches.length === 0) {
