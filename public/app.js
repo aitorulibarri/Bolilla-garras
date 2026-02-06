@@ -2,172 +2,76 @@
 let currentUser = null;
 
 // ==================== DOM ELEMENTS ====================
-const loginPage = document.getElementById('login-page');
+const namePage = document.getElementById('name-page');
 const app = document.getElementById('app');
-const loginForm = document.getElementById('login-form');
-const registerForm = document.getElementById('register-form');
-const toggleRegister = document.getElementById('toggle-register');
-const toggleLogin = document.getElementById('toggle-login');
+const nameForm = document.getElementById('name-form');
 const errorMessage = document.getElementById('error-message');
-const logoutBtn = document.getElementById('logout-btn');
+const changeNameBtn = document.getElementById('change-name-btn');
 const userName = document.getElementById('user-name');
 const adminTab = document.getElementById('admin-tab');
 const navTabs = document.querySelectorAll('.nav-tab');
 const tabContents = document.querySelectorAll('.tab-content');
 
+// Admin names (can add more)
+const ADMIN_NAMES = ['admin', 'aitor', 'Admin', 'Aitor'];
+
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', async () => {
-  await checkAuth();
+  checkSavedUser();
   setupEventListeners();
 });
 
-async function checkAuth() {
-  try {
-    const res = await fetch('/api/me');
-    if (res.ok) {
-      currentUser = await res.json();
-      showApp();
-    }
-  } catch (err) {
-    console.log('No authenticated');
+function checkSavedUser() {
+  const savedName = localStorage.getItem('bolilla_user_name');
+  if (savedName) {
+    currentUser = {
+      name: savedName,
+      isAdmin: ADMIN_NAMES.includes(savedName.toLowerCase())
+    };
+    showApp();
   }
 }
 
 function setupEventListeners() {
-  // Login/Register toggle
-  toggleRegister.addEventListener('click', (e) => {
+  // Name form submit
+  nameForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    loginForm.style.display = 'none';
-    registerForm.style.display = 'block';
-    toggleRegister.style.display = 'none';
-    toggleLogin.style.display = 'block';
-    hideError();
-  });
+    const name = document.getElementById('player-name').value.trim();
 
-  toggleLogin.addEventListener('click', (e) => {
-    e.preventDefault();
-    loginForm.style.display = 'block';
-    registerForm.style.display = 'none';
-    toggleRegister.style.display = 'block';
-    toggleLogin.style.display = 'none';
-    hideError();
-  });
-
-  // Login form
-  loginForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const username = document.getElementById('login-username').value;
-    const password = document.getElementById('login-password').value;
-
-    try {
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        currentUser = data.user;
-        showApp();
-      } else {
-        showError(data.error);
-      }
-    } catch (err) {
-      showError('Error de conexión');
-    }
-  });
-
-  // Register form
-  registerForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const displayName = document.getElementById('register-name').value;
-    const username = document.getElementById('register-username').value;
-    const password = document.getElementById('register-password').value;
-
-    try {
-      const res = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, displayName })
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        currentUser = data.user;
-        showApp();
-        showToast('¡Bienvenido a Bolilla Garras!', 'success');
-      } else {
-        showError(data.error);
-      }
-    } catch (err) {
-      showError('Error de conexión');
-    }
-  });
-
-  // Logout
-  logoutBtn.addEventListener('click', async () => {
-    await fetch('/api/logout', { method: 'POST' });
-    currentUser = null;
-    loginPage.style.display = 'flex';
-    app.classList.remove('active');
-    loginForm.reset();
-    registerForm.reset();
-  });
-
-  // Change Password Modal
-  const passwordModal = document.getElementById('password-modal');
-  const changePasswordBtn = document.getElementById('change-password-btn');
-  const cancelPasswordBtn = document.getElementById('cancel-password-btn');
-  const changePasswordForm = document.getElementById('change-password-form');
-
-  changePasswordBtn.addEventListener('click', () => {
-    passwordModal.style.display = 'flex';
-  });
-
-  cancelPasswordBtn.addEventListener('click', () => {
-    passwordModal.style.display = 'none';
-    changePasswordForm.reset();
-  });
-
-  // Close modal on backdrop click
-  passwordModal.querySelector('.modal-backdrop').addEventListener('click', () => {
-    passwordModal.style.display = 'none';
-    changePasswordForm.reset();
-  });
-
-  changePasswordForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const currentPassword = document.getElementById('current-password').value;
-    const newPassword = document.getElementById('new-password').value;
-    const confirmPassword = document.getElementById('confirm-password').value;
-
-    if (newPassword !== confirmPassword) {
-      showToast('Las contraseñas no coinciden', 'error');
+    if (name.length < 2) {
+      showError('El nombre debe tener al menos 2 caracteres');
       return;
     }
 
+    // Save to localStorage
+    localStorage.setItem('bolilla_user_name', name);
+
+    // Register user in backend (if new)
     try {
-      const res = await fetch('/api/change-password', {
+      await fetch('/api/register-simple', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPassword, newPassword })
+        body: JSON.stringify({ name })
       });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        showToast('Contraseña actualizada correctamente', 'success');
-        passwordModal.style.display = 'none';
-        changePasswordForm.reset();
-      } else {
-        showToast(data.error, 'error');
-      }
     } catch (err) {
-      showToast('Error al cambiar contraseña', 'error');
+      console.log('Backend registration optional');
     }
+
+    currentUser = {
+      name: name,
+      isAdmin: ADMIN_NAMES.includes(name.toLowerCase())
+    };
+    showApp();
+    showToast(`¡Bienvenido, ${name}!`, 'success');
+  });
+
+  // Change name button
+  changeNameBtn.addEventListener('click', () => {
+    localStorage.removeItem('bolilla_user_name');
+    currentUser = null;
+    namePage.style.display = 'flex';
+    app.classList.remove('active');
+    document.getElementById('player-name').value = '';
   });
 
   // Tab navigation
@@ -181,58 +85,57 @@ function setupEventListeners() {
       tab.classList.add('active');
       document.getElementById(`tab-${tabId}`).classList.add('active');
 
-      // Load tab content
       loadTabContent(tabId);
     });
   });
 
   // Add match form
-  document.getElementById('add-match-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
+  const addMatchForm = document.getElementById('add-match-form');
+  if (addMatchForm) {
+    addMatchForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
 
-    const team = document.getElementById('match-team').value;
-    const opponent = document.getElementById('match-opponent').value;
-    const isHome = document.getElementById('match-home').value === '1';
-    const matchDate = document.getElementById('match-date').value;
-    const deadline = document.getElementById('match-deadline').value;
+      const team = document.getElementById('match-team').value;
+      const opponent = document.getElementById('match-opponent').value;
+      const isHome = document.getElementById('match-home').value === '1';
+      const matchDate = document.getElementById('match-date').value;
+      const deadline = document.getElementById('match-deadline').value;
 
-    try {
-      const res = await fetch('/api/matches', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ team, opponent, isHome, matchDate, deadline })
-      });
+      try {
+        const res = await fetch('/api/matches', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ team, opponent, isHome, matchDate, deadline, adminName: currentUser.name })
+        });
 
-      if (res.ok) {
-        showToast('Partido añadido correctamente', 'success');
-        e.target.reset();
-        loadAdminMatches();
-        loadMatches();
-      } else {
-        const data = await res.json();
-        showToast(data.error, 'error');
+        if (res.ok) {
+          showToast('Partido añadido correctamente', 'success');
+          e.target.reset();
+          loadAdminMatches();
+          loadMatches();
+        } else {
+          const data = await res.json();
+          showToast(data.error, 'error');
+        }
+      } catch (err) {
+        showToast('Error al añadir partido', 'error');
       }
-    } catch (err) {
-      showToast('Error al añadir partido', 'error');
-    }
-  });
+    });
+  }
 }
 
 // ==================== APP ====================
 
 function showApp() {
-  loginPage.style.display = 'none';
+  namePage.style.display = 'none';
   app.classList.add('active');
-  userName.textContent = currentUser.displayName;
+  userName.textContent = currentUser.name;
 
-  // Show admin tabs only for admin users
-  const matchHistoryTab = document.getElementById('match-history-tab');
+  // Show admin tab only for admin users
   if (currentUser.isAdmin) {
     adminTab.style.display = 'block';
-    matchHistoryTab.style.display = 'block';
   } else {
     adminTab.style.display = 'none';
-    matchHistoryTab.style.display = 'none';
   }
 
   loadMatches();
@@ -251,10 +154,6 @@ function loadTabContent(tabId) {
       break;
     case 'admin':
       loadAdminMatches();
-      loadAdminUsers();
-      break;
-    case 'match-history':
-      loadMatchHistory();
       break;
   }
 }
@@ -280,7 +179,13 @@ async function loadMatches() {
       return;
     }
 
-    container.innerHTML = matches.map(match => renderMatchCard(match)).join('');
+    // Get user predictions
+    const predictionsRes = await fetch(`/api/predictions/${encodeURIComponent(currentUser.name)}`);
+    const userPredictions = await predictionsRes.json();
+    const predictionMap = {};
+    userPredictions.forEach(p => { predictionMap[p.match_id] = p; });
+
+    container.innerHTML = matches.map(match => renderMatchCard(match, predictionMap[match.id])).join('');
 
     // Add event listeners for save buttons
     document.querySelectorAll('.save-prediction-btn').forEach(btn => {
@@ -291,12 +196,12 @@ async function loadMatches() {
   }
 }
 
-function renderMatchCard(match) {
+function renderMatchCard(match, userPrediction) {
   const matchDate = new Date(match.match_date);
   const deadline = new Date(match.deadline);
   const now = new Date();
-  const canPredict = now < deadline && !match.userPrediction;
-  const hasPrediction = match.userPrediction !== null;
+  const canPredict = now < deadline;
+  const hasPrediction = userPrediction !== undefined;
   const timeLeft = deadline - now;
 
   // Calculate countdown
@@ -321,10 +226,9 @@ function renderMatchCard(match) {
   const homeTeam = match.is_home ? match.team : match.opponent;
   const awayTeam = match.is_home ? match.opponent : match.team;
 
-  const userHomeGoals = match.userPrediction ? match.userPrediction.home_goals : '';
-  const userAwayGoals = match.userPrediction ? match.userPrediction.away_goals : '';
+  const userHomeGoals = hasPrediction ? userPrediction.home_goals : '';
+  const userAwayGoals = hasPrediction ? userPrediction.away_goals : '';
 
-  // Add warning class if no prediction and can still predict
   const cardClass = canPredict && !hasPrediction ? 'needs-prediction' : (!canPredict && !hasPrediction ? 'expired' : '');
 
   return `
@@ -350,15 +254,13 @@ function renderMatchCard(match) {
       </div>
       
       ${hasPrediction ? `
-        <!-- Already submitted - LOCKED -->
         <div class="match-prediction-form">
           <div class="goal-input" style="background: rgba(34, 197, 94, 0.2); border-color: rgba(34, 197, 94, 0.4);">${userHomeGoals}</div>
           <span class="prediction-separator">-</span>
           <div class="goal-input" style="background: rgba(34, 197, 94, 0.2); border-color: rgba(34, 197, 94, 0.4);">${userAwayGoals}</div>
         </div>
-        <div class="match-saved">✅ Pronóstico enviado: ${userHomeGoals} - ${userAwayGoals} (no modificable)</div>
+        <div class="match-saved">✅ Pronóstico enviado: ${userHomeGoals} - ${userAwayGoals}</div>
       ` : canPredict ? `
-        <!-- Can still predict -->
         <div class="match-prediction-form">
           <input type="number" class="goal-input" id="home-${match.id}" min="0" max="20" value="" placeholder="0">
           <span class="prediction-separator">-</span>
@@ -370,7 +272,6 @@ function renderMatchCard(match) {
           </button>
         </div>
       ` : `
-        <!-- Deadline passed without prediction -->
         <div class="match-deadline">
           ⏳ Plazo cerrado - No enviaste pronóstico
         </div>
@@ -393,6 +294,7 @@ async function savePrediction(matchId) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        playerName: currentUser.name,
         matchId: parseInt(matchId),
         homeGoals: parseInt(homeGoals),
         awayGoals: parseInt(awayGoals)
@@ -438,7 +340,7 @@ async function loadLeaderboard() {
         ${leaderboard.map((user, index) => `
           <div class="leaderboard-item ${index < 3 ? 'top-3' : ''}">
             <div class="leaderboard-rank">${index + 1}</div>
-            <div class="leaderboard-name">${user.display_name}</div>
+            <div class="leaderboard-name">${user.name || user.display_name}</div>
             <div class="leaderboard-stats">
               <div class="leaderboard-stat">
                 <span class="leaderboard-stat-value">${user.total_points}</span>
@@ -465,7 +367,7 @@ async function loadHistory() {
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
   try {
-    const res = await fetch('/api/predictions');
+    const res = await fetch(`/api/predictions/${encodeURIComponent(currentUser.name)}`);
     const predictions = await res.json();
 
     if (predictions.length === 0) {
@@ -521,11 +423,10 @@ async function loadHistory() {
 
 // ==================== ADMIN ====================
 
-// Helper to populate dropdowns - REMOVED (User preferred hardcoded HTML)
-// function populateTeamDropdowns() { ... }
-
 async function loadAdminMatches() {
   const container = document.getElementById('admin-matches-container');
+  if (!container) return;
+
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
   try {
@@ -543,45 +444,10 @@ async function loadAdminMatches() {
       return;
     }
 
-    container.innerHTML = await Promise.all(matches.map(async match => {
+    container.innerHTML = matches.map(match => {
       const matchDate = new Date(match.match_date);
       const homeTeam = match.is_home ? match.team : match.opponent;
       const awayTeam = match.is_home ? match.opponent : match.team;
-
-      // Get predictions info for this match
-      let predictionsInfo = '';
-      if (!match.is_finished) {
-        try {
-          const predRes = await fetch(`/api/matches/${match.id}/predictions`);
-          const data = await predRes.json();
-          const submitted = data.predictions.length;
-          const missing = data.missing.length;
-          const missingNames = data.missing.map(u => u.display_name).join(', ');
-
-          predictionsInfo = `
-                      <div style="margin-top: 12px; font-size: 12px;">
-                        <div style="margin-bottom: 8px;">
-                          <span style="color: #86EFAC;">✅ Enviados: ${submitted}</span> | 
-                          <span style="color: #FCA5A5;">❌ Faltan: ${missing}</span>
-                        </div>
-                        ${submitted > 0 ? `
-                          <div style="background: rgba(34, 197, 94, 0.1); padding: 8px; border-radius: 8px; margin-bottom: 8px;">
-                            <div style="color: #86EFAC; font-weight: 500; margin-bottom: 4px;">Han enviado:</div>
-                            ${data.predictions.map(p => `<div style="color: #D1D5DB;">• ${p.display_name}: <strong>${p.home_goals}-${p.away_goals}</strong></div>`).join('')}
-                          </div>
-                        ` : ''}
-                        ${missing > 0 ? `
-                          <div style="background: rgba(239, 68, 68, 0.1); padding: 8px; border-radius: 8px;">
-                            <div style="color: #FCA5A5; font-weight: 500; margin-bottom: 4px;">Faltan por enviar:</div>
-                            <div style="color: #9CA3AF;">${missingNames}</div>
-                          </div>
-                        ` : ''}
-                      </div>
-                    `;
-        } catch (e) {
-          console.error(e);
-        }
-      }
 
       return `
         <div class="admin-match-item" style="flex-direction: column; align-items: stretch;">
@@ -598,10 +464,9 @@ async function loadAdminMatches() {
               <button class="btn btn-danger btn-sm" onclick="deleteMatch(${match.id})">🗑️</button>
             </div>
           </div>
-          ${predictionsInfo}
         </div>
       `;
-    })).then(results => results.join(''));
+    }).join('');
   } catch (err) {
     container.innerHTML = '<p>Error al cargar partidos</p>';
   }
@@ -622,7 +487,8 @@ async function setResult(matchId) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         homeGoals: parseInt(homeGoals),
-        awayGoals: parseInt(awayGoals)
+        awayGoals: parseInt(awayGoals),
+        adminName: currentUser.name
       })
     });
 
@@ -641,7 +507,7 @@ async function deleteMatch(matchId) {
   if (!confirm('¿Seguro que quieres eliminar este partido?')) return;
 
   try {
-    const res = await fetch(`/api/matches/${matchId}`, { method: 'DELETE' });
+    const res = await fetch(`/api/matches/${matchId}?adminName=${encodeURIComponent(currentUser.name)}`, { method: 'DELETE' });
 
     if (res.ok) {
       showToast('Partido eliminado', 'success');
@@ -652,138 +518,6 @@ async function deleteMatch(matchId) {
     }
   } catch (err) {
     showToast('Error al eliminar partido', 'error');
-  }
-}
-
-// ==================== MATCH HISTORY (Admin) ====================
-
-async function loadMatchHistory() {
-  const teams = ['Athletic Club', 'Athletic Femenino', 'Bilbao Athletic'];
-  const containerIds = ['history-athletic-club', 'history-athletic-femenino', 'history-bilbao-athletic'];
-
-  try {
-    const res = await fetch('/api/matches');
-    const matches = await res.json();
-
-    teams.forEach((team, index) => {
-      const container = document.getElementById(containerIds[index]);
-      const teamMatches = matches.filter(m => m.team === team);
-
-      if (teamMatches.length === 0) {
-        container.innerHTML = `
-          <div class="empty-state" style="padding: 20px;">
-            <p style="color: var(--text-muted);">No hay partidos registrados para ${team}</p>
-          </div>
-        `;
-        return;
-      }
-
-      // Sort by date descending (most recent first)
-      teamMatches.sort((a, b) => new Date(b.match_date) - new Date(a.match_date));
-
-      container.innerHTML = teamMatches.map(match => {
-        const matchDate = new Date(match.match_date);
-        const homeTeam = match.is_home ? match.team : match.opponent;
-        const awayTeam = match.is_home ? match.opponent : match.team;
-
-        return `
-          <div class="history-item" style="margin-bottom: 8px;">
-            <div class="history-match" style="flex: 1;">
-              <div class="history-match-teams">${homeTeam} vs ${awayTeam}</div>
-              <div class="history-match-date">${matchDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
-            </div>
-            <div class="history-result" style="padding: 0 20px;">
-              ${match.is_finished ? `
-                <div class="history-result-score" style="font-size: 24px; font-weight: 800;">
-                  ${match.home_goals} - ${match.away_goals}
-                </div>
-              ` : `
-                <span style="color: var(--warning);">⏳ Pendiente</span>
-              `}
-            </div>
-          </div>
-        `;
-      }).join('');
-    });
-  } catch (err) {
-    console.error(err);
-    containerIds.forEach(id => {
-      document.getElementById(id).innerHTML = '<p>Error al cargar historial</p>';
-    });
-  }
-}
-
-// ==================== ADMIN USERS ====================
-
-async function loadAdminUsers() {
-  const container = document.getElementById('admin-users-container');
-
-  try {
-    const res = await fetch('/api/admin/users');
-    const users = await res.json();
-
-    if (users.length === 0) {
-      container.innerHTML = '<p style="color: var(--text-muted);">No hay usuarios registrados</p>';
-      return;
-    }
-
-    container.innerHTML = `
-      <div style="max-height: 400px; overflow-y: auto;">
-        <table style="width: 100%; border-collapse: collapse;">
-          <thead>
-            <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
-              <th style="text-align: left; padding: 12px 8px; font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Usuario</th>
-              <th style="text-align: center; padding: 12px 8px; font-size: 12px; color: var(--text-muted);">Puntos</th>
-              <th style="text-align: center; padding: 12px 8px; font-size: 12px; color: var(--text-muted);">Plenos</th>
-              <th style="text-align: right; padding: 12px 8px; font-size: 12px; color: var(--text-muted);">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${users.map(user => `
-              <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                <td style="padding: 12px 8px;">
-                  <div style="font-weight: 600;">${user.display_name}</div>
-                  <div style="font-size: 12px; color: var(--text-muted);">@${user.username}${user.is_admin ? ' 👑' : ''}</div>
-                </td>
-                <td style="text-align: center; padding: 12px 8px; font-weight: 700; color: var(--athletic-red-light);">${user.total_points}</td>
-                <td style="text-align: center; padding: 12px 8px; color: var(--success-light);">${user.exact_predictions}</td>
-                <td style="text-align: right; padding: 12px 8px;">
-                  ${!user.is_admin ? `
-                    <button class="btn btn-secondary btn-sm" onclick="resetUserPassword(${user.id}, '${user.display_name}')" title="Resetear contraseña">
-                      🔑 Reset
-                    </button>
-                  ` : ''}
-                </td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
-      <div style="margin-top: 16px; padding: 12px; background: rgba(59, 130, 246, 0.1); border-radius: var(--radius-md); border: 1px solid rgba(59, 130, 246, 0.2);">
-        <p style="font-size: 13px; color: #93C5FD;">
-          💡 <strong>Tip:</strong> Al resetear, la contraseña se establece igual que el nombre de usuario (en minúsculas, sin espacios).
-        </p>
-      </div>
-    `;
-  } catch (err) {
-    container.innerHTML = '<p>Error al cargar usuarios</p>';
-  }
-}
-
-async function resetUserPassword(userId, displayName) {
-  if (!confirm(`¿Resetear la contraseña de ${displayName}?`)) return;
-
-  try {
-    const res = await fetch(`/api/admin/users/${userId}/reset-password`, { method: 'POST' });
-    const data = await res.json();
-
-    if (res.ok) {
-      showToast(data.message, 'success');
-    } else {
-      showToast(data.error, 'error');
-    }
-  } catch (err) {
-    showToast('Error al resetear contraseña', 'error');
   }
 }
 
@@ -798,12 +532,19 @@ function hideError() {
   errorMessage.classList.remove('show');
 }
 
-function showToast(message, type = 'success') {
+function showToast(message, type = 'info') {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
-  toast.innerHTML = `${type === 'success' ? '✓' : '✗'} ${message}`;
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
   container.appendChild(toast);
 
-  setTimeout(() => toast.remove(), 3000);
+  setTimeout(() => {
+    toast.classList.add('show');
+  }, 10);
+
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
 }
