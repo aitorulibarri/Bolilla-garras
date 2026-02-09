@@ -134,6 +134,18 @@ function setupEventListeners() {
     });
   });
 
+  // Refresh button
+  const refreshBtn = document.getElementById('refresh-btn');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', async () => {
+      refreshBtn.classList.add('spinning');
+      await loadMatches();
+      refreshBtn.classList.remove('spinning');
+      showToast('Datos actualizados', 'success');
+    });
+  }
+
+
   // Add match form
   const addMatchForm = document.getElementById('add-match-form');
   if (addMatchForm) {
@@ -212,6 +224,13 @@ async function loadMatches() {
   try {
     const res = await fetchWithRetry('/api/matches/upcoming');
     const matches = await res.json();
+
+    // Update last refresh timestamp
+    const lastUpdate = document.getElementById('last-update');
+    if (lastUpdate) {
+      const now = new Date();
+      lastUpdate.textContent = `Última actualización: ${now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`;
+    }
 
     if (matches.length === 0) {
       container.innerHTML = `

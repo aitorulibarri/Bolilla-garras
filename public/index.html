@@ -84,7 +84,11 @@
         <main class="main-content">
             <!-- PREDICTIONS TAB -->
             <section id="tab-predictions" class="tab-content active" role="tabpanel">
-                <h2 class="section-title">⚽ Partidos Pendientes</h2>
+                <div class="section-header">
+                    <h2 class="section-title">⚽ Partidos Pendientes</h2>
+                    <button id="refresh-btn" class="btn btn-icon" title="Actualizar">🔄</button>
+                </div>
+                <div id="last-update" class="last-update"></div>
                 <div id="matches-container">
                     <div class="loading">
                         <div class="spinner"></div>

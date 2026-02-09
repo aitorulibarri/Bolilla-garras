@@ -2411,3 +2411,58 @@ body::before {
 .rules-note strong {
   color: var(--text-primary);
 }
+
+/* ==================== SECTION HEADER ==================== */
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.section-header .section-title {
+  margin-bottom: 0;
+}
+
+.btn-icon {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: var(--bg-tertiary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon:hover {
+  background: var(--athletic-red);
+  border-color: var(--athletic-red);
+  transform: scale(1.1);
+}
+
+.btn-icon.spinning {
+  animation: spinButton 0.8s linear infinite;
+}
+
+@keyframes spinButton {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.last-update {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  padding-left: 4px;
+}
