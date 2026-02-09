@@ -2531,3 +2531,31 @@ a:focus-visible {
   white-space: nowrap;
   border: 0;
 }
+
+/* ==================== FOOTER ==================== */
+
+.app-footer {
+  padding: 24px 16px 32px;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 40px;
+}
+
+.footer-content {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.footer-brand {
+  font-family: 'Outfit', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.footer-motto {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-style: italic;
+}
