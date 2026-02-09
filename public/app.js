@@ -97,6 +97,28 @@ function setupEventListeners() {
     document.getElementById('player-name').value = '';
   });
 
+  // Rules modal
+  const rulesBtn = document.getElementById('rules-btn');
+  const rulesModal = document.getElementById('rules-modal');
+  const closeRules = document.getElementById('close-rules');
+  const modalOverlay = rulesModal?.querySelector('.modal-overlay');
+
+  if (rulesBtn && rulesModal) {
+    rulesBtn.addEventListener('click', () => {
+      rulesModal.style.display = 'flex';
+      setTimeout(() => rulesModal.classList.add('show'), 10);
+    });
+
+    const closeModal = () => {
+      rulesModal.classList.remove('show');
+      setTimeout(() => rulesModal.style.display = 'none', 300);
+    };
+
+    closeRules?.addEventListener('click', closeModal);
+    modalOverlay?.addEventListener('click', closeModal);
+  }
+
+
   // Tab navigation
   navTabs.forEach(tab => {
     tab.addEventListener('click', () => {

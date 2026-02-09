@@ -58,6 +58,7 @@
             </div>
             <div class="header-user">
                 <span>Hola, <strong id="user-name"></strong></span>
+                <button id="rules-btn" class="btn btn-secondary btn-sm">📖 Reglas</button>
                 <button id="change-name-btn" class="btn btn-secondary btn-sm">✏️ Cambiar</button>
             </div>
         </header>
@@ -171,6 +172,41 @@
                 </div>
             </section>
         </main>
+    </div>
+
+    <!-- Rules Modal -->
+    <div id="rules-modal" class="modal" style="display: none;">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📖 Reglas de Puntuación</h2>
+                <button class="modal-close" id="close-rules">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="rules-section">
+                    <div class="rule-item gold">
+                        <span class="rule-points">5 pts</span>
+                        <span class="rule-desc">🎯 Resultado exacto</span>
+                    </div>
+                    <div class="rule-item green">
+                        <span class="rule-points">2 pts</span>
+                        <span class="rule-desc">⚽ Acertar goles de un equipo</span>
+                    </div>
+                    <div class="rule-item blue">
+                        <span class="rule-points">1 pt</span>
+                        <span class="rule-desc">✓ Acertar ganador o empate</span>
+                    </div>
+                    <div class="rule-item orange">
+                        <span class="rule-points">1 pt</span>
+                        <span class="rule-desc">↔️ Acertar diferencia de goles</span>
+                    </div>
+                </div>
+                <p class="rules-note">
+                    <strong>Máximo 3 puntos</strong> si no aciertas el resultado exacto.<br>
+                    ¡Arriurrrrra Athletic! 🦁
+                </p>
+            </div>
+        </div>
     </div>
 
     <!-- Toast Notifications -->
