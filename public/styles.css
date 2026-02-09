@@ -2466,3 +2466,68 @@ body::before {
   margin-bottom: 16px;
   padding-left: 4px;
 }
+
+/* ==================== ACCESSIBILITY ==================== */
+
+/* Focus visible for keyboard navigation */
+*:focus-visible {
+  outline: 2px solid var(--athletic-red);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+input:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--athletic-red);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(228, 30, 38, 0.2);
+}
+
+/* Reduced motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .empty-state-icon {
+    animation: none;
+  }
+
+  .btn-icon.spinning {
+    animation: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --bg-primary: #000000;
+    --text-primary: #FFFFFF;
+    --athletic-red: #FF0000;
+  }
+
+  .btn,
+  .nav-tab,
+  .match-card,
+  .leaderboard-item {
+    border-width: 2px;
+  }
+}
+
+/* Screen reader only class */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
