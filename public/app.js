@@ -2,18 +2,17 @@
 let currentUser = null;
 
 // ==================== DOM ELEMENTS ====================
-const namePage = document.getElementById('name-page');
+const authPage = document.getElementById('auth-page');
 const app = document.getElementById('app');
-const nameForm = document.getElementById('name-form');
-const errorMessage = document.getElementById('error-message');
+const loginForm = document.getElementById('login-form');
+const registerForm = document.getElementById('register-form');
+const authError = document.getElementById('auth-error');
 const changeNameBtn = document.getElementById('change-name-btn');
 const userName = document.getElementById('user-name');
 const adminTab = document.getElementById('admin-tab');
 const navTabs = document.querySelectorAll('.nav-tab');
 const tabContents = document.querySelectorAll('.tab-content');
-
-// Admin names (can add more)
-const ADMIN_NAMES = ['admin', 'aitor', 'Admin', 'Aitor'];
+const authTabs = document.querySelectorAll('.auth-tab');
 
 // ==================== FETCH WITH RETRY (for cold starts) ====================
 async function fetchWithRetry(url, options = {}, retries = 3, delay = 1000) {
@@ -48,65 +47,133 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function checkSavedUser() {
-  const savedName = localStorage.getItem('bolilla_user_name');
-  if (savedName) {
-    currentUser = {
-      name: savedName,
-      isAdmin: ADMIN_NAMES.includes(savedName.toLowerCase())
-    };
-    showApp();
+  const savedUser = localStorage.getItem('bolilla_user');
+  if (savedUser) {
+    try {
+      currentUser = JSON.parse(savedUser);
+      showApp();
+    } catch {
+      localStorage.removeItem('bolilla_user');
+    }
   }
 }
 
 function setupEventListeners() {
-  // Name form submit
-  nameForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const name = document.getElementById('player-name').value.trim();
+  // Auth tab switching
+  authTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const tabType = tab.dataset.authTab;
 
-    if (name.length < 2) {
-      showError('El nombre debe tener al menos 2 caracteres');
+      authTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+
+      if (tabType === 'login') {
+        loginForm.style.display = 'block';
+        registerForm.style.display = 'none';
+      } else {
+        loginForm.style.display = 'none';
+        registerForm.style.display = 'block';
+      }
+
+      hideAuthError();
+    });
+  });
+
+  // Login form submit
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value;
+
+    if (username.length < 3) {
+      showAuthError('Usuario debe tener al menos 3 caracteres');
       return;
     }
 
-    // Check if returning user
-    const isReturningUser = localStorage.getItem('bolilla_user_name') !== null;
-
-    // Save to localStorage
-    localStorage.setItem('bolilla_user_name', name);
-
-    // Register user in backend (if new)
     try {
-      await fetch('/api/register-simple', {
+      const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name })
+        body: JSON.stringify({ username, password })
       });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        currentUser = data.user;
+        localStorage.setItem('bolilla_user', JSON.stringify(currentUser));
+        showApp();
+        showToast(`¡Bienvenido, ${currentUser.displayName}!`, 'success');
+      } else {
+        showAuthError(data.error || 'Error al iniciar sesión');
+      }
     } catch (err) {
-      console.log('Backend registration optional');
-    }
-
-    currentUser = {
-      name: name,
-      isAdmin: ADMIN_NAMES.includes(name.toLowerCase())
-    };
-    showApp();
-
-    // Show different messages for new vs returning users
-    if (isReturningUser) {
-      showToast(`¡Bienvenido de nuevo, ${name}!`, 'success');
-    } else {
-      showToast(`¡Hola ${name}! Entra en cada partido y pon tu pronóstico 🎯`, 'info');
+      showAuthError('Error de conexión. Inténtalo de nuevo.');
     }
   });
 
-  // Change name button
+  // Register form submit
+  registerForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('register-username').value.trim();
+    const displayName = document.getElementById('register-displayname').value.trim();
+    const password = document.getElementById('register-password').value;
+    const passwordConfirm = document.getElementById('register-password-confirm').value;
+
+    // Validations
+    if (username.length < 3) {
+      showAuthError('Usuario debe tener al menos 3 caracteres');
+      return;
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      showAuthError('Usuario solo puede contener letras, números y guión bajo');
+      return;
+    }
+    if (displayName.length < 2) {
+      showAuthError('Nombre debe tener al menos 2 caracteres');
+      return;
+    }
+    if (password.length < 4) {
+      showAuthError('Contraseña debe tener al menos 4 caracteres');
+      return;
+    }
+    if (password !== passwordConfirm) {
+      showAuthError('Las contraseñas no coinciden');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, displayName, password })
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        currentUser = data.user;
+        localStorage.setItem('bolilla_user', JSON.stringify(currentUser));
+        showApp();
+        showToast(`¡Bienvenido, ${currentUser.displayName}! Tu cuenta ha sido creada.`, 'success');
+      } else {
+        showAuthError(data.error || 'Error al registrar');
+      }
+    } catch (err) {
+      showAuthError('Error de conexión. Inténtalo de nuevo.');
+    }
+  });
+
+  // Change name button (logout)
   changeNameBtn.addEventListener('click', () => {
-    localStorage.removeItem('bolilla_user_name');
+    localStorage.removeItem('bolilla_user');
     currentUser = null;
-    namePage.style.display = 'flex';
+    authPage.style.display = 'flex';
     app.classList.remove('active');
-    document.getElementById('player-name').value = '';
+    // Reset forms
+    loginForm.reset();
+    registerForm.reset();
+    hideAuthError();
   });
 
   // Rules modal
@@ -174,7 +241,7 @@ function setupEventListeners() {
         const res = await fetch('/api/matches', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ team, opponent, isHome, matchDate, deadline, adminName: currentUser.name })
+          body: JSON.stringify({ team, opponent, isHome, matchDate, deadline, adminName: currentUser.username })
         });
 
         if (res.ok) {
@@ -196,9 +263,9 @@ function setupEventListeners() {
 // ==================== APP ====================
 
 function showApp() {
-  namePage.style.display = 'none';
+  authPage.style.display = 'none';
   app.classList.add('active');
-  userName.textContent = currentUser.name;
+  userName.textContent = currentUser.displayName;
 
   // Show admin tab only for admin users
   if (currentUser.isAdmin) {
@@ -256,7 +323,7 @@ async function loadMatches() {
     }
 
     // Get user predictions
-    const predictionsRes = await fetchWithRetry(`/api/predictions/${encodeURIComponent(currentUser.name)}`);
+    const predictionsRes = await fetchWithRetry(`/api/predictions/${encodeURIComponent(currentUser.displayName)}`);
     const userPredictions = await predictionsRes.json();
     const predictionMap = {};
     userPredictions.forEach(p => { predictionMap[p.match_id] = p; });
@@ -370,7 +437,7 @@ async function savePrediction(matchId) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        playerName: currentUser.name,
+        playerName: currentUser.displayName,
         matchId: parseInt(matchId),
         homeGoals: parseInt(homeGoals),
         awayGoals: parseInt(awayGoals)
@@ -443,7 +510,7 @@ async function loadHistory() {
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
   try {
-    const res = await fetchWithRetry(`/api/predictions/${encodeURIComponent(currentUser.name)}`);
+    const res = await fetchWithRetry(`/api/predictions/${encodeURIComponent(currentUser.displayName)}`);
     const predictions = await res.json();
 
     if (predictions.length === 0) {
@@ -564,7 +631,7 @@ async function setResult(matchId) {
       body: JSON.stringify({
         homeGoals: parseInt(homeGoals),
         awayGoals: parseInt(awayGoals),
-        adminName: currentUser.name
+        adminName: currentUser.username
       })
     });
 
@@ -583,7 +650,7 @@ async function deleteMatch(matchId) {
   if (!confirm('¿Seguro que quieres eliminar este partido?')) return;
 
   try {
-    const res = await fetch(`/api/matches/${matchId}?adminName=${encodeURIComponent(currentUser.name)}`, { method: 'DELETE' });
+    const res = await fetch(`/api/matches/${matchId}?adminName=${encodeURIComponent(currentUser.username)}`, { method: 'DELETE' });
 
     if (res.ok) {
       showToast('Partido eliminado', 'success');
@@ -599,14 +666,14 @@ async function deleteMatch(matchId) {
 
 // ==================== UTILS ====================
 
-function showError(message) {
-  errorMessage.textContent = message;
-  errorMessage.classList.add('show');
-  setTimeout(() => errorMessage.classList.remove('show'), 4000);
+function showAuthError(message) {
+  authError.textContent = message;
+  authError.classList.add('show');
+  setTimeout(() => authError.classList.remove('show'), 4000);
 }
 
-function hideError() {
-  errorMessage.classList.remove('show');
+function hideAuthError() {
+  authError.classList.remove('show');
 }
 
 function showToast(message, type = 'info') {

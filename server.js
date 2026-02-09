@@ -5,15 +5,27 @@ const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+const bcrypt = require('bcryptjs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Admin names (lowercase)
-const ADMIN_NAMES = ['admin', 'aitor'];
+// Admin usernames (lowercase) - these users will have is_admin = true on registration
+const ADMIN_USERNAMES = ['admin', 'aitor'];
 
-function isAdmin(name) {
-    return ADMIN_NAMES.includes(name?.toLowerCase());
+function isAdminUsername(username) {
+    return ADMIN_USERNAMES.includes(username?.toLowerCase());
+}
+
+// Check if user is admin from database
+async function isAdmin(username) {
+    if (!IS_POSTGRES || !username) return false;
+    try {
+        const user = await queryOne('SELECT is_admin FROM players WHERE LOWER(username) = LOWER($1)', [username]);
+        return user?.is_admin === true;
+    } catch {
+        return isAdminUsername(username); // Fallback to static list
+    }
 }
 
 // Security & Performance Middleware
@@ -31,7 +43,13 @@ app.use(helmet({
 app.use(compression());
 app.use(morgan('dev'));
 
-// Rate Limiting
+// Rate Limiting - stricter for auth endpoints
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10, // 10 attempts per 15 minutes for auth
+    message: { error: 'Demasiados intentos. Espera 15 minutos.' }
+});
+
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 100,
@@ -45,7 +63,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ==================== DATABASE (Simple In-Memory + PostgreSQL) ====================
+// ==================== DATABASE (PostgreSQL) ====================
 
 const IS_POSTGRES = !!process.env.DATABASE_URL;
 let pool;
@@ -61,39 +79,46 @@ if (IS_POSTGRES) {
     // Initialize tables
     (async () => {
         try {
+            // Players table with authentication
             await pool.query(`
-        CREATE TABLE IF NOT EXISTS players (
-          id SERIAL PRIMARY KEY,
-          name TEXT UNIQUE NOT NULL,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
+                CREATE TABLE IF NOT EXISTS players (
+                    id SERIAL PRIMARY KEY,
+                    username TEXT UNIQUE NOT NULL,
+                    display_name TEXT NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    is_admin BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            `);
+
             await pool.query(`
-        CREATE TABLE IF NOT EXISTS matches (
-          id SERIAL PRIMARY KEY,
-          team TEXT NOT NULL,
-          opponent TEXT NOT NULL,
-          is_home INTEGER DEFAULT 1,
-          match_date TIMESTAMP NOT NULL,
-          deadline TIMESTAMP NOT NULL,
-          home_goals INTEGER DEFAULT NULL,
-          away_goals INTEGER DEFAULT NULL,
-          is_finished INTEGER DEFAULT 0,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
+                CREATE TABLE IF NOT EXISTS matches (
+                    id SERIAL PRIMARY KEY,
+                    team TEXT NOT NULL,
+                    opponent TEXT NOT NULL,
+                    is_home INTEGER DEFAULT 1,
+                    match_date TIMESTAMP NOT NULL,
+                    deadline TIMESTAMP NOT NULL,
+                    home_goals INTEGER DEFAULT NULL,
+                    away_goals INTEGER DEFAULT NULL,
+                    is_finished INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            `);
+
             await pool.query(`
-        CREATE TABLE IF NOT EXISTS predictions (
-          id SERIAL PRIMARY KEY,
-          player_name TEXT NOT NULL,
-          match_id INTEGER NOT NULL REFERENCES matches(id),
-          home_goals INTEGER NOT NULL,
-          away_goals INTEGER NOT NULL,
-          points INTEGER DEFAULT NULL,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          UNIQUE(player_name, match_id)
-        );
-      `);
+                CREATE TABLE IF NOT EXISTS predictions (
+                    id SERIAL PRIMARY KEY,
+                    player_name TEXT NOT NULL,
+                    match_id INTEGER NOT NULL REFERENCES matches(id),
+                    home_goals INTEGER NOT NULL,
+                    away_goals INTEGER NOT NULL,
+                    points INTEGER DEFAULT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(player_name, match_id)
+                );
+            `);
+
             console.log('✅ Tables initialized');
         } catch (err) {
             console.error('DB init error:', err);
@@ -113,29 +138,112 @@ async function queryOne(sql, params = []) {
     return rows[0];
 }
 
-// ==================== API ROUTES ====================
+// ==================== AUTH ROUTES ====================
 
-// Register player (simple - just name)
-app.post('/api/register-simple', async (req, res) => {
+// Register new user
+app.post('/api/register', authLimiter, async (req, res) => {
     try {
-        const { name } = req.body;
-        if (!name || name.length < 2) {
-            return res.status(400).json({ error: 'Nombre inválido' });
+        const { username, displayName, password } = req.body;
+
+        // Validation
+        if (!username || username.length < 3) {
+            return res.status(400).json({ error: 'Usuario debe tener al menos 3 caracteres' });
+        }
+        if (!displayName || displayName.length < 2) {
+            return res.status(400).json({ error: 'Nombre debe tener al menos 2 caracteres' });
+        }
+        if (!password || password.length < 4) {
+            return res.status(400).json({ error: 'Contraseña debe tener al menos 4 caracteres' });
         }
 
-        if (IS_POSTGRES) {
-            await pool.query(
-                'INSERT INTO players (name) VALUES ($1) ON CONFLICT (name) DO NOTHING',
-                [name]
-            );
+        // Check username format (alphanumeric + underscore only)
+        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+            return res.status(400).json({ error: 'Usuario solo puede contener letras, números y guión bajo' });
         }
 
-        res.json({ success: true });
+        if (!IS_POSTGRES) return res.status(500).json({ error: 'No database configured' });
+
+        // Check if username already exists
+        const existing = await queryOne('SELECT id FROM players WHERE LOWER(username) = LOWER($1)', [username]);
+        if (existing) {
+            return res.status(400).json({ error: 'Este usuario ya existe' });
+        }
+
+        // Hash password
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(password, salt);
+
+        // Determine if admin
+        const isAdmin = isAdminUsername(username);
+
+        // Create user
+        const result = await pool.query(
+            'INSERT INTO players (username, display_name, password_hash, is_admin) VALUES ($1, $2, $3, $4) RETURNING id, username, display_name, is_admin',
+            [username.toLowerCase(), displayName, passwordHash, isAdmin]
+        );
+
+        const user = result.rows[0];
+        res.json({
+            success: true,
+            user: {
+                id: user.id,
+                username: user.username,
+                displayName: user.display_name,
+                isAdmin: user.is_admin
+            }
+        });
     } catch (err) {
-        console.error(err);
-        res.json({ success: true }); // Don't fail on duplicate
+        console.error('Register error:', err);
+        res.status(500).json({ error: 'Error al registrar usuario' });
     }
 });
+
+// Login
+app.post('/api/login', authLimiter, async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Usuario y contraseña requeridos' });
+        }
+
+        if (!IS_POSTGRES) return res.status(500).json({ error: 'No database configured' });
+
+        // Find user
+        const user = await queryOne('SELECT * FROM players WHERE LOWER(username) = LOWER($1)', [username]);
+        if (!user) {
+            return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+        }
+
+        // Verify password
+        const validPassword = await bcrypt.compare(password, user.password_hash);
+        if (!validPassword) {
+            return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+        }
+
+        res.json({
+            success: true,
+            user: {
+                id: user.id,
+                username: user.username,
+                displayName: user.display_name,
+                isAdmin: user.is_admin
+            }
+        });
+    } catch (err) {
+        console.error('Login error:', err);
+        res.status(500).json({ error: 'Error al iniciar sesión' });
+    }
+});
+
+// Legacy endpoint for backward compatibility (will be removed later)
+app.post('/api/register-simple', async (req, res) => {
+    res.json({ success: true, message: 'Use /api/register instead' });
+});
+
+// ==================== API ROUTES ====================
+
+
 
 // Get all matches
 app.get('/api/matches', async (req, res) => {
@@ -164,7 +272,7 @@ app.post('/api/matches', async (req, res) => {
     try {
         const { team, opponent, isHome, matchDate, deadline, adminName } = req.body;
 
-        if (!isAdmin(adminName)) {
+        if (!(await isAdmin(adminName))) {
             return res.status(403).json({ error: 'No autorizado' });
         }
 
@@ -191,7 +299,7 @@ app.put('/api/matches/:id/result', async (req, res) => {
         const { homeGoals, awayGoals, adminName } = req.body;
         const matchId = parseInt(req.params.id);
 
-        if (!isAdmin(adminName)) {
+        if (!(await isAdmin(adminName))) {
             return res.status(403).json({ error: 'No autorizado' });
         }
 
@@ -223,7 +331,7 @@ app.delete('/api/matches/:id', async (req, res) => {
         const { adminName } = req.query;
         const matchId = parseInt(req.params.id);
 
-        if (!isAdmin(adminName)) {
+        if (!(await isAdmin(adminName))) {
             return res.status(403).json({ error: 'No autorizado' });
         }
 

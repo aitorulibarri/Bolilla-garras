@@ -25,8 +25,8 @@
 </head>
 
 <body>
-    <!-- NAME ENTRY PAGE (simplified login) -->
-    <div id="name-page" class="login-container">
+    <!-- LOGIN/REGISTER PAGE -->
+    <div id="auth-page" class="login-container">
         <div class="login-card">
             <div class="login-logo">
                 <span class="icon">🦁</span>
@@ -34,21 +34,62 @@
                 <p>Peña Garras Taldea Sestao</p>
             </div>
 
-            <div id="error-message" class="error-message"></div>
+            <!-- Auth Tabs -->
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-auth-tab="login">Iniciar Sesión</button>
+                <button class="auth-tab" data-auth-tab="register">Registrarse</button>
+            </div>
 
-            <form id="name-form" autocomplete="on">
+            <div id="auth-error" class="error-message"></div>
+
+            <!-- Login Form -->
+            <form id="login-form" class="auth-form" autocomplete="on">
                 <div class="form-group">
-                    <label for="player-name">¿Cómo te llamas?</label>
-                    <input type="text" id="player-name" placeholder="Ej: Patxi, Ane, Mikel..." autocomplete="name"
-                        required minlength="2" maxlength="30">
+                    <label for="login-username">Usuario</label>
+                    <input type="text" id="login-username" placeholder="Tu usuario" autocomplete="username" required
+                        minlength="3" maxlength="30">
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Contraseña</label>
+                    <input type="password" id="login-password" placeholder="Tu contraseña"
+                        autocomplete="current-password" required minlength="4">
                 </div>
                 <button type="submit" class="btn btn-primary">
                     🦁 Entrar
                 </button>
             </form>
 
+            <!-- Register Form (hidden by default) -->
+            <form id="register-form" class="auth-form" style="display: none;" autocomplete="on">
+                <div class="form-group">
+                    <label for="register-username">Usuario</label>
+                    <input type="text" id="register-username" placeholder="Elige un usuario (ej: patxi23)"
+                        autocomplete="username" required minlength="3" maxlength="30" pattern="[a-zA-Z0-9_]+">
+                    <small class="form-hint">Solo letras, números y guión bajo</small>
+                </div>
+                <div class="form-group">
+                    <label for="register-displayname">Nombre visible</label>
+                    <input type="text" id="register-displayname" placeholder="Tu nombre (ej: Patxi)" autocomplete="name"
+                        required minlength="2" maxlength="30">
+                    <small class="form-hint">El nombre que verán los demás</small>
+                </div>
+                <div class="form-group">
+                    <label for="register-password">Contraseña</label>
+                    <input type="password" id="register-password" placeholder="Mínimo 4 caracteres"
+                        autocomplete="new-password" required minlength="4">
+                </div>
+                <div class="form-group">
+                    <label for="register-password-confirm">Confirmar contraseña</label>
+                    <input type="password" id="register-password-confirm" placeholder="Repite la contraseña"
+                        autocomplete="new-password" required minlength="4">
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    📝 Registrarse
+                </button>
+            </form>
+
             <p style="text-align: center; color: var(--text-muted); font-size: 13px; margin-top: 20px;">
-                Solo necesitas tu nombre para participar
+                ¡Participa en los pronósticos de la peña!
             </p>
         </div>
     </div>
