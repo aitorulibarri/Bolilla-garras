@@ -1,6 +1,6 @@
 {
     "name": "bolilla-garras",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "description": "Aplicación de pronósticos para la peña Garras Taldea de Sestao",
     "main": "server.js",
     "scripts": {
