@@ -4,6 +4,10 @@
         {
             "src": "server.js",
             "use": "@vercel/node"
+        },
+        {
+            "src": "public/**",
+            "use": "@vercel/static"
         }
     ],
     "routes": [
@@ -12,15 +16,28 @@
             "dest": "/public/sw.js",
             "headers": {
                 "Cache-Control": "no-cache",
-                "Content-Type": "application/javascript"
+                "Content-Type": "application/javascript",
+                "Service-Worker-Allowed": "/"
             }
         },
         {
             "src": "/manifest.json",
             "dest": "/public/manifest.json",
             "headers": {
-                "Content-Type": "application/json"
+                "Content-Type": "application/manifest+json"
             }
+        },
+        {
+            "src": "/styles.css",
+            "dest": "/public/styles.css"
+        },
+        {
+            "src": "/app.js",
+            "dest": "/public/app.js"
+        },
+        {
+            "src": "/api/(.*)",
+            "dest": "/server.js"
         },
         {
             "src": "/(.*)",
