@@ -29,11 +29,24 @@
         },
         {
             "src": "/styles.css",
-            "dest": "/public/styles.css"
+            "dest": "/public/styles.css",
+            "headers": {
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            }
         },
         {
             "src": "/app.js",
-            "dest": "/public/app.js"
+            "dest": "/public/app.js",
+            "headers": {
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            }
+        },
+        {
+            "src": "/index.html",
+            "dest": "/public/index.html",
+            "headers": {
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            }
         },
         {
             "src": "/api/(.*)",
