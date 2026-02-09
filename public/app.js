@@ -57,6 +57,9 @@ function setupEventListeners() {
       return;
     }
 
+    // Check if returning user
+    const isReturningUser = localStorage.getItem('bolilla_user_name') !== null;
+
     // Save to localStorage
     localStorage.setItem('bolilla_user_name', name);
 
@@ -76,7 +79,13 @@ function setupEventListeners() {
       isAdmin: ADMIN_NAMES.includes(name.toLowerCase())
     };
     showApp();
-    showToast(`¡Bienvenido, ${name}!`, 'success');
+
+    // Show different messages for new vs returning users
+    if (isReturningUser) {
+      showToast(`¡Bienvenido de nuevo, ${name}!`, 'success');
+    } else {
+      showToast(`¡Hola ${name}! Entra en cada partido y pon tu pronóstico 🎯`, 'info');
+    }
   });
 
   // Change name button
