@@ -667,13 +667,27 @@ async function deleteMatch(matchId) {
 // ==================== UTILS ====================
 
 function showAuthError(message) {
-  authError.textContent = message;
-  authError.classList.add('show');
-  setTimeout(() => authError.classList.remove('show'), 4000);
+  const authErrorEl = document.getElementById('auth-error');
+  if (!authErrorEl) {
+    console.error('auth-error element not found');
+    showToast(message, 'error');
+    return;
+  }
+  authErrorEl.textContent = message;
+  authErrorEl.style.display = 'block';
+  authErrorEl.classList.add('show');
+  setTimeout(() => {
+    authErrorEl.classList.remove('show');
+    authErrorEl.style.display = 'none';
+  }, 5000);
 }
 
 function hideAuthError() {
-  authError.classList.remove('show');
+  const authErrorEl = document.getElementById('auth-error');
+  if (authErrorEl) {
+    authErrorEl.classList.remove('show');
+    authErrorEl.style.display = 'none';
+  }
 }
 
 function showToast(message, type = 'info') {

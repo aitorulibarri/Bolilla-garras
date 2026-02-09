@@ -79,6 +79,18 @@ if (IS_POSTGRES) {
     // Initialize tables
     (async () => {
         try {
+            // Check if we need to migrate the players table (old schema had 'name', new has 'username')
+            const checkColumn = await pool.query(`
+                SELECT column_name FROM information_schema.columns 
+                WHERE table_name = 'players' AND column_name = 'username'
+            `);
+
+            if (checkColumn.rows.length === 0) {
+                // Old table exists or doesn't exist - drop and recreate
+                console.log('⚠️ Migrating players table to new auth schema...');
+                await pool.query('DROP TABLE IF EXISTS players CASCADE');
+            }
+
             // Players table with authentication
             await pool.query(`
                 CREATE TABLE IF NOT EXISTS players (

@@ -1,5 +1,5 @@
 // Bolilla Garras - Service Worker
-const CACHE_NAME = 'bolilla-garras-v1';
+const CACHE_NAME = 'bolilla-garras-v2';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
