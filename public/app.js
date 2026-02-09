@@ -540,6 +540,7 @@ async function deleteMatch(matchId) {
 function showError(message) {
   errorMessage.textContent = message;
   errorMessage.classList.add('show');
+  setTimeout(() => errorMessage.classList.remove('show'), 4000);
 }
 
 function hideError() {
@@ -550,7 +551,19 @@ function showToast(message, type = 'info') {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
-  toast.textContent = message;
+
+  // Add icon based on type
+  const icons = {
+    success: '✅',
+    error: '❌',
+    warning: '⚠️',
+    info: 'ℹ️'
+  };
+
+  toast.innerHTML = `
+    <span class="toast-icon">${icons[type] || icons.info}</span>
+    <span class="toast-message">${message}</span>
+  `;
   container.appendChild(toast);
 
   setTimeout(() => {
@@ -560,5 +573,6 @@ function showToast(message, type = 'info') {
   setTimeout(() => {
     toast.classList.remove('show');
     setTimeout(() => toast.remove(), 300);
-  }, 3000);
+  }, 3500);
 }
+
