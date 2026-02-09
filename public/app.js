@@ -30,7 +30,19 @@ async function fetchWithRetry(url, options = {}, retries = 3, delay = 1000) {
   }
   return fetch(url, options); // Final attempt
 }
+
+// ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', async () => {
+  // Register Service Worker for PWA
+  if ('serviceWorker' in navigator) {
+    try {
+      await navigator.serviceWorker.register('/sw.js');
+      console.log('✅ Service Worker registered');
+    } catch (err) {
+      console.log('Service Worker registration failed:', err);
+    }
+  }
+
   checkSavedUser();
   setupEventListeners();
 });

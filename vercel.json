@@ -8,6 +8,21 @@
     ],
     "routes": [
         {
+            "src": "/sw.js",
+            "dest": "/public/sw.js",
+            "headers": {
+                "Cache-Control": "no-cache",
+                "Content-Type": "application/javascript"
+            }
+        },
+        {
+            "src": "/manifest.json",
+            "dest": "/public/manifest.json",
+            "headers": {
+                "Content-Type": "application/json"
+            }
+        },
+        {
             "src": "/(.*)",
             "dest": "/server.js"
         }
