@@ -67,6 +67,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const IS_POSTGRES = !!process.env.DATABASE_URL;
 let pool;
+let dbReady = false;
+let dbInitPromise = null;
 
 if (IS_POSTGRES) {
     const { Pool } = require('pg');
@@ -75,18 +77,22 @@ if (IS_POSTGRES) {
         ssl: { rejectUnauthorized: false }
     });
     console.log('✅ PostgreSQL configured');
+}
 
-    // Initialize tables
-    (async () => {
+// Lazy database initialization - runs once, awaited before any query
+async function dbInit() {
+    if (dbReady) return;
+    if (dbInitPromise) return dbInitPromise;
+
+    dbInitPromise = (async () => {
         try {
-            // Check if we need to migrate the players table (old schema had 'name', new has 'username')
+            // Check if we need to migrate the players table
             const checkColumn = await pool.query(`
                 SELECT column_name FROM information_schema.columns 
                 WHERE table_name = 'players' AND column_name = 'username'
             `);
 
             if (checkColumn.rows.length === 0) {
-                // Old table exists or doesn't exist - drop and recreate
                 console.log('⚠️ Migrating players table to new auth schema...');
                 await pool.query('DROP TABLE IF EXISTS players CASCADE');
             }
@@ -131,16 +137,22 @@ if (IS_POSTGRES) {
                 );
             `);
 
+            dbReady = true;
             console.log('✅ Tables initialized');
         } catch (err) {
             console.error('DB init error:', err);
+            dbInitPromise = null; // Allow retry on next request
+            throw err;
         }
     })();
+
+    return dbInitPromise;
 }
 
-// Simple query helpers
+// Simple query helpers - ensure DB is initialized first
 async function query(sql, params = []) {
     if (!IS_POSTGRES) throw new Error('No database configured');
+    await dbInit();
     const result = await pool.query(sql, params);
     return result.rows;
 }
@@ -206,7 +218,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
         });
     } catch (err) {
         console.error('Register error:', err);
-        res.status(500).json({ error: 'Error al registrar usuario' });
+        res.status(500).json({ error: 'Error al registrar usuario', detail: err.message });
     }
 });
 
@@ -244,7 +256,7 @@ app.post('/api/login', authLimiter, async (req, res) => {
         });
     } catch (err) {
         console.error('Login error:', err);
-        res.status(500).json({ error: 'Error al iniciar sesión' });
+        res.status(500).json({ error: 'Error al iniciar sesión', detail: err.message });
     }
 });
 

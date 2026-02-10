@@ -105,9 +105,12 @@ function setupEventListeners() {
         showApp();
         showToast(`¡Bienvenido, ${currentUser.displayName}!`, 'success');
       } else {
-        showAuthError(data.error || 'Error al iniciar sesión');
+        const msg = data.detail ? `${data.error}: ${data.detail}` : (data.error || 'Error al iniciar sesión');
+        console.error('Login error:', data);
+        showAuthError(msg);
       }
     } catch (err) {
+      console.error('Login fetch error:', err);
       showAuthError('Error de conexión. Inténtalo de nuevo.');
     }
   });
@@ -157,9 +160,12 @@ function setupEventListeners() {
         showApp();
         showToast(`¡Bienvenido, ${currentUser.displayName}! Tu cuenta ha sido creada.`, 'success');
       } else {
-        showAuthError(data.error || 'Error al registrar');
+        const msg = data.detail ? `${data.error}: ${data.detail}` : (data.error || 'Error al registrar');
+        console.error('Register error:', data);
+        showAuthError(msg);
       }
     } catch (err) {
+      console.error('Register fetch error:', err);
       showAuthError('Error de conexión. Inténtalo de nuevo.');
     }
   });
