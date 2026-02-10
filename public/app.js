@@ -1,3 +1,5 @@
+// Bolilla Garras App v2.1
+console.log('📱 Bolilla Garras App v2.1 loaded');
 // ==================== STATE ====================
 let currentUser = null;
 

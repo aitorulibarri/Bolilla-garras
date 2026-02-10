@@ -1,5 +1,5 @@
-// Bolilla Garras - Service Worker
-const CACHE_NAME = 'bolilla-garras-v2';
+// Bolilla Garras - Service Worker v3
+const CACHE_NAME = 'bolilla-garras-v3';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
@@ -8,37 +8,40 @@ const STATIC_ASSETS = [
     '/manifest.json'
 ];
 
-// Install - cache static assets
+// Install - cache static assets and skip waiting immediately
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
-            console.log('Caching static assets');
+            console.log('SW v3: Caching static assets');
             return cache.addAll(STATIC_ASSETS);
         })
     );
     self.skipWaiting();
 });
 
-// Activate - clean old caches
+// Activate - clean ALL old caches and claim clients immediately
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((cacheNames) => {
             return Promise.all(
                 cacheNames
                     .filter((name) => name !== CACHE_NAME)
-                    .map((name) => caches.delete(name))
+                    .map((name) => {
+                        console.log('SW v3: Deleting old cache:', name);
+                        return caches.delete(name);
+                    })
             );
         })
     );
     self.clients.claim();
 });
 
-// Fetch - network first for API, cache first for static
+// Fetch strategy
 self.addEventListener('fetch', (event) => {
     const { request } = event;
     const url = new URL(request.url);
 
-    // API calls - always network first
+    // API calls - always network only
     if (url.pathname.startsWith('/api/')) {
         event.respondWith(
             fetch(request).catch(() => {
@@ -50,11 +53,12 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Static assets - cache first, then network
+    // Static assets - NETWORK FIRST, fallback to cache
+    // This ensures users always get the latest version
     event.respondWith(
-        caches.match(request).then((cached) => {
-            return cached || fetch(request).then((response) => {
-                // Cache successful responses
+        fetch(request)
+            .then((response) => {
+                // Update cache with fresh response
                 if (response.ok) {
                     const responseClone = response.clone();
                     caches.open(CACHE_NAME).then((cache) => {
@@ -62,7 +66,10 @@ self.addEventListener('fetch', (event) => {
                     });
                 }
                 return response;
-            });
-        })
+            })
+            .catch(() => {
+                // Offline - serve from cache
+                return caches.match(request);
+            })
     );
 });
