@@ -252,17 +252,21 @@ function setupEventListeners() {
           body: JSON.stringify({ team, opponent, isHome, matchDate, deadline, adminName: currentUser.username })
         });
 
+        const data = await res.json(); // Leemos siempre el body para ver el mensaje
+
         if (res.ok) {
           showToast('Partido añadido correctamente', 'success');
           e.target.reset();
           loadAdminMatches();
           loadMatches();
         } else {
-          const data = await res.json();
-          showToast(data.error, 'error');
+          // Mostramos explícitamente el error devuelto
+          const msg = data.detail ? `${data.error}: ${data.detail}` : (data.error || 'Error desconocido');
+          showToast(msg, 'error');
         }
       } catch (err) {
-        showToast('Error al añadir partido', 'error');
+        showToast('Error de conexión al añadir partido', 'error');
+        console.error(err);
       }
     });
   }

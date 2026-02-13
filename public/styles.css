@@ -378,28 +378,24 @@ body::before {
   border-radius: var(--radius-md);
   font-size: 14px;
   margin-bottom: 24px;
-  display: none;
-  animation: shake 0.4s ease;
-}
-
-@keyframes shake {
-
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-
-  25% {
-    transform: translateX(-5px);
-  }
-
-  75% {
-    transform: translateX(5px);
-  }
+  display: block;
+  /* Force visibility or use opacity */
+  opacity: 0;
+  height: 0;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  transform: translateY(-10px);
 }
 
 .error-message.show {
-  display: block;
+  opacity: 1;
+  height: auto;
+  padding: 14px 18px;
+  /* Restore padding on show */
+  transform: translateY(0);
+  margin-bottom: 24px;
+  /* Restore margin on show */
+  animation: shake 0.4s ease;
 }
 
 /* ==================== APP CONTAINER ==================== */
