@@ -265,47 +265,39 @@ app.post('/api/register-simple', async (req, res) => {
     res.json({ success: true, message: 'Use /api/register instead' });
 });
 
-// Emergency admin reset endpoint (for production fixes)
-app.get('/api/admin/emergency-reset-garras', async (req, res) => {
-    try {
-        const key = req.query.key;
-        if (key !== 'GARRAS_SECRET_RESET_2026') {
-            return res.status(403).json({ error: 'Acceso denegado' });
-        }
+/* EMERGENCY RESET ENDPOINT - DISABLED FOR SECURITY
+ * This endpoint was used once to create the admin user in production.
+ * It has been disabled after successful execution.
+ * Uncomment only if needed for emergency admin reset in the future.
+ * 
+ * app.get('/api/admin/emergency-reset-garras', async (req, res) => {
+ *     try {
+ *         const key = req.query.key;
+ *         if (key !== 'GARRAS_SECRET_RESET_2026') {
+ *             return res.status(403).json({ error: 'Acceso denegado' });
+ *         }
+ *         if (!IS_POSTGRES) {
+ *             return res.status(500).json({ error: 'No database configured' });
+ *         }
+ *         const existing = await queryOne('SELECT id FROM players WHERE LOWER(username) = LOWER($1)', ['GARRAS']);
+ *         const salt = await bcrypt.genSalt(10);
+ *         const passwordHash = await bcrypt.hash('GARRAS123', salt);
+ *         let msg;
+ *         if (existing) {
+ *             await pool.query('UPDATE players SET password_hash = $1, is_admin = TRUE WHERE LOWER(username) = LOWER($2)', [passwordHash, 'GARRAS']);
+ *             msg = 'Usuario GARRAS actualizado. Pass: GARRAS123';
+ *         } else {
+ *             await pool.query('INSERT INTO players (username, display_name, password_hash, is_admin) VALUES ($1, $2, $3, TRUE)', ['GARRAS', 'Admin Garras', passwordHash]);
+ *             msg = 'Usuario GARRAS creado. Pass: GARRAS123';
+ *         }
+ *         res.json({ success: true, message: msg });
+ *     } catch (err) {
+ *         console.error('Emergency reset error:', err);
+ *         res.status(500).json({ error: 'Error al resetear usuario', detail: err.message });
+ *     }
+ * });
+ */
 
-        if (!IS_POSTGRES) {
-            return res.status(500).json({ error: 'No database configured' });
-        }
-
-        // Check if GARRAS user exists
-        const existing = await queryOne('SELECT id FROM players WHERE LOWER(username) = LOWER($1)', ['GARRAS']);
-
-        const salt = await bcrypt.genSalt(10);
-        const passwordHash = await bcrypt.hash('GARRAS123', salt);
-
-        let msg;
-        if (existing) {
-            // Update existing user
-            await pool.query(
-                'UPDATE players SET password_hash = $1, is_admin = TRUE WHERE LOWER(username) = LOWER($2)',
-                [passwordHash, 'GARRAS']
-            );
-            msg = 'Usuario GARRAS actualizado. Pass: GARRAS123';
-        } else {
-            // Create new admin user
-            await pool.query(
-                'INSERT INTO players (username, display_name, password_hash, is_admin) VALUES ($1, $2, $3, TRUE)',
-                ['GARRAS', 'Admin Garras', passwordHash]
-            );
-            msg = 'Usuario GARRAS creado. Pass: GARRAS123';
-        }
-
-        res.json({ success: true, message: msg });
-    } catch (err) {
-        console.error('Emergency reset error:', err);
-        res.status(500).json({ error: 'Error al resetear usuario', detail: err.message });
-    }
-});
 
 // ==================== API ROUTES ====================
 

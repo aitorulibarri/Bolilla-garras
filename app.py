@@ -145,14 +145,6 @@ def login():
     
     user = User.query.filter_by(username=username).first()
     
-    print(f"Login attempt: '{username}' with password '{password}'")
-    if user:
-        print(f"User found: ID={user.id}, Username={user.username}, Hash={user.password_hash}")
-        is_valid = check_password_hash(user.password_hash, password)
-        print(f"Password valid: {is_valid}")
-    else:
-        print("User NOT found")
-    
     if not user or not check_password_hash(user.password_hash, password):
         return jsonify({'error': 'Usuario o contraseña incorrectos'}), 401
     
