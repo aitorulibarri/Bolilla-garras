@@ -635,6 +635,56 @@ body::before {
   filter: grayscale(0.3);
 }
 
+/* Urgency Badges for Deadlines */
+.match-card.urgent {
+  border-color: var(--error);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+  animation: pulse-urgent 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-urgent {
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.5);
+  }
+}
+
+.match-card.warning {
+  border-color: var(--warning);
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+}
+
+.countdown {
+  text-align: center;
+  padding: 10px 16px;
+  background: rgba(100, 116, 139, 0.1);
+  border: 1px solid rgba(100, 116, 139, 0.2);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+}
+
+.countdown.warning {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: var(--warning);
+}
+
+.countdown.urgent {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: var(--error);
+  animation: shake 0.5s ease-in-out infinite;
+}
+
+
 .match-header {
   display: flex;
   align-items: center;

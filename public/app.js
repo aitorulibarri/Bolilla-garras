@@ -258,6 +258,7 @@ function setupEventListeners() {
           showToast('Partido añadido correctamente', 'success');
           e.target.reset();
           loadAdminMatches();
+          loadAdminStats();
           loadMatches();
         } else {
           // Mostramos explícitamente el error devuelto
@@ -302,6 +303,7 @@ function loadTabContent(tabId) {
       break;
     case 'admin':
       loadAdminMatches();
+      loadAdminStats();
       break;
   }
 }
@@ -442,6 +444,15 @@ async function savePrediction(matchId) {
   if (homeGoals === '' || awayGoals === '') {
     showToast('Introduce los goles de ambos equipos', 'error');
     return;
+  }
+
+  // Confirmación antes de guardar (no se puede cambiar después)
+  const confirmed = confirm(
+    `⚠️ ¿Confirmas tu pronóstico: ${homeGoals} - ${awayGoals}?\n\nUna vez guardado NO podrás modificarlo.`
+  );
+
+  if (!confirmed) {
+    return; // Usuario canceló
   }
 
   try {
@@ -616,9 +627,29 @@ async function loadAdminMatches() {
               <span>-</span>
               <input type="number" id="result-away-${match.id}" min="0" max="20" placeholder="0" value="${match.is_finished ? match.away_goals : ''}">
               <button class="btn btn-success btn-sm" onclick="setResult(${match.id})">${match.is_finished ? '✏️' : '✓'}</button>
+              ${!match.is_finished ? `<button class="btn btn-secondary btn-sm" onclick="toggleEditMatch(${match.id})" title="Editar partido">📝</button>` : ''}
               <button class="btn btn-danger btn-sm" onclick="deleteMatch(${match.id})">🗑️</button>
             </div>
           </div>
+          ${!match.is_finished ? `
+          <div id="edit-form-${match.id}" style="display: none; margin-top: 16px; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+            <h5 style="margin-bottom: 12px; color: var(--text-secondary); font-size: 14px;">📝 Editar Partido</h5>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label style="font-size: 12px; margin-bottom: 6px; display: block;">Fecha Partido</label>
+                <input type="datetime-local" id="edit-date-${match.id}" value="${match.match_date.slice(0, 16)}" style="width: 100%; padding: 8px; background: var(--bg-tertiary); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: var(--text-primary); font-size: 13px;">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label style="font-size: 12px; margin-bottom: 6px; display: block;">Fecha Límite</label>
+                <input type="datetime-local" id="edit-deadline-${match.id}" value="${match.deadline.slice(0, 16)}" style="width: 100%; padding: 8px; background: var(--bg-tertiary); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: var(--text-primary); font-size: 13px;">
+              </div>
+            </div>
+            <div style="margin-top: 12px; display: flex; gap: 8px;">
+              <button class="btn btn-primary btn-sm" onclick="saveMatchEdit(${match.id})">💾 Guardar</button>
+              <button class="btn btn-secondary btn-sm" onclick="toggleEditMatch(${match.id})">❌ Cancelar</button>
+            </div>
+          </div>
+          ` : ''}
         </div>
       `;
     }).join('');
@@ -731,3 +762,112 @@ function showToast(message, type = 'info') {
   }, 3500);
 }
 
+// ==================== MATCH EDITING (ADMIN) ====================
+
+function toggleEditMatch(matchId) {
+  const editForm = document.getElementById(`edit-form-${matchId}`);
+  if (!editForm) return;
+
+  editForm.style.display = editForm.style.display === 'none' ? 'block' : 'none';
+}
+
+async function saveMatchEdit(matchId) {
+  const matchDate = document.getElementById(`edit-date-${matchId}`).value;
+  const deadline = document.getElementById(`edit-deadline-${matchId}`).value;
+
+  if (!matchDate || !deadline) {
+    showToast('Completa todos los campos', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/matches/${matchId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        matchDate,
+        deadline,
+        adminName: currentUser.username
+      })
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      showToast('Partido actualizado correctamente', 'success');
+      toggleEditMatch(matchId);
+      loadAdminMatches();
+      loadMatches(); // Refresh predictions tab too
+    } else {
+      showToast(data.error || 'Error al actualizar partido', 'error');
+    }
+  } catch (err) {
+    showToast('Error de conexión', 'error');
+  }
+}
+
+// ==================== ADMIN STATISTICS ====================
+
+async function loadAdminStats() {
+  const container = document.getElementById('admin-stats-container');
+  if (!container) return;
+
+  container.innerHTML = '<div class="stats-loading"><div class="spinner"></div></div>';
+
+  try {
+    const res = await fetch('/api/admin/stats');
+    const stats = await res.json();
+
+    if (!res.ok) {
+      container.innerHTML = '<p style="color: var(--error); text-align: center;">Error al cargar estadísticas</p>';
+      return;
+    }
+
+    const { totalUsers, upcomingMatches, usersWithoutPredictions } = stats;
+
+    container.innerHTML = `
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+        <!-- Total Users Card -->
+        <div style="padding: 20px; background: var(--bg-tertiary); border-radius: var(--radius-lg); border: 1px solid rgba(255,255,255,0.06);">
+          <h4 style="margin-bottom: 12px; color: var(--text-secondary); font-size: 14px;">👥 Usuarios Activos</h4>
+          <div style="font-size: 48px; font-weight: 800; color: var(--neon-green);">${totalUsers}</div>
+        </div>
+
+        <!-- Upcoming Matches Participation -->
+        <div style="padding: 20px; background: var(--bg-tertiary); border-radius: var(--radius-lg); border: 1px solid rgba(255,255,255,0.06); grid-column: span 2;">
+          <h4 style="margin-bottom: 16px; color: var(--text-secondary); font-size: 14px;">📊 Participación en Próximos Partidos</h4>
+          ${upcomingMatches.length === 0 ? '<p style="color: var(--text-muted);">No hay partidos próximos</p>' : upcomingMatches.map(m => {
+      const homeTeam = m.is_home ? m.team : m.opponent;
+      const awayTeam = m.is_home ? m.opponent : m.team;
+      const barColor = m.participation >= 80 ? 'var(--success)' : m.participation >= 50 ? 'var(--warning)' : 'var(--error)';
+
+      return `
+              <div style="margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <span style="font-size: 13px; font-weight: 600;">${homeTeam} vs ${awayTeam}</span>
+                  <span style="font-size: 12px; color: var(--text-secondary);">${m.predictions_count}/${totalUsers} (${m.participation}%)</span>
+                </div>
+                <div style="height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden;">
+                  <div style="height: 100%; width: ${m.participation}%; background: ${barColor}; transition: width 0.3s ease;"></div>
+                </div>
+              </div>
+            `;
+    }).join('')}
+        </div>
+
+        <!-- Users Without Predictions -->
+        <div style="padding: 20px; background: var(--bg-tertiary); border-radius: var(--radius-lg); border: 1px solid rgba(255,255,255,0.06); grid-column: span 3;">
+          <h4 style="margin-bottom: 12px; color: var(--text-secondary); font-size: 14px;">⚠️ Usuarios sin Pronósticos (Top 10)</h4>
+          ${usersWithoutPredictions.length === 0
+        ? '<p style="color: var(--success);">¡Todos los usuarios han pronosticado! 🎉</p>'
+        : `<div style="display: flex; flex-wrap: wrap; gap: 8px;">${usersWithoutPredictions.map(u =>
+          `<span style="padding: 6px 12px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 16px; font-size: 12px; color: var(--error);">${u.display_name}</span>`
+        ).join('')}</div>`
+      }
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    container.innerHTML = '<p style="color: var(--error); text-align: center;">Error de conexión</p>';
+  }
+}

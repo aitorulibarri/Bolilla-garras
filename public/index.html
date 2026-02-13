@@ -166,6 +166,19 @@
             <section id="tab-admin" class="tab-content" role="tabpanel">
                 <h2 class="section-title">⚙️ Panel de Administración</h2>
 
+                <!-- Statistics Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">📊 Estadísticas</h3>
+                        <button class="btn btn-secondary btn-sm" onclick="loadAdminStats()">🔄 Actualizar</button>
+                    </div>
+                    <div id="admin-stats-container">
+                        <div class="stats-loading">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Add Match Card -->
                 <div class="card">
                     <div class="card-header">

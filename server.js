@@ -325,6 +325,64 @@ app.get('/api/matches/upcoming', async (req, res) => {
     }
 });
 
+// Get admin statistics
+app.get('/api/admin/stats', async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.json({ totalUsers: 0, upcomingMatches: [], usersWithoutPredictions: [] });
+
+        // Total active users
+        const totalUsers = await queryOne('SELECT COUNT(*) as count FROM players');
+
+        // Upcoming matches with prediction stats
+        const upcomingMatches = await query(`
+            SELECT 
+                m.id,
+                m.team,
+                m.opponent,
+                m.is_home,
+                m.match_date,
+                m.deadline,
+                (SELECT COUNT(DISTINCT player_name) FROM predictions WHERE match_id = m.id) as predictions_count
+            FROM matches m
+            WHERE m.is_finished = 0 AND m.deadline > NOW()
+            ORDER BY m.deadline ASC
+            LIMIT 5
+        `);
+
+        // Calculate participation percentage for each match
+        const matchesWithStats = upcomingMatches.map(match => ({
+            ...match,
+            participation: totalUsers.count > 0
+                ? Math.round((match.predictions_count / totalUsers.count) * 100)
+                : 0
+        }));
+
+        // Users who haven't predicted for any upcoming match
+        const usersWithoutPredictions = await query(`
+            SELECT DISTINCT p.display_name, p.username
+            FROM players p
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM predictions pr
+                JOIN matches m ON pr.match_id = m.id
+                WHERE pr.player_name = p.display_name
+                  AND m.is_finished = 0 
+                  AND m.deadline > NOW()
+            )
+            ORDER BY p.display_name
+            LIMIT 10
+        `);
+
+        res.json({
+            totalUsers: totalUsers.count,
+            upcomingMatches: matchesWithStats,
+            usersWithoutPredictions
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Create match (admin only)
 app.post('/api/matches', async (req, res) => {
     try {
@@ -346,6 +404,39 @@ app.post('/api/matches', async (req, res) => {
         );
 
         res.json({ success: true, id: result.rows[0].id });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Edit match metadata (admin only, before match is finished)
+app.put('/api/matches/:id', async (req, res) => {
+    try {
+        const { matchDate, deadline, adminName } = req.body;
+        const matchId = parseInt(req.params.id);
+
+        if (!(await isAdmin(adminName))) {
+            return res.status(403).json({ error: 'No autorizado' });
+        }
+
+        if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
+
+        // Check if match is already finished
+        const match = await queryOne('SELECT is_finished FROM matches WHERE id = $1', [matchId]);
+        if (!match) {
+            return res.status(404).json({ error: 'Partido no encontrado' });
+        }
+        if (match.is_finished) {
+            return res.status(400).json({ error: 'No se puede editar un partido finalizado' });
+        }
+
+        // Update match
+        await pool.query(
+            'UPDATE matches SET match_date = $1, deadline = $2 WHERE id = $3',
+            [matchDate, deadline, matchId]
+        );
+
+        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
