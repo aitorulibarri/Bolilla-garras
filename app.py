@@ -282,6 +282,34 @@ def admin_reset_password(user_id):
     
     return jsonify({'success': True, 'message': f'Contraseña reseteada a: {new_password}'})
 
+@app.route('/api/admin/emergency-reset-garras')
+def emergency_reset_garras():
+    """RESET DE EMERGENCIA PARA PROD (Usar solo si login falla)"""
+    key = request.args.get('key')
+    if key != 'GARRAS_SECRET_RESET_2026':
+        return jsonify({'error': 'Acceso denegado'}), 403
+    
+    # Buscar o crear usuario GARRAS
+    user = User.query.filter_by(username='GARRAS').first()
+    new_hash = generate_password_hash('GARRAS123')
+    
+    if user:
+        user.password_hash = new_hash
+        user.is_admin = 1
+        msg = "Usuario GARRAS actualizado. Pass: GARRAS123"
+    else:
+        user = User(
+            username='GARRAS',
+            password_hash=new_hash,
+            display_name='Admin Garras',
+            is_admin=1
+        )
+        db.session.add(user)
+        msg = "Usuario GARRAS creado. Pass: GARRAS123"
+        
+    db.session.commit()
+    return jsonify({'success': True, 'message': msg})
+
 # ==================== MATCHES ROUTES ====================
 
 @app.route('/api/matches')
