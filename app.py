@@ -562,7 +562,66 @@ def get_user_predictions():
     
     return jsonify(predictions_list)
 
+# ==================== LOGIC ====================
+
+def calculate_points_for_match(match_id, real_home, real_away):
+    """
+    Calculates points based on Official Rules 25/26:
+    1. Exact Score: 5 pts
+    2. Partial (Max 3 pts):
+       - Correct Sign: 1 pt
+       - Correct Goal Diff: 1 pt
+       - Correct Goals (Home OR Away): 2 pts
+    """
+    try:
+        predictions = Prediction.query.filter_by(match_id=match_id).all()
+        
+        # Determine Real Stats
+        real_diff = real_home - real_away
+        real_sign = 0
+        if real_home > real_away: real_sign = 1
+        elif real_away > real_home: real_sign = -1
+        
+        for pred in predictions:
+            # 1. EXACT SCORE (PLENO) -> 5 PTS
+            if pred.home_goals == real_home and pred.away_goals == real_away:
+                pred.points = 5
+                continue
+                
+            puntos = 0
+            
+            # b. Correct Sign (+1)
+            pred_sign = 0
+            if pred.home_goals > pred.away_goals: pred_sign = 1
+            elif pred.away_goals > pred.home_goals: pred_sign = -1
+            
+            if pred_sign == real_sign:
+                puntos += 1
+                
+            # c. Correct Difference (+1)
+            pred_diff = pred.home_goals - pred.away_goals
+            if pred_diff == real_diff:
+                puntos += 1
+                
+            # a. Correct Goals (Home OR Away) (+2)
+            if pred.home_goals == real_home or pred.away_goals == real_away:
+                puntos += 2
+                
+            # CAP AT 3 POINTS (Max partial score)
+            if puntos > 3:
+                puntos = 3
+                
+            pred.points = puntos
+            
+        db.session.commit()
+        print(f"Points calculated for match {match_id}")
+    except Exception as e:
+        print(f"Error calculating points: {e}")
+        db.session.rollback()
+
 # ==================== LEADERBOARD ====================
+
+
 
 @app.route('/api/leaderboard')
 @require_auth
@@ -574,9 +633,9 @@ def get_leaderboard():
         func.count(case((Prediction.points == 5, 1))).label('exact_predictions'),
         func.count(Prediction.points).label('total_predictions')
     ).outerjoin(Prediction)\
-    .filter(User.is_admin == 0)\
     .group_by(User.id)\
     .order_by(desc('total_points'), desc('exact_predictions')).all()
+
     
     leaderboard = [
         {
