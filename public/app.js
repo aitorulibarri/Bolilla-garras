@@ -387,13 +387,13 @@ const LEAGUE_TEAMS = {
     'Costa Adeje Tenerife', 'Granada CF', 'Levante UD', 'Levante Badalona', 'Madrid CFF',
     'Real Betis', 'Real Madrid', 'Real Sociedad', 'Sevilla FC', 'Valencia CF'
   ],
-  'Bilbao Athletic': [ // Segunda División (Hypermotion) & 1ª RFEF Mix (según contexto usuario)
-    'Albacete BP', 'UD Almería', 'Burgos CF', 'Cádiz CF', 'FC Cartagena', 'CD Castellón',
-    'Córdoba CF', 'RC Deportivo', 'SD Eibar', 'Elche CF', 'CD Eldense', 'Racing de Ferrol',
-    'Granada CF', 'SD Huesca', 'Levante UD', 'Málaga CF', 'CD Mirandés', 'Real Oviedo',
-    'Racing de Santander', 'Real Sporting', 'CD Tenerife', 'Real Zaragoza',
-    'Barakaldo CF', 'Sestao River', 'Amorebieta', 'Gimnàstic', 'Cultural Leonesa' // Extras 1ª RFEF por si acaso
-  ]
+  'Bilbao Athletic': [ // Primera Federación - Grupo 1 (24/25)
+        'Barakaldo CF', 'Sestao River', 'SD Amorebieta', 'Real Unión', 'Real Sociedad B', 
+        'CA Osasuna B', 'Gimnàstic de Tarragona', 'Cultural Leonesa', 'SD Ponferradina', 
+        'Zamora CF', 'Unionistas de Salamanca', 'Gimnástica Segoviana', 'Ourense CF', 
+        'CD Arenteiro', 'CD Lugo', 'RC Celta Fortuna', 'FC Andorra', 'FC Barcelona Atlètic', 
+        'SD Tarazona', 'SD Ponferradina'
+    ]
 };
 
 const TEAM_MAPPINGS = {
