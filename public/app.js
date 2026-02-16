@@ -288,12 +288,14 @@ function showApp() {
   }
 
   loadMatches();
+  loadLeaderboardWidget();
 }
 
 function loadTabContent(tabId) {
   switch (tabId) {
     case 'predictions':
       loadMatches();
+      loadLeaderboardWidget();
       break;
     case 'leaderboard':
       loadLeaderboard();
@@ -427,100 +429,124 @@ function renderMatchCard(match, userPrediction) {
   const now = new Date();
   const canPredict = now < deadline;
   const hasPrediction = userPrediction !== undefined;
-  const timeLeft = deadline - now;
-
-  // Calculate countdown
-  let countdownHtml = '';
-  let urgencyClass = '';
-  if (!hasPrediction && now < deadline) {
-    const hours = Math.floor(timeLeft / (1000 * 60 * 60));
-    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-
-    if (hours < 2) {
-      urgencyClass = 'urgent';
-      countdownHtml = `<div class="countdown urgent">⚠️ ¡Solo quedan ${hours}h ${minutes}m!</div>`;
-    } else if (hours < 24) {
-      urgencyClass = 'warning';
-      countdownHtml = `<div class="countdown warning">⏰ Quedan ${hours}h ${minutes}m</div>`;
-    } else {
-      const days = Math.floor(hours / 24);
-      countdownHtml = `<div class="countdown">📅 Quedan ${days} día${days > 1 ? 's' : ''} y ${hours % 24}h</div>`;
-    }
-  }
+  
+  // Format DateTime
+  const dateStr = matchDate.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+  const timeStr = matchDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 
   const homeTeam = match.is_home ? match.team : match.opponent;
   const awayTeam = match.is_home ? match.opponent : match.team;
-
-  // Determine context for folder selection (which "Athletic" is playing?)
-  const contextTeam = match.team; // 'Athletic Club', 'Athletic Femenino', or 'Bilbao Athletic'
-
+  
+  // Context for Shield Folder
+  const contextTeam = match.team; 
   const homeShield = getShieldUrl(homeTeam, contextTeam);
   const awayShield = getShieldUrl(awayTeam, contextTeam);
 
   const userHomeGoals = hasPrediction ? userPrediction.home_goals : '';
   const userAwayGoals = hasPrediction ? userPrediction.away_goals : '';
 
-  const cardClass = canPredict && !hasPrediction ? 'needs-prediction' : (!canPredict && !hasPrediction ? 'expired' : '');
-
-  // Default Badge Fallback (inserted via JS on error)
-  const fallbackValues = {
-    home: homeTeam.substring(0, 3).toUpperCase(),
-    away: awayTeam.substring(0, 3).toUpperCase()
-  };
+  // Determine League Badge (Simplified logic)
+  let leagueName = 'LaLiga';
+  if (contextTeam.includes('Femenino')) leagueName = 'Liga F';
+  if (contextTeam.includes('Bilbao')) leagueName = '1ª RFEF';
 
   return `
-    <div class="match-card ${cardClass} ${urgencyClass}">
-      <div class="match-header">
-        <span class="match-team-badge">${match.team}</span>
-        <span class="match-date">
-          📅 ${matchDate.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })} 
-          ⏰ ${matchDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-        </span>
-      </div>
-      
-      ${countdownHtml}
-      
-      <div class="match-teams">
-        <div class="match-team">
-          <img src="${homeShield}" class="match-team-logo" alt="${homeTeam}" 
-               onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-          <div class="team-fallback-badge" style="display:none;">${fallbackValues.home}</div>
-          <div class="match-team-name">${homeTeam}</div>
-        </div>
-        <span class="match-vs">vs</span>
-        <div class="match-team">
-          <img src="${awayShield}" class="match-team-logo" alt="${awayTeam}" 
-               onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-          <div class="team-fallback-badge" style="display:none;">${fallbackValues.away}</div>
-          <div class="match-team-name">${awayTeam}</div>
+    <div class="match-card ${canPredict ? '' : 'expired'}">
+      <div class="match-header-gemini">
+        <span class="match-league-badge">⚽ ${leagueName} • ${dateStr} ${timeStr}</span>
+        <div class="match-title-large">
+            ${homeTeam} <span style="color:var(--neon-red); margin:0 5px;">vs</span> ${awayTeam}
         </div>
       </div>
       
-      ${hasPrediction ? `
-        <div class="match-prediction-form">
-          <div class="goal-input" style="background: rgba(34, 197, 94, 0.2); border-color: rgba(34, 197, 94, 0.4);">${userHomeGoals}</div>
-          <span class="prediction-separator">-</span>
-          <div class="goal-input" style="background: rgba(34, 197, 94, 0.2); border-color: rgba(34, 197, 94, 0.4);">${userAwayGoals}</div>
+      <div class="match-content-grid">
+        <!-- Home Team -->
+        <div class="team-container">
+            <img src="${homeShield}" class="big-shield" 
+                 onerror="this.style.display='none';">
         </div>
-        <div class="match-saved">✅ Pronóstico enviado: ${userHomeGoals} - ${userAwayGoals}</div>
-      ` : canPredict ? `
-        <div class="match-prediction-form">
-          <input type="number" class="goal-input" id="home-${match.id}" min="0" max="20" value="" placeholder="0">
-          <span class="prediction-separator">-</span>
-          <input type="number" class="goal-input" id="away-${match.id}" min="0" max="20" value="" placeholder="0">
+
+        <!-- Score / Inputs -->
+        <div class="score-container">
+            ${hasPrediction 
+                ? `<div class="score-box" style="border-color: #00F5A0; color:#00F5A0;">${userHomeGoals}</div>`
+                : (canPredict 
+                    ? `<input type="number" id="home-${match.id}" class="score-box" min="0" max="15" placeholder="-">`
+                    : `<div class="score-box" style="opacity:0.5">-</div>`)
+            }
+            
+            <span class="score-separator">-</span>
+            
+            ${hasPrediction 
+                ? `<div class="score-box" style="border-color: #00F5A0; color:#00F5A0;">${userAwayGoals}</div>`
+                : (canPredict 
+                    ? `<input type="number" id="away-${match.id}" class="score-box" min="0" max="15" placeholder="-">`
+                    : `<div class="score-box" style="opacity:0.5">-</div>`)
+            }
         </div>
-        <div class="match-actions">
-          <button class="btn btn-primary save-prediction-btn" data-match-id="${match.id}">
-            💾 Guardar Pronóstico
-          </button>
+
+        <!-- Away Team -->
+        <div class="team-container">
+             <img src="${awayShield}" class="big-shield" 
+                 onerror="this.style.display='none';">
         </div>
-      ` : `
-        <div class="match-deadline">
-          ⏳ Plazo cerrado - No enviaste pronóstico
-        </div>
-      `}
+      </div>
+
+      <!-- Action Button -->
+      ${hasPrediction 
+        ? `<button class="save-btn-gemini" style="background: rgba(0, 245, 160, 0.1); border: 1px solid #00F5A0; color: #00F5A0; cursor: default;">
+             ✅ PRONÓSTICO GUARDADO
+           </button>`
+        : (canPredict 
+            ? `<button class="save-btn-gemini save-prediction-btn" data-match-id="${match.id}">
+                 GUARDAR PRONÓSTICO
+               </button>`
+            : `<button class="save-btn-gemini" style="background: #333; cursor: not-allowed; opacity: 0.7;">
+                 PLAZO CERRADO
+               </button>`)
+      }
     </div>
   `;
+}
+
+// Widget de Clasificación (Gemini Style)
+async function loadLeaderboardWidget() {
+    const container = document.getElementById('leaderboard-widget-container');
+    if (!container) return;
+
+    try {
+        const res = await fetchWithRetry('/api/leaderboard');
+        const leaderboard = await res.json();
+        
+        if (leaderboard.length === 0) {
+            container.innerHTML = '<div style="padding:20px; text-align:center; color:#666;">Sin datos</div>';
+            return;
+        }
+
+        const top5 = leaderboard.slice(0, 5);
+        
+        container.innerHTML = top5.map((user, index) => {
+            let rankClass = '';
+            let icon = `#${index + 1}`;
+            if (index === 0) { rankClass = 'row-rank-1'; icon = '<span class="rank-crown">👑</span>'; }
+            if (index === 1) { rankClass = 'row-rank-2'; icon = '<span class="rank-crown">🥈</span>'; }
+            if (index === 2) { rankClass = 'row-rank-3'; icon = '<span class="rank-crown">🥉</span>'; }
+
+            return `
+            <div class="leaderboard-row ${rankClass}">
+                <div class="rank-badge">${icon}</div>
+                <div class="user-info">
+                    <span class="user-name">${user.name || user.display_name}</span>
+                    <span class="user-team">${user.exact_predictions} plenos</span>
+                </div>
+                <div class="user-points">${user.total_points} pts</div>
+            </div>
+            `;
+        }).join('');
+
+    } catch (err) {
+        console.error("Error widget leaderboard", err);
+    }
 }
 
 async function savePrediction(matchId) {

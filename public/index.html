@@ -129,16 +129,42 @@
 
         <!-- Main Content -->
         <main class="main-content">
-            <!-- PREDICTIONS TAB -->
+            <!-- PREDICTIONS TAB (DASHBOARD) -->
             <section id="tab-predictions" class="tab-content active" role="tabpanel">
-                <div class="section-header">
-                    <h2 class="section-title">⚽ Partidos Pendientes</h2>
-                    <button id="refresh-btn" class="btn btn-icon" title="Actualizar">🔄</button>
-                </div>
-                <div id="last-update" class="last-update"></div>
-                <div id="matches-container">
-                    <div class="loading">
-                        <div class="spinner"></div>
+                <div class="dashboard-grid">
+                    <!-- Columna Izquierda: Partidos -->
+                    <div class="dashboard-column-left">
+                        <div class="section-header" style="margin-bottom: 20px;">
+                            <h2 class="section-title" style="font-family: 'Rajdhani', sans-serif; font-size: 24px;">
+                                PRÓXIMOS PARTIDOS</h2>
+                            <button id="refresh-btn" class="btn btn-icon mobile-only" title="Actualizar">🔄</button>
+                        </div>
+
+                        <div id="last-update" class="last-update"
+                            style="margin-bottom: 24px; opacity: 0.6; font-size: 12px;"></div>
+
+                        <div id="matches-container">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Columna Derecha: Ranking (Widget) -->
+                    <div class="dashboard-column-right">
+                        <h2 class="section-title"
+                            style="font-family: 'Rajdhani', sans-serif; font-size: 24px; margin-bottom: 20px;">
+                            CLASIFICACIÓN GENERAL</h2>
+                        <div id="leaderboard-widget-container" class="leaderboard-widget">
+                            <div class="loading" style="padding: 20px;">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                        <!-- Botón para ver tabla completa -->
+                        <button class="btn btn-secondary" style="width: 100%; margin-top: 15px;"
+                            onclick="document.querySelector('[data-tab=leaderboard]').click()">
+                            VER TABLA COMPLETA
+                        </button>
                     </div>
                 </div>
             </section>
