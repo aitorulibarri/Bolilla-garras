@@ -834,12 +834,28 @@ async function loadAdminMatches() {
 }
 
 async function setResult(matchId) {
-  const homeGoals = document.getElementById(`result-home-${matchId}`).value;
-  const awayGoals = document.getElementById(`result-away-${matchId}`).value;
+  console.log('Intentando guardar resultado para partido:', matchId);
+  const homeInput = document.getElementById(`result-home-${matchId}`);
+  const awayInput = document.getElementById(`result-away-${matchId}`);
+  const btn = document.querySelector(`button[onclick="setResult(${matchId})"]`);
+
+  if (!homeInput || !awayInput) {
+    console.error('Inputs no encontrados en el DOM');
+    showToast('Error interno: Inputs no encontrados', 'error');
+    return;
+  }
+
+  const homeGoals = homeInput.value;
+  const awayGoals = awayInput.value;
 
   if (homeGoals === '' || awayGoals === '') {
-    showToast('Introduce el resultado completo', 'error');
+    showToast('Introduce el resultado completo', 'warning');
     return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⏳';
   }
 
   try {
@@ -848,19 +864,30 @@ async function setResult(matchId) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         homeGoals: parseInt(homeGoals),
-        awayGoals: parseInt(awayGoals),
-        adminName: currentUser.username
+        awayGoals: parseInt(awayGoals)
       })
     });
 
+    const data = await res.json();
+
     if (res.ok) {
-      showToast('Resultado guardado y puntos calculados', 'success');
-      loadAdminMatches();
+      showToast('✅ Resultado guardado y puntos calculados', 'success');
+      await Promise.all([loadAdminMatches(), loadMatches()]);
     } else {
-      showToast('Error al guardar resultado', 'error');
+      console.error('Error backend:', data);
+      showToast(data.error || 'Error al guardar resultado', 'error');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '✓';
+      }
     }
   } catch (err) {
-    showToast('Error al guardar resultado', 'error');
+    console.error('Error red:', err);
+    showToast('Error de conexión al servidor', 'error');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '✓';
+    }
   }
 }
 
