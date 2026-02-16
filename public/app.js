@@ -18,9 +18,13 @@ const authTabs = document.querySelectorAll('.auth-tab');
 
 // ==================== FETCH WITH RETRY (for cold starts) ====================
 async function fetchWithRetry(url, options = {}, retries = 3, delay = 1000) {
+  // CACHE BUSTING: Force unique request
+  const sep = url.includes('?') ? '&' : '?';
+  const finalUrl = `${url}${sep}_cb=${Date.now()}`;
+
   for (let i = 0; i < retries; i++) {
     try {
-      const res = await fetch(url, options);
+      const res = await fetch(finalUrl, options);
       if (res.ok || res.status < 500) return res;
       // Server error, retry
       if (i < retries - 1) await new Promise(r => setTimeout(r, delay));
@@ -29,7 +33,7 @@ async function fetchWithRetry(url, options = {}, retries = 3, delay = 1000) {
       await new Promise(r => setTimeout(r, delay));
     }
   }
-  return fetch(url, options); // Final attempt
+  return fetch(finalUrl, options); // Final attempt
 }
 
 // ==================== INIT ====================
@@ -352,19 +356,15 @@ async function loadMatches() {
       return;
     }
 
-    // Get user predictions
-    const predictionsRes = await fetchWithRetry(`/api/predictions/${encodeURIComponent(currentUser.displayName)}`);
-    const userPredictions = await predictionsRes.json();
-    const predictionMap = {};
-    userPredictions.forEach(p => { predictionMap[p.match_id] = p; });
-
-    container.innerHTML = matches.map(match => renderMatchCard(match, predictionMap[match.id])).join('');
+    // Get user predictions directly from match object (Backend includes it securely)
+    container.innerHTML = matches.map(match => renderMatchCard(match, match.userPrediction)).join('');
 
     // Add event listeners for save buttons
     document.querySelectorAll('.save-prediction-btn').forEach(btn => {
       btn.addEventListener('click', () => savePrediction(btn.dataset.matchId));
     });
   } catch (err) {
+    console.error(err);
     container.innerHTML = '<p>Error al cargar partidos</p>';
   }
 }
