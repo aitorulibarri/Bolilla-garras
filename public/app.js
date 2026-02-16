@@ -884,7 +884,7 @@ async function setResult(matchId) {
   console.log('Intentando guardar resultado para partido:', matchId);
   const homeInput = document.getElementById(`result-home-${matchId}`);
   const awayInput = document.getElementById(`result-away-${matchId}`);
-  const btn = document.querySelector(`button[onclick="setResult(${matchId})"]`);
+  const btn = document.getElementById(`btn-save-${matchId}`);
 
   if (!homeInput || !awayInput) {
     console.error('Inputs no encontrados en el DOM');
@@ -906,7 +906,7 @@ async function setResult(matchId) {
   }
 
   try {
-    const res = await fetch(`/api/matches/${matchId}/result`, {
+    const res = await fetchWithRetry(`/api/matches/${matchId}/result`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

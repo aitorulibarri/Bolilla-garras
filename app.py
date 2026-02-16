@@ -117,8 +117,19 @@ def require_auth(f):
 def require_admin(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        if 'user' not in session or not session['user'].get('isAdmin'):
-            return jsonify({'error': 'Acceso denegado'}), 403
+        if 'user' not in session:
+            return jsonify({'error': 'No has iniciado sesión'}), 401
+        
+        is_admin = session['user'].get('isAdmin')
+        if not is_admin:
+            # Re-check database just in case permissions changed recently
+            user = User.query.get(session['user']['id'])
+            if user and user.is_admin == 1:
+                # Update session on the fly
+                session['user']['isAdmin'] = True
+                return f(*args, **kwargs)
+            
+            return jsonify({'error': 'Acceso denegado: Se requiere administrador'}), 403
         return f(*args, **kwargs)
     return decorated
 
