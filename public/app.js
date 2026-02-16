@@ -130,8 +130,8 @@ function setupEventListeners() {
       showAuthError('Usuario debe tener al menos 3 caracteres');
       return;
     }
-    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-      showAuthError('Usuario solo puede contener letras, números y guión bajo');
+    if (!/^[a-zA-Z0-9_ ]+$/.test(username)) {
+      showAuthError('Usuario solo puede contener letras, números, espacios y guión bajo');
       return;
     }
     if (displayName.length < 2) {
@@ -388,12 +388,12 @@ const LEAGUE_TEAMS = {
     'Real Betis', 'Real Madrid', 'Real Sociedad', 'Sevilla FC', 'Valencia CF'
   ],
   'Bilbao Athletic': [ // Primera Federación - Grupo 1 (24/25)
-        'Barakaldo CF', 'Sestao River', 'SD Amorebieta', 'Real Unión', 'Real Sociedad B', 
-        'CA Osasuna B', 'Gimnàstic de Tarragona', 'Cultural Leonesa', 'SD Ponferradina', 
-        'Zamora CF', 'Unionistas de Salamanca', 'Gimnástica Segoviana', 'Ourense CF', 
-        'CD Arenteiro', 'CD Lugo', 'RC Celta Fortuna', 'FC Andorra', 'FC Barcelona Atlètic', 
-        'SD Tarazona', 'SD Ponferradina'
-    ]
+    'Barakaldo CF', 'Sestao River', 'SD Amorebieta', 'Real Unión', 'Real Sociedad B',
+    'CA Osasuna B', 'Gimnàstic de Tarragona', 'Cultural Leonesa', 'SD Ponferradina',
+    'Zamora CF', 'Unionistas de Salamanca', 'Gimnástica Segoviana', 'Ourense CF',
+    'CD Arenteiro', 'CD Lugo', 'RC Celta Fortuna', 'FC Andorra', 'FC Barcelona Atlètic',
+    'SD Tarazona', 'SD Ponferradina'
+  ]
 };
 
 const TEAM_MAPPINGS = {
