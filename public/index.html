@@ -21,7 +21,7 @@
     <link rel="apple-touch-icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23E41E26' width='100' height='100' rx='20'/><text y='.9em' x='10' font-size='80'>🦁</text></svg>">
 
-    <link rel="stylesheet" href="styles.css?v=2.0">
+    <link rel="stylesheet" href="styles.css?v=3.0">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 
@@ -145,20 +145,11 @@
 
             <!-- LEADERBOARD TAB -->
             <section id="tab-leaderboard" class="tab-content" role="tabpanel">
-                <h2 class="section-title">🏆 Clasificación General</h2>
-
-                <!-- Points Evolution Chart -->
-                <div class="card" style="margin-bottom: 24px;">
-                    <div class="card-header">
-                        <h3 class="card-title">📈 Evolución de Puntos (Top 5)</h3>
-                        <button class="btn btn-secondary btn-sm" onclick="toggleEvolutionChart()"
-                            id="toggle-chart-btn">👁️ Mostrar</button>
-                    </div>
-                    <div id="chart-container" style="display: none; padding: 20px;">
-                        <canvas id="evolution-chart"></canvas>
-                    </div>
+                <div class="section-header">
+                    <h2 class="section-title">🏆 Clasificación General</h2>
                 </div>
 
+                <!-- Leaderboard Container (Podium + Table) -->
                 <div id="leaderboard-container">
                     <div class="loading">
                         <div class="spinner"></div>
@@ -168,7 +159,9 @@
 
             <!-- HISTORY TAB -->
             <section id="tab-history" class="tab-content" role="tabpanel">
-                <h2 class="section-title">📊 Mi Historial</h2>
+                <div class="section-header">
+                    <h2 class="section-title">📊 Mi Historial</h2>
+                </div>
                 <div id="history-container">
                     <div class="loading">
                         <div class="spinner"></div>
@@ -178,7 +171,9 @@
 
             <!-- ADMIN TAB -->
             <section id="tab-admin" class="tab-content" role="tabpanel">
-                <h2 class="section-title">⚙️ Panel de Administración</h2>
+                <div class="section-header">
+                    <h2 class="section-title">⚙️ Panel de Administración</h2>
+                </div>
 
                 <!-- Statistics Card -->
                 <div class="card">
@@ -297,7 +292,8 @@
     <!-- Toast Notifications -->
     <div class="toast-container" id="toast-container" aria-live="polite"></div>
 
-    <script src="app.js?v=2.0"></script>
+    <script src="podium.js?v=3.0"></script>
+    <script src="app.js?v=3.0"></script>
 </body>
 
 </html>

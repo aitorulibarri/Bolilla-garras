@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none">
+  <defs>
+    <linearGradient id="lionGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF5733;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#E41E26;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#C41E3A;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- León geométrico estilo low-poly -->
+  <g stroke="url(#lionGradient)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)">
+    <!-- Melena superior -->
+    <path d="M 200 50 L 220 80 L 200 100 L 180 80 Z" fill="none"/>
+    <path d="M 160 70 L 180 90 L 170 110 L 150 95 Z" fill="none"/>
+    <path d="M 240 70 L 220 90 L 230 110 L 250 95 Z" fill="none"/>
+    
+    <!-- Cara exterior -->
+    <path d="M 140 120 L 200 80 L 260 120 L 240 200 L 200 220 L 160 200 Z" fill="none"/>
+    
+    <!-- Melena lateral izquierda -->
+    <path d="M 120 140 L 140 120 L 150 160 L 130 180 Z" fill="none"/>
+    <path d="M 110 180 L 130 180 L 140 220 L 120 240 Z" fill="none"/>
+    <path d="M 100 240 L 120 240 L 130 280 L 110 300 Z" fill="none"/>
+    
+    <!-- Melena lateral derecha -->
+    <path d="M 280 140 L 260 120 L 250 160 L 270 180 Z" fill="none"/>
+    <path d="M 290 180 L 270 180 L 260 220 L 280 240 Z" fill="none"/>
+    <path d="M 300 240 L 280 240 L 270 280 L 290 300 Z" fill="none"/>
+    
+    <!-- Frente y ojos -->
+    <path d="M 160 140 L 180 120 L 200 140 L 220 120 L 240 140" fill="none"/>
+    <circle cx="175" cy="150" r="8" fill="url(#lionGradient)"/>
+    <circle cx="225" cy="150" r="8" fill="url(#lionGradient)"/>
+    
+    <!-- Nariz -->
+    <path d="M 190 170 L 200 180 L 210 170" fill="none"/>
+    <circle cx="200" cy="175" r="6" fill="url(#lionGradient)"/>
+    
+    <!-- Hocico -->
+    <path d="M 200 180 L 200 200" fill="none"/>
+    <path d="M 180 190 Q 200 210 220 190" fill="none"/>
+    
+    <!-- Detalles faciales -->
+    <path d="M 160 160 L 180 180 L 160 200" fill="none"/>
+    <path d="M 240 160 L 220 180 L 240 200" fill="none"/>
+    
+    <!-- Barba/melena inferior -->
+    <path d="M 160 220 L 180 240 L 160 260 L 140 250 Z" fill="none"/>
+    <path d="M 240 220 L 220 240 L 240 260 L 260 250 Z" fill="none"/>
+    <path d="M 180 260 L 200 280 L 220 260 L 200 240 Z" fill="none"/>
+    
+    <!-- Detalles adicionales melena -->
+    <path d="M 130 100 L 150 120 L 140 140 L 120 125 Z" fill="none"/>
+    <path d="M 270 100 L 250 120 L 260 140 L 280 125 Z" fill="none"/>
+    
+    <!-- Melena inferior extendida -->
+    <path d="M 150 280 L 170 300 L 150 320 L 130 310 Z" fill="none"/>
+    <path d="M 250 280 L 230 300 L 250 320 L 270 310 Z" fill="none"/>
+    <path d="M 170 320 L 200 340 L 230 320 L 200 300 Z" fill="none"/>
+  </g>
+</svg>

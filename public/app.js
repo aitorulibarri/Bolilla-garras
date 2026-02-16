@@ -353,6 +353,74 @@ async function loadMatches() {
   }
 }
 
+const TEAM_MAPPINGS = {
+  'Athletic Club': 'athletic_club',
+  'Athletic Femenino': 'athletic_club',
+  'Bilbao Athletic': 'bilbao_athletic',
+  'FC Barcelona': 'barcelona',
+  'Real Madrid': 'real_madrid',
+  'Atlético de Madrid': 'atletico_madrid',
+  'Real Sociedad': 'real_sociedad',
+  'Real Betis': 'real_betis',
+  'Sevilla FC': 'sevilla',
+  'Valencia CF': 'valencia',
+  'Villarreal CF': 'villarreal',
+  'Celta de Vigo': 'celta',
+  'CA Osasuna': 'osasuna',
+  'Girona FC': 'girona',
+  'Rayo Vallecano': 'rayo_vallecano',
+  'Getafe CF': 'getafe',
+  'RCD Espanyol': 'espanyol',
+  'RCD Mallorca': 'mallorca',
+  'UD Las Palmas': 'las_palmas',
+  'Deportivo Alavés': 'alaves',
+  'CD Leganés': 'leganes',
+  'Real Valladolid': 'valladolid',
+  'Levante UD': 'levante',
+  'SD Eibar': 'eibar',
+  'Real Oviedo': 'real_oviedo',
+  'Racing de Santander': 'racing_santander',
+  'Sporting de Gijón': 'sporting_gijon',
+  'Helvetia Anaitasuna': 'anaitasuna' // Ejemplo genérico
+};
+
+function getTeamSlug(name) {
+  // 1. Check direct mapping
+  if (TEAM_MAPPINGS[name]) return TEAM_MAPPINGS[name];
+
+  // 2. Normalize
+  return name.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove accents
+    .replace(/ fc$/i, '') // Remove trailing FC
+    .replace(/^fc /i, '') // Remove leading FC
+    .replace(/ cf$/i, '')
+    .replace(/ ud$/i, '')
+    .replace(/ cd$/i, '')
+    .replace(/ sd$/i, '')
+    .replace(/ rcd$/i, '')
+    .trim()
+    .replace(/\s+/g, '_');
+}
+
+function getShieldUrl(teamName, matchContextTeam) {
+  const slug = getTeamSlug(teamName);
+  let folder = 'laliga';
+
+  if (matchContextTeam === 'Athletic Femenino' || teamName.includes('Femenino')) {
+    folder = 'femenina';
+  } else if (matchContextTeam === 'Bilbao Athletic') {
+    folder = 'segunda';
+  }
+
+  // Special cases for Athletic Club teams using same shield filename but different folders
+  if (teamName === 'Athletic Club') return `assets/escudos/laliga/athletic_club.png`;
+  if (teamName === 'Athletic Femenino') return `assets/escudos/femenina/athletic_club.png`;
+  if (teamName === 'Bilbao Athletic') return `assets/escudos/segunda/bilbao_athletic.png`;
+
+  return `assets/escudos/${folder}/${slug}.png`;
+}
+
+
 function renderMatchCard(match, userPrediction) {
   const matchDate = new Date(match.match_date);
   const deadline = new Date(match.deadline);
@@ -383,10 +451,22 @@ function renderMatchCard(match, userPrediction) {
   const homeTeam = match.is_home ? match.team : match.opponent;
   const awayTeam = match.is_home ? match.opponent : match.team;
 
+  // Determine context for folder selection (which "Athletic" is playing?)
+  const contextTeam = match.team; // 'Athletic Club', 'Athletic Femenino', or 'Bilbao Athletic'
+
+  const homeShield = getShieldUrl(homeTeam, contextTeam);
+  const awayShield = getShieldUrl(awayTeam, contextTeam);
+
   const userHomeGoals = hasPrediction ? userPrediction.home_goals : '';
   const userAwayGoals = hasPrediction ? userPrediction.away_goals : '';
 
   const cardClass = canPredict && !hasPrediction ? 'needs-prediction' : (!canPredict && !hasPrediction ? 'expired' : '');
+
+  // Default Badge Fallback (inserted via JS on error)
+  const fallbackValues = {
+    home: homeTeam.substring(0, 3).toUpperCase(),
+    away: awayTeam.substring(0, 3).toUpperCase()
+  };
 
   return `
     <div class="match-card ${cardClass} ${urgencyClass}">
@@ -402,10 +482,16 @@ function renderMatchCard(match, userPrediction) {
       
       <div class="match-teams">
         <div class="match-team">
+          <img src="${homeShield}" class="match-team-logo" alt="${homeTeam}" 
+               onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+          <div class="team-fallback-badge" style="display:none;">${fallbackValues.home}</div>
           <div class="match-team-name">${homeTeam}</div>
         </div>
         <span class="match-vs">vs</span>
         <div class="match-team">
+          <img src="${awayShield}" class="match-team-logo" alt="${awayTeam}" 
+               onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+          <div class="team-fallback-badge" style="display:none;">${fallbackValues.away}</div>
           <div class="match-team-name">${awayTeam}</div>
         </div>
       </div>
@@ -501,27 +587,54 @@ async function loadLeaderboard() {
       return;
     }
 
-    container.innerHTML = `
-      <div class="leaderboard">
-        ${leaderboard.map((user, index) => `
-          <div class="leaderboard-item ${index < 3 ? 'top-3' : ''}">
-            <div class="leaderboard-rank">${index + 1}</div>
-            <div class="leaderboard-name">${user.name || user.display_name}</div>
-            <div class="leaderboard-stats">
-              <div class="leaderboard-stat">
-                <span class="leaderboard-stat-value">${user.total_points}</span>
-                <span class="leaderboard-stat-label">Puntos</span>
-              </div>
-              <div class="leaderboard-stat">
-                <span class="leaderboard-stat-value">${user.exact_predictions}</span>
-                <span class="leaderboard-stat-label">Plenos</span>
-              </div>
-            </div>
-          </div>
-        `).join('')}
+    // Generate Podium HTML
+    let podiumHtml = '';
+    // Call global function from podium.js if available
+    if (typeof createPodium === 'function' && leaderboard.length >= 3) {
+      podiumHtml = createPodium(leaderboard);
+    }
+
+    // Generate Table HTML
+    const tableHtml = `
+      <div class="card" style="overflow-x: auto; padding: 0;">
+        <table class="leaderboard-table">
+          <thead>
+            <tr>
+              <th>Rango</th>
+              <th>Jugador</th>
+              <th>Puntos</th>
+              <th>Plenos</th>
+              <th>Predicciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${leaderboard.map((user, index) => {
+      // Highlight top 3 if needed, though podium handles that visual
+      const rankEmoji = index === 0 ? '👑' : (index === 1 ? '🥈' : (index === 2 ? '🥉' : `#${index + 1}`));
+
+      return `
+              <tr>
+                <td class="rank">${rankEmoji}</td>
+                <td>
+                    <div style="font-weight: 700; color: var(--text-primary); font-size: 16px;">${user.name || user.display_name}</div>
+                </td>
+                <td>
+                    <span style="font-family: 'Orbitron', sans-serif; font-size: 20px; color: var(--neon-red); font-weight: 700; text-shadow: 0 0 10px rgba(255, 51, 51, 0.3);">${user.total_points}</span>
+                </td>
+                <td style="color: #00F5A0; font-weight: 600; font-size: 15px;">${user.exact_predictions} 🎯</td>
+                <td style="color: var(--text-secondary); font-size: 14px;">${user.total_predictions}</td>
+              </tr>
+              `;
+    }).join('')}
+          </tbody>
+        </table>
       </div>
     `;
+
+    container.innerHTML = podiumHtml + tableHtml;
+
   } catch (err) {
+    console.error(err);
     container.innerHTML = '<p>Error al cargar clasificación</p>';
   }
 }
