@@ -801,11 +801,15 @@ async function loadAdminMatches() {
               <input type="number" id="result-home-${match.id}" min="0" max="20" placeholder="0" value="${match.is_finished ? match.home_goals : ''}">
               <span>-</span>
               <input type="number" id="result-away-${match.id}" min="0" max="20" placeholder="0" value="${match.is_finished ? match.away_goals : ''}">
-              <button class="btn btn-success btn-sm" onclick="setResult(${match.id})">${match.is_finished ? '✏️' : '✓'}</button>
-              ${!match.is_finished ? `<button class="btn btn-secondary btn-sm" onclick="toggleEditMatch(${match.id})" title="Editar partido">📝</button>` : ''}
-              <button class="btn btn-danger btn-sm" onclick="deleteMatch(${match.id})">🗑️</button>
+              
+              <button id="btn-save-${match.id}" class="btn btn-success btn-sm">${match.is_finished ? '✏️' : '✓'}</button>
+              
+              ${!match.is_finished ? `<button id="btn-edit-${match.id}" class="btn btn-secondary btn-sm" title="Editar partido">📝</button>` : ''}
+              
+              <button id="btn-delete-${match.id}" class="btn btn-danger btn-sm">🗑️</button>
             </div>
           </div>
+          
           ${!match.is_finished ? `
           <div id="edit-form-${match.id}" style="display: none; margin-top: 16px; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
             <h5 style="margin-bottom: 12px; color: var(--text-secondary); font-size: 14px;">📝 Editar Partido</h5>
@@ -820,15 +824,42 @@ async function loadAdminMatches() {
               </div>
             </div>
             <div style="margin-top: 12px; display: flex; gap: 8px;">
-              <button class="btn btn-primary btn-sm" onclick="saveMatchEdit(${match.id})">💾 Guardar</button>
-              <button class="btn btn-secondary btn-sm" onclick="toggleEditMatch(${match.id})">❌ Cancelar</button>
+              <button id="btn-save-edit-${match.id}" class="btn btn-primary btn-sm">💾 Guardar</button>
+              <button id="btn-cancel-edit-${match.id}" class="btn btn-secondary btn-sm">❌ Cancelar</button>
             </div>
           </div>
           ` : ''}
         </div>
       `;
     }).join('');
+
+    // ATTACH EVENT LISTENERS (Much safer than onclick)
+    matches.forEach(match => {
+      // Save Result
+      const saveBtn = document.getElementById(`btn-save-${match.id}`);
+      if (saveBtn) saveBtn.addEventListener('click', () => setResult(match.id));
+
+      // Delete Match
+      const deleteBtn = document.getElementById(`btn-delete-${match.id}`);
+      if (deleteBtn) deleteBtn.addEventListener('click', () => deleteMatch(match.id));
+
+      if (!match.is_finished) {
+        // Toggle Edit Form
+        const editBtn = document.getElementById(`btn-edit-${match.id}`);
+        if (editBtn) editBtn.addEventListener('click', () => toggleEditMatch(match.id));
+
+        // Save Edit (inside form)
+        const saveEditBtn = document.getElementById(`btn-save-edit-${match.id}`);
+        if (saveEditBtn) saveEditBtn.addEventListener('click', () => saveMatchEdit(match.id));
+
+        // Cancel Edit
+        const cancelEditBtn = document.getElementById(`btn-cancel-edit-${match.id}`);
+        if (cancelEditBtn) cancelEditBtn.addEventListener('click', () => toggleEditMatch(match.id));
+      }
+    });
+
   } catch (err) {
+    console.error(err);
     container.innerHTML = '<p>Error al cargar partidos</p>';
   }
 }
