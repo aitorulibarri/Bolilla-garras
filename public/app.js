@@ -175,13 +175,8 @@ function setupEventListeners() {
   // Change name button (logout)
   changeNameBtn.addEventListener('click', () => {
     localStorage.removeItem('bolilla_user');
-    currentUser = null;
-    authPage.style.display = 'flex';
-    app.classList.remove('active');
-    // Reset forms
-    loginForm.reset();
-    registerForm.reset();
-    hideAuthError();
+    // Limpieza total del estado
+    window.location.reload();
   });
 
   // Rules modal
