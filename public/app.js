@@ -724,7 +724,7 @@ async function loadHistory() {
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
   try {
-    const res = await fetchWithRetry(`/api/predictions/${encodeURIComponent(currentUser.displayName)}`);
+    const res = await fetchWithRetry('/api/predictions');
     const predictions = await res.json();
 
     if (predictions.length === 0) {

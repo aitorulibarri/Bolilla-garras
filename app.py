@@ -25,9 +25,22 @@ db = SQLAlchemy(app)
 
 @app.after_request
 def add_header(response):
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    # FORCE NO CACHE
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, public, max-age=0"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
+    
+    # CONTENT SECURITY POLICY (CSP)
+    # Permite scripts de 'self' (tu propio servidor) y 'cdn.jsdelivr.net' (para Chart.js)
+    # Permite estilos inline ('unsafe-inline') necesarios para tus estilos dinámicos
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com data:; "
+        "img-src 'self' data: https:; "
+        "connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net;"
+    )
     return response
 
 # ==================== MODELS ====================
@@ -109,38 +122,7 @@ def require_admin(f):
         return f(*args, **kwargs)
     return decorated
 
-# ==================== SCORING ====================
 
-def calculate_points(pred_home, pred_away, real_home, real_away):
-    # Resultado exacto = 5 puntos
-    if pred_home == real_home and pred_away == real_away:
-        return 5
-    
-    points = 0
-    
-    # Acertar goles de un equipo = 2 puntos
-    if pred_home == real_home or pred_away == real_away:
-        points += 2
-    
-    # Acertar ganador/empate = 1 punto
-    pred_result = 'H' if pred_home > pred_away else ('A' if pred_home < pred_away else 'D')
-    real_result = 'H' if real_home > real_away else ('A' if real_home < real_away else 'D')
-    if pred_result == real_result:
-        points += 1
-    
-    # Acertar diferencia de goles = 1 punto
-    if (pred_home - pred_away) == (real_home - real_away):
-        points += 1
-    
-    return min(points, 3)  # Máximo 3 puntos si no es exacto
-
-def calculate_points_for_match(match_id, home_goals, away_goals):
-    predictions = Prediction.query.filter_by(match_id=match_id).all()
-    
-    for pred in predictions:
-        pred.points = calculate_points(pred.home_goals, pred.away_goals, home_goals, away_goals)
-    
-    db.session.commit()
 
 # ==================== AUTH ROUTES ====================
 
@@ -340,6 +322,7 @@ def get_upcoming_matches():
     
     matches_data = []
     user_id = session['user']['id']
+    print(f"DEBUG: get_upcoming_matches user={user_id} type={type(user_id)}")
     
     for match in matches:
         match_dict = {
@@ -356,6 +339,7 @@ def get_upcoming_matches():
         
         # User prediction
         pred = Prediction.query.filter_by(user_id=user_id, match_id=match.id).first()
+        print(f"DEBUG: Match {match.id} - Pred: {pred}")
         match_dict['userPrediction'] = {
             'id': pred.id,
             'home_goals': pred.home_goals,
@@ -454,9 +438,49 @@ def delete_match(match_id):
     
     return jsonify({'success': True})
 
+@app.route('/api/admin/stats')
+@require_admin
+def get_admin_stats():
+    # 1. Total Users
+    total_users = User.query.count()
+    
+    # 2. Upcoming matches participation
+    upcoming = Match.query.filter_by(is_finished=0).order_by(Match.match_date.asc()).all()
+    upcoming_data = []
+    
+    for m in upcoming:
+        pred_count = Prediction.query.filter_by(match_id=m.id).count()
+        part_percent = round((pred_count / total_users * 100) if total_users > 0 else 0)
+        
+        upcoming_data.append({
+            'id': m.id,
+            'team': m.team,
+            'opponent': m.opponent,
+            'is_home': m.is_home,
+            'predictions_count': pred_count,
+            'participation': part_percent
+        })
+        
+    # 3. Users without predictions for the NEXT match
+    users_no_pred = []
+    if upcoming:
+        next_match = upcoming[0]
+        # Users who haven't predicted for the next match
+        # Subquery of user IDs who DID predict
+        subquery = db.session.query(Prediction.user_id).filter_by(match_id=next_match.id)
+        users_no_pred_query = User.query.filter(~User.id.in_(subquery)).limit(10).all()
+        users_no_pred = [{'display_name': u.display_name} for u in users_no_pred_query]
+
+    return jsonify({
+        'totalUsers': total_users,
+        'upcomingMatches': upcoming_data,
+        'usersWithoutPredictions': users_no_pred
+    })
+
 @app.route('/api/matches/<int:match_id>/predictions')
 @require_admin
 def get_match_predictions(match_id):
+    # ... logic continues ...
     # Get all predictions for this match with user info
     predictions_results = db.session.query(Prediction, User.display_name)\
         .join(User).filter(Prediction.match_id == match_id)\
