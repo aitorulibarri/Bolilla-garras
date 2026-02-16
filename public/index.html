@@ -135,9 +135,10 @@
                     <h2 class="section-title">PRÓXIMOS PARTIDOS</h2>
                     <button id="refresh-btn" class="btn btn-icon" title="Actualizar">🔄</button>
                 </div>
-                
-                <div id="last-update" class="last-update" style="margin-bottom: 24px; opacity: 0.6; font-size: 12px; text-align: center;"></div>
-                
+
+                <div id="last-update" class="last-update"
+                    style="margin-bottom: 24px; opacity: 0.6; font-size: 12px; text-align: center;"></div>
+
                 <div id="matches-container" style="max-width: 800px; margin: 0 auto;">
                     <div class="loading">
                         <div class="spinner"></div>
@@ -207,7 +208,10 @@
                             </div>
                             <div class="form-group">
                                 <label>Rival</label>
-                                <input type="text" id="match-opponent" placeholder="Ej: Real Madrid" required>
+                                <select id="match-opponent" required>
+                                    <!-- Se llenará dinámicamente con JS -->
+                                    <option value="" disabled selected>Selecciona rival...</option>
+                                </select>
                             </div>
                         </div>
                         <div class="admin-form-row">

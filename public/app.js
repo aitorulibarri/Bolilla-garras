@@ -236,6 +236,25 @@ function setupEventListeners() {
   // Add match form
   const addMatchForm = document.getElementById('add-match-form');
   if (addMatchForm) {
+    // Lógica dinámica de rivales
+    const teamSelect = document.getElementById('match-team');
+    const opponentSelect = document.getElementById('match-opponent');
+
+    if (teamSelect && opponentSelect) {
+      const updateRivals = () => {
+        const selectedTeam = teamSelect.value;
+        // Accedemos a LEAGUE_TEAMS globalmente
+        const rivals = (typeof LEAGUE_TEAMS !== 'undefined' && LEAGUE_TEAMS[selectedTeam]) ? LEAGUE_TEAMS[selectedTeam] : [];
+
+        opponentSelect.innerHTML = '<option value="" disabled selected>Selecciona rival...</option>' +
+          rivals.slice().sort().map(team => `<option value="${team}">${team}</option>`).join('');
+      };
+
+      teamSelect.addEventListener('change', updateRivals);
+      // Pequeño delay para asegurar que LEAGUE_TEAMS esté listo si hay problemas de carga
+      setTimeout(updateRivals, 0);
+    }
+
     addMatchForm.addEventListener('submit', async (e) => {
       e.preventDefault();
 
@@ -355,6 +374,28 @@ async function loadMatches() {
   }
 }
 
+// ==================== TEAMS DATA ====================
+const LEAGUE_TEAMS = {
+  'Athletic Club': [ // LaLiga EA Sports
+    'Deportivo Alavés', 'Atlético de Madrid', 'FC Barcelona', 'Real Betis', 'RC Celta',
+    'RCD Espanyol', 'Getafe CF', 'Girona FC', 'UD Las Palmas', 'CD Leganés',
+    'RCD Mallorca', 'CA Osasuna', 'Rayo Vallecano', 'Real Madrid', 'Real Sociedad',
+    'Sevilla FC', 'Valencia CF', 'Real Valladolid', 'Villarreal CF'
+  ],
+  'Athletic Femenino': [ // Liga F
+    'Atlético de Madrid', 'FC Barcelona', 'Deportivo Abanca', 'SD Eibar', 'RCD Espanyol',
+    'Costa Adeje Tenerife', 'Granada CF', 'Levante UD', 'Levante Badalona', 'Madrid CFF',
+    'Real Betis', 'Real Madrid', 'Real Sociedad', 'Sevilla FC', 'Valencia CF'
+  ],
+  'Bilbao Athletic': [ // Segunda División (Hypermotion) & 1ª RFEF Mix (según contexto usuario)
+    'Albacete BP', 'UD Almería', 'Burgos CF', 'Cádiz CF', 'FC Cartagena', 'CD Castellón',
+    'Córdoba CF', 'RC Deportivo', 'SD Eibar', 'Elche CF', 'CD Eldense', 'Racing de Ferrol',
+    'Granada CF', 'SD Huesca', 'Levante UD', 'Málaga CF', 'CD Mirandés', 'Real Oviedo',
+    'Racing de Santander', 'Real Sporting', 'CD Tenerife', 'Real Zaragoza',
+    'Barakaldo CF', 'Sestao River', 'Amorebieta', 'Gimnàstic', 'Cultural Leonesa' // Extras 1ª RFEF por si acaso
+  ]
+};
+
 const TEAM_MAPPINGS = {
   'Athletic Club': 'athletic_club',
   'Athletic Femenino': 'athletic_club',
@@ -429,16 +470,16 @@ function renderMatchCard(match, userPrediction) {
   const now = new Date();
   const canPredict = now < deadline;
   const hasPrediction = userPrediction !== undefined;
-  
+
   // Format DateTime
   const dateStr = matchDate.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
   const timeStr = matchDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 
   const homeTeam = match.is_home ? match.team : match.opponent;
   const awayTeam = match.is_home ? match.opponent : match.team;
-  
+
   // Context for Shield Folder
-  const contextTeam = match.team; 
+  const contextTeam = match.team;
   const homeShield = getShieldUrl(homeTeam, contextTeam);
   const awayShield = getShieldUrl(awayTeam, contextTeam);
 
@@ -468,21 +509,21 @@ function renderMatchCard(match, userPrediction) {
 
         <!-- Score / Inputs -->
         <div class="score-container">
-            ${hasPrediction 
-                ? `<div class="score-box" style="border-color: #00F5A0; color:#00F5A0;">${userHomeGoals}</div>`
-                : (canPredict 
-                    ? `<input type="number" id="home-${match.id}" class="score-box" min="0" max="15" placeholder="-">`
-                    : `<div class="score-box" style="opacity:0.5">-</div>`)
-            }
+            ${hasPrediction
+      ? `<div class="score-box" style="border-color: #00F5A0; color:#00F5A0;">${userHomeGoals}</div>`
+      : (canPredict
+        ? `<input type="number" id="home-${match.id}" class="score-box" min="0" max="15" placeholder="-">`
+        : `<div class="score-box" style="opacity:0.5">-</div>`)
+    }
             
             <span class="score-separator">-</span>
             
-            ${hasPrediction 
-                ? `<div class="score-box" style="border-color: #00F5A0; color:#00F5A0;">${userAwayGoals}</div>`
-                : (canPredict 
-                    ? `<input type="number" id="away-${match.id}" class="score-box" min="0" max="15" placeholder="-">`
-                    : `<div class="score-box" style="opacity:0.5">-</div>`)
-            }
+            ${hasPrediction
+      ? `<div class="score-box" style="border-color: #00F5A0; color:#00F5A0;">${userAwayGoals}</div>`
+      : (canPredict
+        ? `<input type="number" id="away-${match.id}" class="score-box" min="0" max="15" placeholder="-">`
+        : `<div class="score-box" style="opacity:0.5">-</div>`)
+    }
         </div>
 
         <!-- Away Team -->
@@ -493,46 +534,46 @@ function renderMatchCard(match, userPrediction) {
       </div>
 
       <!-- Action Button -->
-      ${hasPrediction 
-        ? `<button class="save-btn-gemini" style="background: rgba(0, 245, 160, 0.1); border: 1px solid #00F5A0; color: #00F5A0; cursor: default;">
+      ${hasPrediction
+      ? `<button class="save-btn-gemini" style="background: rgba(0, 245, 160, 0.1); border: 1px solid #00F5A0; color: #00F5A0; cursor: default;">
              ✅ PRONÓSTICO GUARDADO
            </button>`
-        : (canPredict 
-            ? `<button class="save-btn-gemini save-prediction-btn" data-match-id="${match.id}">
+      : (canPredict
+        ? `<button class="save-btn-gemini save-prediction-btn" data-match-id="${match.id}">
                  GUARDAR PRONÓSTICO
                </button>`
-            : `<button class="save-btn-gemini" style="background: #333; cursor: not-allowed; opacity: 0.7;">
+        : `<button class="save-btn-gemini" style="background: #333; cursor: not-allowed; opacity: 0.7;">
                  PLAZO CERRADO
                </button>`)
-      }
+    }
     </div>
   `;
 }
 
 // Widget de Clasificación (Gemini Style)
 async function loadLeaderboardWidget() {
-    const container = document.getElementById('leaderboard-widget-container');
-    if (!container) return;
+  const container = document.getElementById('leaderboard-widget-container');
+  if (!container) return;
 
-    try {
-        const res = await fetchWithRetry('/api/leaderboard');
-        const leaderboard = await res.json();
-        
-        if (leaderboard.length === 0) {
-            container.innerHTML = '<div style="padding:20px; text-align:center; color:#666;">Sin datos</div>';
-            return;
-        }
+  try {
+    const res = await fetchWithRetry('/api/leaderboard');
+    const leaderboard = await res.json();
 
-        const top5 = leaderboard.slice(0, 5);
-        
-        container.innerHTML = top5.map((user, index) => {
-            let rankClass = '';
-            let icon = `#${index + 1}`;
-            if (index === 0) { rankClass = 'row-rank-1'; icon = '<span class="rank-crown">👑</span>'; }
-            if (index === 1) { rankClass = 'row-rank-2'; icon = '<span class="rank-crown">🥈</span>'; }
-            if (index === 2) { rankClass = 'row-rank-3'; icon = '<span class="rank-crown">🥉</span>'; }
+    if (leaderboard.length === 0) {
+      container.innerHTML = '<div style="padding:20px; text-align:center; color:#666;">Sin datos</div>';
+      return;
+    }
 
-            return `
+    const top5 = leaderboard.slice(0, 5);
+
+    container.innerHTML = top5.map((user, index) => {
+      let rankClass = '';
+      let icon = `#${index + 1}`;
+      if (index === 0) { rankClass = 'row-rank-1'; icon = '<span class="rank-crown">👑</span>'; }
+      if (index === 1) { rankClass = 'row-rank-2'; icon = '<span class="rank-crown">🥈</span>'; }
+      if (index === 2) { rankClass = 'row-rank-3'; icon = '<span class="rank-crown">🥉</span>'; }
+
+      return `
             <div class="leaderboard-row ${rankClass}">
                 <div class="rank-badge">${icon}</div>
                 <div class="user-info">
@@ -542,11 +583,11 @@ async function loadLeaderboardWidget() {
                 <div class="user-points">${user.total_points} pts</div>
             </div>
             `;
-        }).join('');
+    }).join('');
 
-    } catch (err) {
-        console.error("Error widget leaderboard", err);
-    }
+  } catch (err) {
+    console.error("Error widget leaderboard", err);
+  }
 }
 
 async function savePrediction(matchId) {
