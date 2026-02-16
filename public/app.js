@@ -1,5 +1,5 @@
-// Bolilla Garras App v2.1
-console.log('📱 Bolilla Garras App v2.1 loaded');
+// Bolilla Garras App v4.0 (FORCED REFRESH)
+console.log('📱 Bolilla Garras App v4.0 loaded - CACHE BUSTED');
 // ==================== STATE ====================
 let currentUser = null;
 
@@ -25,6 +25,15 @@ async function fetchWithRetry(url, options = {}, retries = 3, delay = 1000) {
   for (let i = 0; i < retries; i++) {
     try {
       const res = await fetch(finalUrl, options);
+
+      // AUTO-LOGOUT on 401 (Session Expired)
+      if (res.status === 401) {
+        console.warn("Sesión caducada (401). Redirigiendo a Login...");
+        localStorage.removeItem('bolilla_user');
+        window.location.reload();
+        return res;
+      }
+
       if (res.ok || res.status < 500) return res;
       // Server error, retry
       if (i < retries - 1) await new Promise(r => setTimeout(r, delay));
@@ -38,13 +47,20 @@ async function fetchWithRetry(url, options = {}, retries = 3, delay = 1000) {
 
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', async () => {
-  // Register Service Worker for PWA
+  // FORCE UNREGISTER OLD SERVICE WORKERS
   if ('serviceWorker' in navigator) {
     try {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const registration of registrations) {
+        await registration.unregister();
+        console.log("🧹 Service Worker antiguo eliminado");
+      }
+
+      // Register NEW SW (Reset logic)
       await navigator.serviceWorker.register('/sw.js');
-      console.log('✅ Service Worker registered');
+      console.log('✅ Service Worker v4 (RESET) registered');
     } catch (err) {
-      console.log('Service Worker registration failed:', err);
+      console.error('Service Worker error:', err);
     }
   }
 
@@ -464,7 +480,7 @@ function renderMatchCard(match, userPrediction) {
   const deadline = new Date(match.deadline);
   const now = new Date();
   const canPredict = now < deadline;
-  const hasPrediction = userPrediction !== undefined;
+  const hasPrediction = !!userPrediction;
 
   // Format DateTime
   const dateStr = matchDate.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
