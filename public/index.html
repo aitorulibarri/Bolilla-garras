@@ -3,7 +3,10 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net;">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <meta name="description"
         content="Bolilla Garras - Sistema de pronósticos de partidos del Athletic Club, Athletic Femenino y Bilbao Athletic para la Peña Garras Taldea de Sestao">
     <meta name="theme-color" content="#E41E26">
@@ -21,7 +24,7 @@
     <link rel="apple-touch-icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23E41E26' width='100' height='100' rx='20'/><text y='.9em' x='10' font-size='80'>🦁</text></svg>">
 
-    <link rel="stylesheet" href="styles.css?v=3.0">
+    <link rel="stylesheet" href="styles.css?v=5.0">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 
@@ -298,8 +301,8 @@
     <!-- Toast Notifications -->
     <div class="toast-container" id="toast-container" aria-live="polite"></div>
 
-    <script src="podium.js?v=3.0"></script>
-    <script src="app.js?v=3.0"></script>
+    <script src="podium.js?v=5.0"></script>
+    <script src="app.js?v=5.0"></script>
 </body>
 
 </html>
