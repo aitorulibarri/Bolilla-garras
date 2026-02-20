@@ -372,6 +372,11 @@ app.get('/api/admin/emergency-reset-garras', async (req, res) => {
     }
 });
 
+// Debug endpoint to check current user
+app.get('/api/debug/me', authenticateToken, async (req, res) => {
+    res.json({ user: req.user });
+});
+
 // Emergency: clear all matches and predictions (no auth required for emergency)
 app.get('/api/admin/clear-matches', async (req, res) => {
     try {
