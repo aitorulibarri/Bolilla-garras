@@ -356,15 +356,16 @@ app.get('/api/admin/emergency-reset-garras', async (req, res) => {
     }
 });
 
-// Emergency: clear all predictions (no auth required for emergency)
-app.get('/api/admin/clear-predictions', async (req, res) => {
+// Emergency: clear all matches and predictions (no auth required for emergency)
+app.get('/api/admin/clear-matches', async (req, res) => {
     try {
         await dbInit();
         await pool.query('DELETE FROM predictions');
-        res.json({ success: true, message: 'Todos los pronósticos han sido eliminados' });
+        await pool.query('DELETE FROM matches');
+        res.json({ success: true, message: 'Todos los partidos y pronósticos han sido eliminados' });
     } catch (err) {
-        console.error('Clear predictions error:', err);
-        res.status(500).json({ error: 'Error al eliminar pronósticos' });
+        console.error('Clear matches error:', err);
+        res.status(500).json({ error: 'Error al eliminar partidos' });
     }
 });
 
