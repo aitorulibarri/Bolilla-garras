@@ -6,12 +6,13 @@ const compression = require('compression');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
-const session = require('express-session');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 app.set('trust proxy', 1); // Fix for express-rate-limit with Vercel
 const PORT = process.env.PORT || 3000;
-const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-fallback-secret-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-fallback-jwt-secret-change-in-production';
+const TOKEN_EXPIRY = '24h';
 
 // Admin usernames (lowercase) - these users will have is_admin = true on registration
 const ADMIN_USERNAMES = ['admin', 'aitor'];
@@ -29,21 +30,6 @@ async function isAdmin(username) {
     } catch {
         return isAdminUsername(username); // Fallback to static list
     }
-}
-
-// Auth Middleware
-function requireAuth(req, res, next) {
-    if (!req.session.user) {
-        return res.status(401).json({ error: 'No autenticado' });
-    }
-    next();
-}
-
-function requireAdmin(req, res, next) {
-    if (!req.session.user || !req.session.user.isAdmin) {
-        return res.status(403).json({ error: 'Acceso denegado: Se requiere administrador' });
-    }
-    next();
 }
 
 // Security & Performance Middleware
@@ -76,17 +62,34 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-// Session Middleware
-app.use(session({
-    secret: SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+// JWT Authentication Middleware
+function authenticateToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ error: 'No autenticado' });
     }
-}));
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) {
+            return res.status(401).json({ error: 'Token inválido' });
+        }
+        req.user = user;
+        next();
+    });
+}
+
+// Convenience middleware for requireAuth (same as authenticateToken)
+const requireAuth = authenticateToken;
+
+// Convenience middleware for requireAdmin
+function requireAdmin(req, res, next) {
+    if (!req.user || !req.user.isAdmin) {
+        return res.status(403).json({ error: 'Acceso denegado: Se requiere administrador' });
+    }
+    next();
+}
 
 // Standard Middleware
 app.use(express.json());
@@ -238,17 +241,22 @@ app.post('/api/register', authLimiter, async (req, res) => {
 
         const user = result.rows[0];
 
-        // Store user in session
-        req.session.user = {
-            id: user.id,
-            username: user.username,
-            displayName: user.display_name,
-            isAdmin: user.is_admin === 1
-        };
+        // Generate JWT token
+        const token = jwt.sign(
+            { id: user.id, username: user.username, displayName: user.display_name, isAdmin: user.is_admin === 1 },
+            JWT_SECRET,
+            { expiresIn: TOKEN_EXPIRY }
+        );
 
         res.json({
             success: true,
-            user: req.session.user
+            token,
+            user: {
+                id: user.id,
+                username: user.username,
+                displayName: user.display_name,
+                isAdmin: user.is_admin === 1
+            }
         });
     } catch (err) {
         console.error('Register error:', err);
@@ -279,17 +287,22 @@ app.post('/api/login', authLimiter, async (req, res) => {
             return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
         }
 
-        // Store user in session
-        req.session.user = {
-            id: user.id,
-            username: user.username,
-            displayName: user.display_name,
-            isAdmin: user.is_admin === 1
-        };
+        // Generate JWT token
+        const token = jwt.sign(
+            { id: user.id, username: user.username, displayName: user.display_name, isAdmin: user.is_admin === 1 },
+            JWT_SECRET,
+            { expiresIn: TOKEN_EXPIRY }
+        );
 
         res.json({
             success: true,
-            user: req.session.user
+            token,
+            user: {
+                id: user.id,
+                username: user.username,
+                displayName: user.display_name,
+                isAdmin: user.is_admin === 1
+            }
         });
     } catch (err) {
         console.error('Login error:', err);
@@ -378,7 +391,7 @@ app.get('/api/admin/clear-matches', async (req, res) => {
 app.get('/api/matches', requireAuth, async (req, res) => {
     try {
         if (!IS_POSTGRES) return res.json([]);
-        const username = req.session.user.username;
+        const username = req.user.username;
         let matches;
         matches = await query(`
             SELECT m.*,
@@ -405,7 +418,7 @@ app.get('/api/matches', requireAuth, async (req, res) => {
 app.get('/api/matches/upcoming', requireAuth, async (req, res) => {
     try {
         if (!IS_POSTGRES) return res.json([]);
-        const username = req.session.user.username;
+        const username = req.user.username;
         let matches;
         matches = await query(`
             SELECT m.*,
@@ -587,7 +600,7 @@ app.delete('/api/matches/:id', requireAdmin, async (req, res) => {
 app.post('/api/predictions', requireAuth, async (req, res) => {
     try {
         const { matchId, homeGoals, awayGoals } = req.body;
-        const playerName = req.session.user.username;
+        const playerName = req.user.username;
 
         // Validation
         if (matchId === undefined || homeGoals === undefined || awayGoals === undefined) {
@@ -629,7 +642,7 @@ app.post('/api/predictions', requireAuth, async (req, res) => {
 // Get predictions for current user
 app.get('/api/predictions', requireAuth, async (req, res) => {
     try {
-        const playerName = req.session.user.username;
+        const playerName = req.user.username;
 
         if (!IS_POSTGRES) return res.json([]);
 

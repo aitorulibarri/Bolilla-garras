@@ -18,9 +18,20 @@ const authTabs = document.querySelectorAll('.auth-tab');
 
 // ==================== FETCH WITH RETRY (for cold starts) ====================
 async function fetchWithRetry(url, options = {}, retries = 3, delay = 1000) {
-  // Include credentials (cookies) by default for session auth
-  const defaultOptions = { credentials: 'include' };
+  // Get JWT token from localStorage
+  const token = localStorage.getItem('bolilla_token') || '';
+
+  // Add Authorization header with JWT token
+  const defaultOptions = {
+    headers: {
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      ...(options.headers || {})
+    }
+  };
   const mergedOptions = { ...defaultOptions, ...options };
+
+  // Remove credentials: 'include' since we're using JWT now
+  delete mergedOptions.credentials;
 
   // CACHE BUSTING: Force unique request
   const sep = url.includes('?') ? '&' : '?';
@@ -30,11 +41,13 @@ async function fetchWithRetry(url, options = {}, retries = 3, delay = 1000) {
     try {
       const res = await fetch(finalUrl, mergedOptions);
 
-      // AUTO-LOGOUT on 401 (Session Expired)
+      // AUTO-LOGOUT on 401 (Session Expired) - only if not already on login page
       if (res.status === 401) {
-        console.warn("Sesión caducada (401). Redirigiendo a Login...");
-        localStorage.removeItem('bolilla_user');
-        window.location.reload();
+        const isLoginPage = !document.getElementById('matches-container');
+        if (!isLoginPage) {
+          console.warn("Sesión caducada (401). Recargando...");
+          // Don't logout immediately, try to continue
+        }
         return res;
       }
 
@@ -80,6 +93,7 @@ function checkSavedUser() {
       showApp();
     } catch {
       localStorage.removeItem('bolilla_user');
+      localStorage.removeItem('bolilla_token');
     }
   }
 }
@@ -128,6 +142,8 @@ function setupEventListeners() {
 
       if (res.ok && data.success) {
         currentUser = data.user;
+        // Save token and user to localStorage
+        localStorage.setItem('bolilla_token', data.token || '');
         localStorage.setItem('bolilla_user', JSON.stringify(currentUser));
         showApp();
         showToast(`¡Bienvenido, ${currentUser.displayName}!`, 'success');
@@ -184,6 +200,8 @@ function setupEventListeners() {
 
       if (res.ok && data.success) {
         currentUser = data.user;
+        // Save token and user to localStorage
+        localStorage.setItem('bolilla_token', data.token || '');
         localStorage.setItem('bolilla_user', JSON.stringify(currentUser));
         showApp();
         showToast(`¡Bienvenido, ${currentUser.displayName}! Tu cuenta ha sido creada.`, 'success');
@@ -200,12 +218,17 @@ function setupEventListeners() {
 
   // Change name button (logout)
   changeNameBtn.addEventListener('click', async () => {
+    const token = localStorage.getItem('bolilla_token') || '';
     try {
-      await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+      await fetch('/api/logout', {
+        method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
     } catch (e) {
       // Ignore errors
     }
     localStorage.removeItem('bolilla_user');
+    localStorage.removeItem('bolilla_token');
     // Limpieza total del estado
     window.location.reload();
   });
@@ -291,10 +314,13 @@ function setupEventListeners() {
       const deadline = document.getElementById('match-deadline').value;
 
       try {
+        const token = localStorage.getItem('bolilla_token') || '';
         const res = await fetch('/api/matches', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
           body: JSON.stringify({ team, opponent, isHome, matchDate, deadline })
         });
 
@@ -632,10 +658,13 @@ async function savePrediction(matchId) {
   }
 
   try {
+    const token = localStorage.getItem('bolilla_token') || '';
     const res = await fetch('/api/predictions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
       body: JSON.stringify({
         matchId: parseInt(matchId),
         homeGoals: parseInt(homeGoals),
@@ -736,7 +765,7 @@ async function loadHistory() {
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
   try {
-    const res = await fetchWithRetry('/api/predictions', { credentials: 'include' });
+    const res = await fetchWithRetry('/api/predictions');
     const predictions = await res.json();
 
     if (predictions.length === 0) {
@@ -953,8 +982,12 @@ async function setResult(matchId) {
 async function deleteMatch(matchId) {
   if (!confirm('¿Seguro que quieres eliminar este partido?')) return;
 
+  const token = localStorage.getItem('bolilla_token') || '';
   try {
-    const res = await fetch(`/api/matches/${matchId}`, { method: 'DELETE', credentials: 'include' });
+    const res = await fetch(`/api/matches/${matchId}`, {
+      method: 'DELETE',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    });
 
     if (res.ok) {
       showToast('Partido eliminado', 'success');
@@ -1041,11 +1074,14 @@ async function saveMatchEdit(matchId) {
     return;
   }
 
+  const token = localStorage.getItem('bolilla_token') || '';
   try {
     const res = await fetch(`/api/matches/${matchId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
       body: JSON.stringify({
         matchDate,
         deadline
@@ -1075,8 +1111,11 @@ async function loadAdminStats() {
 
   container.innerHTML = '<div class="stats-loading"><div class="spinner"></div></div>';
 
+  const token = localStorage.getItem('bolilla_token') || '';
   try {
-    const res = await fetch('/api/admin/stats', { credentials: 'include' });
+    const res = await fetch('/api/admin/stats', {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    });
     const stats = await res.json();
 
     if (!res.ok) {
