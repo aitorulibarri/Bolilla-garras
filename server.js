@@ -204,7 +204,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
         // Create user
         const result = await pool.query(
             'INSERT INTO users (username, display_name, password_hash, is_admin) VALUES ($1, $2, $3, $4) RETURNING id, username, display_name, is_admin',
-            [username.toLowerCase(), displayName, passwordHash, isAdmin]
+            [username.toLowerCase(), displayName, passwordHash, isAdmin ? 1 : 0]
         );
 
         const user = result.rows[0];
