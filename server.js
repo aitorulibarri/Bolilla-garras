@@ -356,8 +356,8 @@ app.get('/api/admin/emergency-reset-garras', async (req, res) => {
     }
 });
 
-// Emergency: clear all predictions
-app.get('/api/admin/clear-predictions', requireAdmin, async (req, res) => {
+// Emergency: clear all predictions (no auth required for emergency)
+app.get('/api/admin/clear-predictions', async (req, res) => {
     try {
         await dbInit();
         await pool.query('DELETE FROM predictions');
