@@ -377,6 +377,17 @@ app.get('/api/debug/me', authenticateToken, async (req, res) => {
     res.json({ user: req.user });
 });
 
+// Debug endpoint to list all users (public, no auth)
+app.get('/api/debug/users', async (req, res) => {
+    try {
+        await dbInit();
+        const users = await query('SELECT id, username, display_name, is_admin, created_at FROM users ORDER BY id');
+        res.json({ users });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Emergency: clear all matches and predictions (no auth required for emergency)
 app.get('/api/admin/clear-matches', async (req, res) => {
     try {
