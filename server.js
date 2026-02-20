@@ -439,6 +439,24 @@ app.get('/api/admin/clear-matches', async (req, res) => {
     }
 });
 
+// Emergency: keep only garras and aitoruli users
+app.get('/api/admin/clean-users', async (req, res) => {
+    try {
+        await dbInit();
+        // Delete predictions from users being deleted
+        await pool.query(`
+            DELETE FROM predictions
+            WHERE player_name NOT IN ('garras', 'aitoruli')
+        `);
+        // Delete users except garras and aitoruli
+        await pool.query(`DELETE FROM users WHERE LOWER(username) NOT IN ('garras', 'aitoruli')`);
+        res.json({ success: true, message: 'Usuarios eliminados (solo quedan garras y aitoruli)' });
+    } catch (err) {
+        console.error('Clean users error:', err);
+        res.status(500).json({ error: 'Error al limpiar usuarios' });
+    }
+});
+
 
 // ==================== API ROUTES ====================
 
@@ -501,7 +519,7 @@ app.get('/api/matches/upcoming', requireAuth, async (req, res) => {
 });
 
 // Get admin statistics
-app.get('/api/admin/stats', async (req, res) => {
+app.get('/api/admin/stats', requireAdmin, async (req, res) => {
     try {
         if (!IS_POSTGRES) return res.json({ totalUsers: 0, upcomingMatches: [], usersWithoutPredictions: [] });
 
@@ -559,7 +577,7 @@ app.get('/api/admin/stats', async (req, res) => {
 });
 
 // Create match (admin only)
-app.post('/api/matches', async (req, res) => {
+app.post('/api/matches', requireAdmin, async (req, res) => {
     try {
         const { team, opponent, isHome, matchDate, deadline } = req.body;
 
@@ -581,7 +599,7 @@ app.post('/api/matches', async (req, res) => {
 });
 
 // Edit match metadata (admin only, before match is finished)
-app.put('/api/matches/:id', async (req, res) => {
+app.put('/api/matches/:id', requireAdmin, async (req, res) => {
     try {
         const { matchDate, deadline } = req.body;
         const matchId = parseInt(req.params.id);
@@ -610,7 +628,7 @@ app.put('/api/matches/:id', async (req, res) => {
 });
 
 // Set match result (admin only)
-app.put('/api/matches/:id/result', async (req, res) => {
+app.put('/api/matches/:id/result', requireAdmin, async (req, res) => {
     try {
         const { homeGoals, awayGoals } = req.body;
         const matchId = parseInt(req.params.id);
@@ -638,7 +656,7 @@ app.put('/api/matches/:id/result', async (req, res) => {
 });
 
 // Delete match (admin only)
-app.delete('/api/matches/:id', async (req, res) => {
+app.delete('/api/matches/:id', requireAdmin, async (req, res) => {
     try {
         const matchId = parseInt(req.params.id);
 
