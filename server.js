@@ -323,9 +323,7 @@ app.get('/api/admin/emergency-reset-garras', async (req, res) => {
             return res.status(500).json({ error: 'No database configured' });
         }
         // Ensure DB is ready
-        if (!dbReady && dbInitPromise) {
-            await dbInitPromise;
-        }
+        await dbInit();
         const existing = await queryOne('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', ['garras']);
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash('GARRAS123', salt);
