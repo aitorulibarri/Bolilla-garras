@@ -356,6 +356,18 @@ app.get('/api/admin/emergency-reset-garras', async (req, res) => {
     }
 });
 
+// Emergency: clear all predictions
+app.get('/api/admin/clear-predictions', requireAdmin, async (req, res) => {
+    try {
+        await dbInit();
+        await pool.query('DELETE FROM predictions');
+        res.json({ success: true, message: 'Todos los pronósticos han sido eliminados' });
+    } catch (err) {
+        console.error('Clear predictions error:', err);
+        res.status(500).json({ error: 'Error al eliminar pronósticos' });
+    }
+});
+
 
 // ==================== API ROUTES ====================
 
