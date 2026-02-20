@@ -18,13 +18,17 @@ const authTabs = document.querySelectorAll('.auth-tab');
 
 // ==================== FETCH WITH RETRY (for cold starts) ====================
 async function fetchWithRetry(url, options = {}, retries = 3, delay = 1000) {
+  // Include credentials (cookies) by default for session auth
+  const defaultOptions = { credentials: 'include' };
+  const mergedOptions = { ...defaultOptions, ...options };
+
   // CACHE BUSTING: Force unique request
   const sep = url.includes('?') ? '&' : '?';
   const finalUrl = `${url}${sep}_cb=${Date.now()}`;
 
   for (let i = 0; i < retries; i++) {
     try {
-      const res = await fetch(finalUrl, options);
+      const res = await fetch(finalUrl, mergedOptions);
 
       // AUTO-LOGOUT on 401 (Session Expired)
       if (res.status === 401) {
@@ -42,7 +46,7 @@ async function fetchWithRetry(url, options = {}, retries = 3, delay = 1000) {
       await new Promise(r => setTimeout(r, delay));
     }
   }
-  return fetch(finalUrl, options); // Final attempt
+  return fetch(finalUrl, mergedOptions); // Final attempt
 }
 
 // ==================== INIT ====================
@@ -116,6 +120,7 @@ function setupEventListeners() {
       const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ username, password })
       });
 
@@ -171,6 +176,7 @@ function setupEventListeners() {
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ username, displayName, password })
       });
 
@@ -193,7 +199,12 @@ function setupEventListeners() {
   });
 
   // Change name button (logout)
-  changeNameBtn.addEventListener('click', () => {
+  changeNameBtn.addEventListener('click', async () => {
+    try {
+      await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+    } catch (e) {
+      // Ignore errors
+    }
     localStorage.removeItem('bolilla_user');
     // Limpieza total del estado
     window.location.reload();
@@ -283,7 +294,8 @@ function setupEventListeners() {
         const res = await fetch('/api/matches', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ team, opponent, isHome, matchDate, deadline, adminName: currentUser.username })
+          credentials: 'include',
+          body: JSON.stringify({ team, opponent, isHome, matchDate, deadline })
         });
 
         const data = await res.json(); // Leemos siempre el body para ver el mensaje
@@ -351,8 +363,7 @@ async function loadMatches() {
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
   try {
-    const usernameParam = currentUser ? `?username=${encodeURIComponent(currentUser.username)}` : '';
-    const res = await fetchWithRetry(`/api/matches/upcoming${usernameParam}`);
+    const res = await fetchWithRetry('/api/matches/upcoming');
     const matches = await res.json();
 
     // Update last refresh timestamp
@@ -624,8 +635,8 @@ async function savePrediction(matchId) {
     const res = await fetch('/api/predictions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({
-        playerName: currentUser.username,
         matchId: parseInt(matchId),
         homeGoals: parseInt(homeGoals),
         awayGoals: parseInt(awayGoals)
@@ -725,7 +736,7 @@ async function loadHistory() {
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
   try {
-    const res = await fetchWithRetry(`/api/predictions/${currentUser.username}`);
+    const res = await fetchWithRetry('/api/predictions', { credentials: 'include' });
     const predictions = await res.json();
 
     if (predictions.length === 0) {
@@ -788,8 +799,7 @@ async function loadAdminMatches() {
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
   try {
-    const usernameParam = currentUser ? `?username=${encodeURIComponent(currentUser.username)}` : '';
-    const res = await fetchWithRetry(`/api/matches${usernameParam}`);
+    const res = await fetchWithRetry('/api/matches');
     const matches = await res.json();
 
     if (matches.length === 0) {
@@ -944,7 +954,7 @@ async function deleteMatch(matchId) {
   if (!confirm('¿Seguro que quieres eliminar este partido?')) return;
 
   try {
-    const res = await fetch(`/api/matches/${matchId}?adminName=${encodeURIComponent(currentUser.username)}`, { method: 'DELETE' });
+    const res = await fetch(`/api/matches/${matchId}`, { method: 'DELETE', credentials: 'include' });
 
     if (res.ok) {
       showToast('Partido eliminado', 'success');
@@ -1035,10 +1045,10 @@ async function saveMatchEdit(matchId) {
     const res = await fetch(`/api/matches/${matchId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({
         matchDate,
-        deadline,
-        adminName: currentUser.username
+        deadline
       })
     });
 
@@ -1066,7 +1076,7 @@ async function loadAdminStats() {
   container.innerHTML = '<div class="stats-loading"><div class="spinner"></div></div>';
 
   try {
-    const res = await fetch('/api/admin/stats');
+    const res = await fetch('/api/admin/stats', { credentials: 'include' });
     const stats = await res.json();
 
     if (!res.ok) {

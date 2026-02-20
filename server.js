@@ -6,10 +6,12 @@ const compression = require('compression');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
+const session = require('express-session');
 
 const app = express();
 app.set('trust proxy', 1); // Fix for express-rate-limit with Vercel
 const PORT = process.env.PORT || 3000;
+const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-fallback-secret-change-in-production';
 
 // Admin usernames (lowercase) - these users will have is_admin = true on registration
 const ADMIN_USERNAMES = ['admin', 'aitor'];
@@ -27,6 +29,21 @@ async function isAdmin(username) {
     } catch {
         return isAdminUsername(username); // Fallback to static list
     }
+}
+
+// Auth Middleware
+function requireAuth(req, res, next) {
+    if (!req.session.user) {
+        return res.status(401).json({ error: 'No autenticado' });
+    }
+    next();
+}
+
+function requireAdmin(req, res, next) {
+    if (!req.session.user || !req.session.user.isAdmin) {
+        return res.status(403).json({ error: 'Acceso denegado: Se requiere administrador' });
+    }
+    next();
 }
 
 // Security & Performance Middleware
@@ -58,6 +75,18 @@ const limiter = rateLimit({
     legacyHeaders: false,
 });
 app.use('/api', limiter);
+
+// Session Middleware
+app.use(session({
+    secret: SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+}));
 
 // Standard Middleware
 app.use(express.json());
@@ -177,8 +206,8 @@ app.post('/api/register', authLimiter, async (req, res) => {
         if (!displayName || displayName.length < 2) {
             return res.status(400).json({ error: 'Nombre debe tener al menos 2 caracteres' });
         }
-        if (!password || password.length < 4) {
-            return res.status(400).json({ error: 'Contraseña debe tener al menos 4 caracteres' });
+        if (!password || password.length < 8) {
+            return res.status(400).json({ error: 'Contraseña debe tener al menos 8 caracteres' });
         }
 
         // Check username format (alphanumeric + underscore only)
@@ -208,18 +237,22 @@ app.post('/api/register', authLimiter, async (req, res) => {
         );
 
         const user = result.rows[0];
+
+        // Store user in session
+        req.session.user = {
+            id: user.id,
+            username: user.username,
+            displayName: user.display_name,
+            isAdmin: user.is_admin === 1
+        };
+
         res.json({
             success: true,
-            user: {
-                id: user.id,
-                username: user.username,
-                displayName: user.display_name,
-                isAdmin: user.is_admin
-            }
+            user: req.session.user
         });
     } catch (err) {
         console.error('Register error:', err);
-        res.status(500).json({ error: 'Error al registrar usuario', detail: err.message });
+        res.status(500).json({ error: 'Error al registrar usuario' });
     }
 });
 
@@ -246,19 +279,32 @@ app.post('/api/login', authLimiter, async (req, res) => {
             return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
         }
 
+        // Store user in session
+        req.session.user = {
+            id: user.id,
+            username: user.username,
+            displayName: user.display_name,
+            isAdmin: user.is_admin === 1
+        };
+
         res.json({
             success: true,
-            user: {
-                id: user.id,
-                username: user.username,
-                displayName: user.display_name,
-                isAdmin: user.is_admin
-            }
+            user: req.session.user
         });
     } catch (err) {
         console.error('Login error:', err);
         res.status(500).json({ error: 'Error al iniciar sesión', detail: err.message });
     }
+});
+
+// Logout
+app.post('/api/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            return res.status(500).json({ error: 'Error al cerrar sesión' });
+        }
+        res.json({ success: true });
+    });
 });
 
 // Legacy endpoint for backward compatibility (will be removed later)
@@ -305,30 +351,26 @@ app.post('/api/register-simple', async (req, res) => {
 
 
 // Get all matches
-app.get('/api/matches', async (req, res) => {
+app.get('/api/matches', requireAuth, async (req, res) => {
     try {
         if (!IS_POSTGRES) return res.json([]);
-        const username = req.query.username;
+        const username = req.session.user.username;
         let matches;
-        if (username) {
-            matches = await query(`
-                SELECT m.*,
-                       p.id as prediction_id, p.home_goals as pred_home, p.away_goals as pred_away, p.points as prediction_points
-                FROM matches m
-                LEFT JOIN predictions p ON m.id = p.match_id AND LOWER(p.player_name) = LOWER($1)
-                ORDER BY m.match_date DESC
-            `, [username]);
-            matches = matches.map(m => ({
-                ...m,
-                userPrediction: m.prediction_id ? {
-                    home_goals: m.pred_home,
-                    away_goals: m.pred_away,
-                    points: m.prediction_points
-                } : null
-            }));
-        } else {
-            matches = await query('SELECT * FROM matches ORDER BY match_date DESC');
-        }
+        matches = await query(`
+            SELECT m.*,
+                   p.id as prediction_id, p.home_goals as pred_home, p.away_goals as pred_away, p.points as prediction_points
+            FROM matches m
+            LEFT JOIN predictions p ON m.id = p.match_id AND LOWER(p.player_name) = LOWER($1)
+            ORDER BY m.match_date DESC
+        `, [username]);
+        matches = matches.map(m => ({
+            ...m,
+            userPrediction: m.prediction_id ? {
+                home_goals: m.pred_home,
+                away_goals: m.pred_away,
+                points: m.prediction_points
+            } : null
+        }));
         res.json(matches);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -336,32 +378,28 @@ app.get('/api/matches', async (req, res) => {
 });
 
 // Get upcoming matches
-app.get('/api/matches/upcoming', async (req, res) => {
+app.get('/api/matches/upcoming', requireAuth, async (req, res) => {
     try {
         if (!IS_POSTGRES) return res.json([]);
-        const username = req.query.username;
+        const username = req.session.user.username;
         let matches;
-        if (username) {
-            matches = await query(`
-                SELECT m.*,
-                       p.id as prediction_id, p.home_goals as pred_home, p.away_goals as pred_away, p.points as prediction_points
-                FROM matches m
-                LEFT JOIN predictions p ON m.id = p.match_id AND LOWER(p.player_name) = LOWER($1)
-                WHERE m.is_finished = 0
-                ORDER BY m.match_date ASC
-            `, [username]);
-            // Transform to userPrediction format
-            matches = matches.map(m => ({
-                ...m,
-                userPrediction: m.prediction_id ? {
-                    home_goals: m.pred_home,
-                    away_goals: m.pred_away,
-                    points: m.prediction_points
-                } : null
-            }));
-        } else {
-            matches = await query('SELECT * FROM matches WHERE is_finished = 0 ORDER BY match_date ASC');
-        }
+        matches = await query(`
+            SELECT m.*,
+                   p.id as prediction_id, p.home_goals as pred_home, p.away_goals as pred_away, p.points as prediction_points
+            FROM matches m
+            LEFT JOIN predictions p ON m.id = p.match_id AND LOWER(p.player_name) = LOWER($1)
+            WHERE m.is_finished = 0
+            ORDER BY m.match_date ASC
+        `, [username]);
+        // Transform to userPrediction format
+        matches = matches.map(m => ({
+            ...m,
+            userPrediction: m.prediction_id ? {
+                home_goals: m.pred_home,
+                away_goals: m.pred_away,
+                points: m.prediction_points
+            } : null
+        }));
         res.json(matches);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -369,7 +407,7 @@ app.get('/api/matches/upcoming', async (req, res) => {
 });
 
 // Get admin statistics
-app.get('/api/admin/stats', async (req, res) => {
+app.get('/api/admin/stats', requireAdmin, async (req, res) => {
     try {
         if (!IS_POSTGRES) return res.json({ totalUsers: 0, upcomingMatches: [], usersWithoutPredictions: [] });
 
@@ -427,13 +465,9 @@ app.get('/api/admin/stats', async (req, res) => {
 });
 
 // Create match (admin only)
-app.post('/api/matches', async (req, res) => {
+app.post('/api/matches', requireAdmin, async (req, res) => {
     try {
-        const { team, opponent, isHome, matchDate, deadline, adminName } = req.body;
-
-        if (!(await isAdmin(adminName))) {
-            return res.status(403).json({ error: 'No autorizado' });
-        }
+        const { team, opponent, isHome, matchDate, deadline } = req.body;
 
         if (!team || !opponent || !matchDate || !deadline) {
             return res.status(400).json({ error: 'Faltan campos obligatorios' });
@@ -453,14 +487,10 @@ app.post('/api/matches', async (req, res) => {
 });
 
 // Edit match metadata (admin only, before match is finished)
-app.put('/api/matches/:id', async (req, res) => {
+app.put('/api/matches/:id', requireAdmin, async (req, res) => {
     try {
-        const { matchDate, deadline, adminName } = req.body;
+        const { matchDate, deadline } = req.body;
         const matchId = parseInt(req.params.id);
-
-        if (!(await isAdmin(adminName))) {
-            return res.status(403).json({ error: 'No autorizado' });
-        }
 
         if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
 
@@ -486,14 +516,10 @@ app.put('/api/matches/:id', async (req, res) => {
 });
 
 // Set match result (admin only)
-app.put('/api/matches/:id/result', async (req, res) => {
+app.put('/api/matches/:id/result', requireAdmin, async (req, res) => {
     try {
-        const { homeGoals, awayGoals, adminName } = req.body;
+        const { homeGoals, awayGoals } = req.body;
         const matchId = parseInt(req.params.id);
-
-        if (!(await isAdmin(adminName))) {
-            return res.status(403).json({ error: 'No autorizado' });
-        }
 
         if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
 
@@ -518,14 +544,9 @@ app.put('/api/matches/:id/result', async (req, res) => {
 });
 
 // Delete match (admin only)
-app.delete('/api/matches/:id', async (req, res) => {
+app.delete('/api/matches/:id', requireAdmin, async (req, res) => {
     try {
-        const { adminName } = req.query;
         const matchId = parseInt(req.params.id);
-
-        if (!(await isAdmin(adminName))) {
-            return res.status(403).json({ error: 'No autorizado' });
-        }
 
         if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
 
@@ -539,12 +560,21 @@ app.delete('/api/matches/:id', async (req, res) => {
 });
 
 // Save prediction
-app.post('/api/predictions', async (req, res) => {
+app.post('/api/predictions', requireAuth, async (req, res) => {
     try {
-        const { playerName, matchId, homeGoals, awayGoals } = req.body;
+        const { matchId, homeGoals, awayGoals } = req.body;
+        const playerName = req.session.user.username;
 
-        if (!playerName || matchId === undefined || homeGoals === undefined || awayGoals === undefined) {
+        // Validation
+        if (matchId === undefined || homeGoals === undefined || awayGoals === undefined) {
             return res.status(400).json({ error: 'Faltan campos obligatorios' });
+        }
+
+        // Validate goal values
+        const homeGoalsNum = parseInt(homeGoals);
+        const awayGoalsNum = parseInt(awayGoals);
+        if (isNaN(homeGoalsNum) || isNaN(awayGoalsNum) || homeGoalsNum < 0 || homeGoalsNum > 20 || awayGoalsNum < 0 || awayGoalsNum > 20) {
+            return res.status(400).json({ error: 'Los goles deben ser números entre 0 y 20' });
         }
 
         if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
@@ -561,36 +591,36 @@ app.post('/api/predictions', async (req, res) => {
 
         // Upsert prediction
         await pool.query(`
-      INSERT INTO predictions (player_name, match_id, home_goals, away_goals) 
+      INSERT INTO predictions (player_name, match_id, home_goals, away_goals)
       VALUES ($1, $2, $3, $4)
       ON CONFLICT(player_name, match_id) DO UPDATE SET home_goals = $3, away_goals = $4
-    `, [playerName, matchId, homeGoals, awayGoals]);
+    `, [playerName, matchId, homeGoalsNum, awayGoalsNum]);
 
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Error al guardar pronóstico' });
     }
 });
 
-// Get predictions for a player
-app.get('/api/predictions/:playerName', async (req, res) => {
+// Get predictions for current user
+app.get('/api/predictions', requireAuth, async (req, res) => {
     try {
-        const playerName = decodeURIComponent(req.params.playerName);
+        const playerName = req.session.user.username;
 
         if (!IS_POSTGRES) return res.json([]);
 
         const predictions = await query(`
-      SELECT p.*, m.team, m.opponent, m.is_home, m.match_date, 
+      SELECT p.*, m.team, m.opponent, m.is_home, m.match_date,
              m.home_goals as real_home, m.away_goals as real_away, m.is_finished
       FROM predictions p
       JOIN matches m ON p.match_id = m.id
-      WHERE p.player_name = $1
+      WHERE LOWER(p.player_name) = LOWER($1)
       ORDER BY m.match_date DESC
     `, [playerName]);
 
         res.json(predictions);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Error al cargar historial' });
     }
 });
 
