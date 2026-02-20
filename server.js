@@ -15,20 +15,23 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-fallback-jwt-secret-change-in-
 const TOKEN_EXPIRY = '24h';
 
 // Admin usernames (lowercase) - these users will have is_admin = true on registration
-const ADMIN_USERNAMES = ['admin', 'aitor'];
+const ADMIN_USERNAMES = ['admin', 'aitor', 'garras'];
 
 function isAdminUsername(username) {
     return ADMIN_USERNAMES.includes(username?.toLowerCase());
 }
 
-// Check if user is admin from database
+// Check if user is admin from database OR static list
 async function isAdmin(username) {
+    // First check static list (always works)
+    if (isAdminUsername(username)) return true;
+    // Then check database
     if (!IS_POSTGRES || !username) return false;
     try {
         const user = await queryOne('SELECT is_admin FROM users WHERE LOWER(username) = LOWER($1)', [username]);
         return user?.is_admin === 1;
     } catch {
-        return isAdminUsername(username); // Fallback to static list
+        return false;
     }
 }
 
