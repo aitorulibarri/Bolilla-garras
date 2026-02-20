@@ -7,8 +7,8 @@
 
 :root {
   /* Neon Red Theme - Primary Colors */
-  --neon-red: #FF3333;
-  --neon-red-bright: #FF5555;
+  --neon-red: #E41E26;
+  --neon-red-bright: #E41E26;
   --neon-red-dark: #CC0000;
   --neon-red-glow: rgba(255, 51, 51, 0.6);
 
@@ -34,7 +34,7 @@
   --text-muted: #64748B;
 
   /* Gradients */
-  --gradient-red-neon: linear-gradient(135deg, #FF5533 0%, #FF3333 50%, #E41E26 100%);
+  --gradient-red-neon: linear-gradient(135deg, #E41E26 0%, #B91C22 100%);
   --gradient-gold: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
   --gradient-silver: linear-gradient(135deg, #E8E8E8 0%, #C0C0C0 100%);
   --gradient-bronze: linear-gradient(135deg, #CD7F32 0%, #8B4513 100%);
@@ -125,20 +125,7 @@ body::before {
   background-size: contain;
   opacity: 0.15;
   filter: drop-shadow(0 0 80px rgba(255, 51, 51, 0.3));
-  animation: floatLion 8s ease-in-out infinite;
   pointer-events: none;
-}
-
-@keyframes floatLion {
-
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-  }
-
-  50% {
-    transform: translate(-50%, -55%) scale(1.05);
-  }
 }
 
 .login-card {
@@ -432,17 +419,6 @@ body::before {
 .header-logo .icon {
   font-size: 40px;
   filter: drop-shadow(var(--glow-red-md));
-  animation: rotate-slow 20s linear infinite;
-}
-
-@keyframes rotate-slow {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .header-logo h1 {
