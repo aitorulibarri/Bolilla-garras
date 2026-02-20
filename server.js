@@ -378,10 +378,19 @@ app.get('/api/admin/emergency-reset-garras', async (req, res) => {
     }
 });
 
-// Debug endpoint to check current user
-app.get('/api/debug/me', authenticateToken, async (req, res) => {
-    const isAdmin = req.user && (req.user.isAdmin === true || req.user.isAdmin === 1 || isAdminUsername(req.user.username));
-    res.json({ user: req.user, isAdmin });
+// Debug endpoint to check current user (with token from query for testing)
+app.get('/api/debug/me', async (req, res) => {
+    const token = req.query.token;
+    if (!token) {
+        return res.json({ error: 'No token provided', hint: 'Add ?token=YOUR_TOKEN' });
+    }
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const isAdmin = decoded && (decoded.isAdmin === true || decoded.isAdmin === 1 || isAdminUsername(decoded.username));
+        res.json({ user: decoded, isAdmin });
+    } catch (err) {
+        res.json({ error: 'Invalid token', detail: err.message });
+    }
 });
 
 // Debug endpoint to list all users (public, no auth)
