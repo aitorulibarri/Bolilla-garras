@@ -88,7 +88,11 @@ const requireAuth = authenticateToken;
 
 // Convenience middleware for requireAdmin
 function requireAdmin(req, res, next) {
-    if (!req.user || !req.user.isAdmin) {
+    // Check if user is admin from JWT or static list
+    const isAdminFromToken = req.user && (req.user.isAdmin === true || req.user.isAdmin === 1);
+    const isAdminFromList = req.user && isAdminUsername(req.user.username);
+
+    if (!req.user || (!isAdminFromToken && !isAdminFromList)) {
         return res.status(403).json({ error: 'Acceso denegado: Se requiere administrador' });
     }
     next();
@@ -376,7 +380,8 @@ app.get('/api/admin/emergency-reset-garras', async (req, res) => {
 
 // Debug endpoint to check current user
 app.get('/api/debug/me', authenticateToken, async (req, res) => {
-    res.json({ user: req.user });
+    const isAdmin = req.user && (req.user.isAdmin === true || req.user.isAdmin === 1 || isAdminUsername(req.user.username));
+    res.json({ user: req.user, isAdmin });
 });
 
 // Debug endpoint to list all users (public, no auth)
