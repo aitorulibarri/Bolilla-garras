@@ -624,7 +624,7 @@ async function savePrediction(matchId) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        playerName: currentUser.displayName,
+        playerName: currentUser.username,
         matchId: parseInt(matchId),
         homeGoals: parseInt(homeGoals),
         awayGoals: parseInt(awayGoals)
@@ -724,7 +724,7 @@ async function loadHistory() {
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
   try {
-    const res = await fetchWithRetry('/api/predictions');
+    const res = await fetchWithRetry(`/api/predictions/${currentUser.username}`);
     const predictions = await res.json();
 
     if (predictions.length === 0) {
