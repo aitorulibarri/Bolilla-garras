@@ -8,6 +8,7 @@ const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
 
 const app = express();
+app.set('trust proxy', 1); // Fix for express-rate-limit with Vercel
 const PORT = process.env.PORT || 3000;
 
 // Admin usernames (lowercase) - these users will have is_admin = true on registration
@@ -21,7 +22,7 @@ function isAdminUsername(username) {
 async function isAdmin(username) {
     if (!IS_POSTGRES || !username) return false;
     try {
-        const user = await queryOne('SELECT is_admin FROM players WHERE LOWER(username) = LOWER($1)', [username]);
+        const user = await queryOne('SELECT is_admin FROM users WHERE LOWER(username) = LOWER($1)', [username]);
         return user?.is_admin === true;
     } catch {
         return isAdminUsername(username); // Fallback to static list
@@ -86,20 +87,20 @@ async function dbInit() {
 
     dbInitPromise = (async () => {
         try {
-            // Check if we need to migrate the players table
+            // Check if we need to migrate the users table
             const checkColumn = await pool.query(`
                 SELECT column_name FROM information_schema.columns 
-                WHERE table_name = 'players' AND column_name = 'username'
+                WHERE table_name = 'users' AND column_name = 'username'
             `);
 
             if (checkColumn.rows.length === 0) {
-                console.log('⚠️ Migrating players table to new auth schema...');
-                await pool.query('DROP TABLE IF EXISTS players CASCADE');
+                console.log('⚠️ Migrating users table to new auth schema...');
+                await pool.query('DROP TABLE IF EXISTS users CASCADE');
             }
 
-            // Players table with authentication
+            // users table with authentication
             await pool.query(`
-                CREATE TABLE IF NOT EXISTS players (
+                CREATE TABLE IF NOT EXISTS users (
                     id SERIAL PRIMARY KEY,
                     username TEXT UNIQUE NOT NULL,
                     display_name TEXT NOT NULL,
@@ -188,7 +189,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
         if (!IS_POSTGRES) return res.status(500).json({ error: 'No database configured' });
 
         // Check if username already exists
-        const existing = await queryOne('SELECT id FROM players WHERE LOWER(username) = LOWER($1)', [username]);
+        const existing = await queryOne('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', [username]);
         if (existing) {
             return res.status(400).json({ error: 'Este usuario ya existe' });
         }
@@ -202,7 +203,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
 
         // Create user
         const result = await pool.query(
-            'INSERT INTO players (username, display_name, password_hash, is_admin) VALUES ($1, $2, $3, $4) RETURNING id, username, display_name, is_admin',
+            'INSERT INTO users (username, display_name, password_hash, is_admin) VALUES ($1, $2, $3, $4) RETURNING id, username, display_name, is_admin',
             [username.toLowerCase(), displayName, passwordHash, isAdmin]
         );
 
@@ -234,7 +235,7 @@ app.post('/api/login', authLimiter, async (req, res) => {
         if (!IS_POSTGRES) return res.status(500).json({ error: 'No database configured' });
 
         // Find user
-        const user = await queryOne('SELECT * FROM players WHERE LOWER(username) = LOWER($1)', [username]);
+        const user = await queryOne('SELECT * FROM users WHERE LOWER(username) = LOWER($1)', [username]);
         if (!user) {
             return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
         }
@@ -279,15 +280,15 @@ app.post('/api/register-simple', async (req, res) => {
  *         if (!IS_POSTGRES) {
  *             return res.status(500).json({ error: 'No database configured' });
  *         }
- *         const existing = await queryOne('SELECT id FROM players WHERE LOWER(username) = LOWER($1)', ['GARRAS']);
+ *         const existing = await queryOne('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', ['GARRAS']);
  *         const salt = await bcrypt.genSalt(10);
  *         const passwordHash = await bcrypt.hash('GARRAS123', salt);
  *         let msg;
  *         if (existing) {
- *             await pool.query('UPDATE players SET password_hash = $1, is_admin = TRUE WHERE LOWER(username) = LOWER($2)', [passwordHash, 'GARRAS']);
+ *             await pool.query('UPDATE users SET password_hash = $1, is_admin = TRUE WHERE LOWER(username) = LOWER($2)', [passwordHash, 'GARRAS']);
  *             msg = 'Usuario GARRAS actualizado. Pass: GARRAS123';
  *         } else {
- *             await pool.query('INSERT INTO players (username, display_name, password_hash, is_admin) VALUES ($1, $2, $3, TRUE)', ['GARRAS', 'Admin Garras', passwordHash]);
+ *             await pool.query('INSERT INTO users (username, display_name, password_hash, is_admin) VALUES ($1, $2, $3, TRUE)', ['GARRAS', 'Admin Garras', passwordHash]);
  *             msg = 'Usuario GARRAS creado. Pass: GARRAS123';
  *         }
  *         res.json({ success: true, message: msg });
@@ -331,7 +332,7 @@ app.get('/api/admin/stats', async (req, res) => {
         if (!IS_POSTGRES) return res.json({ totalUsers: 0, upcomingMatches: [], usersWithoutPredictions: [] });
 
         // Total active users
-        const totalUsers = await queryOne('SELECT COUNT(*) as count FROM players');
+        const totalUsers = await queryOne('SELECT COUNT(*) as count FROM users');
 
         // Upcoming matches with prediction stats
         const upcomingMatches = await query(`
@@ -360,7 +361,7 @@ app.get('/api/admin/stats', async (req, res) => {
         // Users who haven't predicted for any upcoming match
         const usersWithoutPredictions = await query(`
             SELECT DISTINCT p.display_name, p.username
-            FROM players p
+            FROM users p
             WHERE NOT EXISTS (
                 SELECT 1
                 FROM predictions pr
