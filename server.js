@@ -23,7 +23,7 @@ async function isAdmin(username) {
     if (!IS_POSTGRES || !username) return false;
     try {
         const user = await queryOne('SELECT is_admin FROM users WHERE LOWER(username) = LOWER($1)', [username]);
-        return user?.is_admin === true;
+        return user?.is_admin === 1;
     } catch {
         return isAdminUsername(username); // Fallback to static list
     }
@@ -105,7 +105,7 @@ async function dbInit() {
                     username TEXT UNIQUE NOT NULL,
                     display_name TEXT NOT NULL,
                     password_hash TEXT NOT NULL,
-                    is_admin BOOLEAN DEFAULT FALSE,
+                    is_admin INTEGER DEFAULT 0,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             `);
@@ -204,7 +204,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
         // Create user
         const result = await pool.query(
             'INSERT INTO users (username, display_name, password_hash, is_admin) VALUES ($1, $2, $3, $4) RETURNING id, username, display_name, is_admin',
-            [username.toLowerCase(), displayName, passwordHash, isAdmin ? 1 : 0]
+[username.toLowerCase(), displayName, passwordHash, isAdmin ? 1 : 0]
         );
 
         const user = result.rows[0];
