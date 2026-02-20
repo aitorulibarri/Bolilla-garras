@@ -312,9 +312,6 @@ app.post('/api/register-simple', async (req, res) => {
     res.json({ success: true, message: 'Use /api/register instead' });
 });
 
-/* EMERGENCY RESET ENDPOINT - DISABLED FOR SECURITY
- * This endpoint was used once to create the admin user in production.
- * It has been disabled after successful execution.
 // Emergency admin reset endpoint
 app.get('/api/admin/emergency-reset-garras', async (req, res) => {
     try {
@@ -324,6 +321,10 @@ app.get('/api/admin/emergency-reset-garras', async (req, res) => {
         }
         if (!IS_POSTGRES) {
             return res.status(500).json({ error: 'No database configured' });
+        }
+        // Ensure DB is ready
+        if (!dbReady && dbInitPromise) {
+            await dbInitPromise;
         }
         const existing = await queryOne('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', ['garras']);
         const salt = await bcrypt.genSalt(10);
@@ -339,7 +340,7 @@ app.get('/api/admin/emergency-reset-garras', async (req, res) => {
         res.json({ success: true, message: msg });
     } catch (err) {
         console.error('Emergency reset error:', err);
-        res.status(500).json({ error: 'Error al resetear usuario' });
+        res.status(500).json({ error: 'Error al resetear usuario: ' + err.message });
     }
 });
 
