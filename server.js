@@ -380,16 +380,33 @@ app.get('/api/admin/emergency-reset-garras', async (req, res) => {
 
 // Debug endpoint to check current user (with token from query for testing)
 app.get('/api/debug/me', async (req, res) => {
+    // Show secret info (only first few chars for security)
+    const secretInfo = JWT_SECRET ? JWT_SECRET.substring(0, 10) + '...' : 'NOT SET';
+    const envSecret = process.env.JWT_SECRET ? process.env.JWT_SECRET.substring(0, 10) + '...' : 'NOT SET';
+
     const token = req.query.token;
     if (!token) {
-        return res.json({ error: 'No token provided', hint: 'Add ?token=YOUR_TOKEN' });
+        // Try to get token from Authorization header
+        const authHeader = req.headers['authorization'];
+        const bearerToken = authHeader && authHeader.split(' ')[1];
+        if (bearerToken) {
+            try {
+                const decoded = jwt.verify(bearerToken, JWT_SECRET);
+                const isAdmin = decoded && (decoded.isAdmin === true || decoded.isAdmin === 1 || isAdminUsername(decoded.username));
+                res.json({ user: decoded, isAdmin });
+            } catch (err) {
+                res.json({ error: 'Invalid token from header', detail: err.message, secretInfo, envSecret });
+            }
+            return;
+        }
+        return res.json({ error: 'No token provided', hint: 'Add ?token=YOUR_TOKEN', secretInfo, envSecret });
     }
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
         const isAdmin = decoded && (decoded.isAdmin === true || decoded.isAdmin === 1 || isAdminUsername(decoded.username));
         res.json({ user: decoded, isAdmin });
     } catch (err) {
-        res.json({ error: 'Invalid token', detail: err.message });
+        res.json({ error: 'Invalid token', detail: err.message, tokenPreview: token.substring(0, 50), secretInfo, envSecret });
     }
 });
 
