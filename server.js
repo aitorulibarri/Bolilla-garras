@@ -324,17 +324,31 @@ app.get('/api/admin/emergency-reset-garras', async (req, res) => {
         }
         // Ensure DB is ready
         await dbInit();
-        const existing = await queryOne('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', ['garras']);
+
+        // Create GARRAS admin
         const salt = await bcrypt.genSalt(10);
-        const passwordHash = await bcrypt.hash('GARRAS123', salt);
+        const passwordHash1 = await bcrypt.hash('GARRAS123', salt);
+        const existing = await queryOne('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', ['garras']);
         let msg;
         if (existing) {
-            await pool.query('UPDATE users SET password_hash = $1, is_admin = 1 WHERE LOWER(username) = LOWER($2)', [passwordHash, 'garras']);
-            msg = 'Usuario GARRAS actualizado. Pass: GARRAS123';
+            await pool.query('UPDATE users SET password_hash = $1, is_admin = 1 WHERE LOWER(username) = LOWER($2)', [passwordHash1, 'garras']);
+            msg = 'GARRAS actualizado. ';
         } else {
-            await pool.query('INSERT INTO users (username, display_name, password_hash, is_admin) VALUES ($1, $2, $3, 1)', ['garras', 'Admin Garras', passwordHash]);
-            msg = 'Usuario GARRAS creado. Pass: GARRAS123';
+            await pool.query('INSERT INTO users (username, display_name, password_hash, is_admin) VALUES ($1, $2, $3, 1)', ['garras', 'Admin Garras', passwordHash1]);
+            msg = 'GARRAS creado. ';
         }
+
+        // Create aitoruli admin
+        const passwordHash2 = await bcrypt.hash('1234', salt);
+        const existing2 = await queryOne('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', ['aitoruli']);
+        if (existing2) {
+            await pool.query('UPDATE users SET password_hash = $1, is_admin = 1 WHERE LOWER(username) = LOWER($2)', [passwordHash2, 'aitoruli']);
+            msg += 'aitoruli actualizado.';
+        } else {
+            await pool.query('INSERT INTO users (username, display_name, password_hash, is_admin) VALUES ($1, $2, $3, 1)', ['aitoruli', 'Aitor Ulibarri', passwordHash2]);
+            msg += 'aitoruli creado.';
+        }
+
         res.json({ success: true, message: msg });
     } catch (err) {
         console.error('Emergency reset error:', err);
