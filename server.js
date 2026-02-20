@@ -245,8 +245,9 @@ app.post('/api/register', authLimiter, async (req, res) => {
         const user = result.rows[0];
 
         // Generate JWT token
+        const isUserAdmin = !!user.is_admin;
         const token = jwt.sign(
-            { id: user.id, username: user.username, displayName: user.display_name, isAdmin: user.is_admin === 1 },
+            { id: user.id, username: user.username, displayName: user.display_name, isAdmin: isUserAdmin },
             JWT_SECRET,
             { expiresIn: TOKEN_EXPIRY }
         );
@@ -258,7 +259,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
                 id: user.id,
                 username: user.username,
                 displayName: user.display_name,
-                isAdmin: user.is_admin === 1
+                isAdmin: isUserAdmin
             }
         });
     } catch (err) {
@@ -291,8 +292,9 @@ app.post('/api/login', authLimiter, async (req, res) => {
         }
 
         // Generate JWT token
+        const isUserAdmin = !!user.is_admin;
         const token = jwt.sign(
-            { id: user.id, username: user.username, displayName: user.display_name, isAdmin: user.is_admin === 1 },
+            { id: user.id, username: user.username, displayName: user.display_name, isAdmin: isUserAdmin },
             JWT_SECRET,
             { expiresIn: TOKEN_EXPIRY }
         );
@@ -304,7 +306,7 @@ app.post('/api/login', authLimiter, async (req, res) => {
                 id: user.id,
                 username: user.username,
                 displayName: user.display_name,
-                isAdmin: user.is_admin === 1
+                isAdmin: isUserAdmin
             }
         });
     } catch (err) {
