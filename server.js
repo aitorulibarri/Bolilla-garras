@@ -15,7 +15,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-fallback-jwt-secret-change-in-
 const TOKEN_EXPIRY = '24h';
 
 // Admin usernames (lowercase) - these users will have is_admin = true on registration
-const ADMIN_USERNAMES = ['admin', 'aitor', 'garras'];
+const ADMIN_USERNAMES = ['admin', 'aitor', 'garras', 'aitoruli'];
 
 function isAdminUsername(username) {
     return ADMIN_USERNAMES.includes(username?.toLowerCase());
@@ -86,16 +86,21 @@ function authenticateToken(req, res, next) {
 // Convenience middleware for requireAuth (same as authenticateToken)
 const requireAuth = authenticateToken;
 
-// Convenience middleware for requireAdmin
+// Convenience middleware for requireAdmin - simplified
 function requireAdmin(req, res, next) {
-    // Check if user is admin from JWT or static list
-    const isAdminFromToken = req.user && (req.user.isAdmin === true || req.user.isAdmin === 1);
-    const isAdminFromList = req.user && isAdminUsername(req.user.username);
-
-    if (!req.user || (!isAdminFromToken && !isAdminFromList)) {
-        return res.status(403).json({ error: 'Acceso denegado: Se requiere administrador' });
+    if (!req.user) {
+        return res.status(401).json({ error: 'No autenticado' });
     }
-    next();
+    // Always allow garras, aitor, admin - simpler check
+    const username = req.user.username?.toLowerCase();
+    if (['garras', 'aitor', 'admin', 'aitoruli'].includes(username)) {
+        return next();
+    }
+    // Also check isAdmin flag
+    if (req.user.isAdmin === true || req.user.isAdmin === 1) {
+        return next();
+    }
+    return res.status(403).json({ error: 'Acceso denegado: Se requiere administrador' });
 }
 
 // Standard Middleware
