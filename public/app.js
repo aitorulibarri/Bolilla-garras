@@ -351,7 +351,8 @@ async function loadMatches() {
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
   try {
-    const res = await fetchWithRetry('/api/matches/upcoming');
+    const usernameParam = currentUser ? `?username=${encodeURIComponent(currentUser.username)}` : '';
+    const res = await fetchWithRetry(`/api/matches/upcoming${usernameParam}`);
     const matches = await res.json();
 
     // Update last refresh timestamp
@@ -787,7 +788,8 @@ async function loadAdminMatches() {
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
   try {
-    const res = await fetchWithRetry('/api/matches');
+    const usernameParam = currentUser ? `?username=${encodeURIComponent(currentUser.username)}` : '';
+    const res = await fetchWithRetry(`/api/matches${usernameParam}`);
     const matches = await res.json();
 
     if (matches.length === 0) {

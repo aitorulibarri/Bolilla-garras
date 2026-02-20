@@ -308,7 +308,27 @@ app.post('/api/register-simple', async (req, res) => {
 app.get('/api/matches', async (req, res) => {
     try {
         if (!IS_POSTGRES) return res.json([]);
-        const matches = await query('SELECT * FROM matches ORDER BY match_date DESC');
+        const username = req.query.username;
+        let matches;
+        if (username) {
+            matches = await query(`
+                SELECT m.*,
+                       p.id as prediction_id, p.home_goals as pred_home, p.away_goals as pred_away, p.points as prediction_points
+                FROM matches m
+                LEFT JOIN predictions p ON m.id = p.match_id AND LOWER(p.player_name) = LOWER($1)
+                ORDER BY m.match_date DESC
+            `, [username]);
+            matches = matches.map(m => ({
+                ...m,
+                userPrediction: m.prediction_id ? {
+                    home_goals: m.pred_home,
+                    away_goals: m.pred_away,
+                    points: m.prediction_points
+                } : null
+            }));
+        } else {
+            matches = await query('SELECT * FROM matches ORDER BY match_date DESC');
+        }
         res.json(matches);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -319,7 +339,29 @@ app.get('/api/matches', async (req, res) => {
 app.get('/api/matches/upcoming', async (req, res) => {
     try {
         if (!IS_POSTGRES) return res.json([]);
-        const matches = await query('SELECT * FROM matches WHERE is_finished = 0 ORDER BY match_date ASC');
+        const username = req.query.username;
+        let matches;
+        if (username) {
+            matches = await query(`
+                SELECT m.*,
+                       p.id as prediction_id, p.home_goals as pred_home, p.away_goals as pred_away, p.points as prediction_points
+                FROM matches m
+                LEFT JOIN predictions p ON m.id = p.match_id AND LOWER(p.player_name) = LOWER($1)
+                WHERE m.is_finished = 0
+                ORDER BY m.match_date ASC
+            `, [username]);
+            // Transform to userPrediction format
+            matches = matches.map(m => ({
+                ...m,
+                userPrediction: m.prediction_id ? {
+                    home_goals: m.pred_home,
+                    away_goals: m.pred_away,
+                    points: m.prediction_points
+                } : null
+            }));
+        } else {
+            matches = await query('SELECT * FROM matches WHERE is_finished = 0 ORDER BY match_date ASC');
+        }
         res.json(matches);
     } catch (err) {
         res.status(500).json({ error: err.message });
