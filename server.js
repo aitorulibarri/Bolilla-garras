@@ -339,6 +339,19 @@ app.post('/api/register-simple', async (req, res) => {
     res.json({ success: true, message: 'Use /api/register instead' });
 });
 
+// Reset password for GARRAS (uppercase)
+app.get('/api/admin/reset-garras-password', async (req, res) => {
+    try {
+        await dbInit();
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash('GARRAS123', salt);
+        await pool.query('UPDATE users SET password_hash = $1 WHERE LOWER(username) = LOWER($2)', [passwordHash, 'GARRAS']);
+        res.json({ success: true, message: 'Password reset done' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Emergency admin reset endpoint
 app.get('/api/admin/emergency-reset-garras', async (req, res) => {
     try {

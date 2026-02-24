@@ -1,68 +1,96 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none">
   <defs>
-    <linearGradient id="lionGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#FF5733;stop-opacity:1" />
+    <linearGradient id="redGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF0000;stop-opacity:1" />
       <stop offset="50%" style="stop-color:#E41E26;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#C41E3A;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8B0000;stop-opacity:1" />
     </linearGradient>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-      <feMerge>
-        <feMergeNode in="coloredBlur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
+    <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFD700;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#B8860B;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="3" dy="3" stdDeviation="4" flood-opacity="0.4"/>
     </filter>
   </defs>
-  
-  <!-- León geométrico estilo low-poly -->
-  <g stroke="url(#lionGradient)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)">
-    <!-- Melena superior -->
-    <path d="M 200 50 L 220 80 L 200 100 L 180 80 Z" fill="none"/>
-    <path d="M 160 70 L 180 90 L 170 110 L 150 95 Z" fill="none"/>
-    <path d="M 240 70 L 220 90 L 230 110 L 250 95 Z" fill="none"/>
-    
-    <!-- Cara exterior -->
-    <path d="M 140 120 L 200 80 L 260 120 L 240 200 L 200 220 L 160 200 Z" fill="none"/>
-    
-    <!-- Melena lateral izquierda -->
-    <path d="M 120 140 L 140 120 L 150 160 L 130 180 Z" fill="none"/>
-    <path d="M 110 180 L 130 180 L 140 220 L 120 240 Z" fill="none"/>
-    <path d="M 100 240 L 120 240 L 130 280 L 110 300 Z" fill="none"/>
-    
-    <!-- Melena lateral derecha -->
-    <path d="M 280 140 L 260 120 L 250 160 L 270 180 Z" fill="none"/>
-    <path d="M 290 180 L 270 180 L 260 220 L 280 240 Z" fill="none"/>
-    <path d="M 300 240 L 280 240 L 270 280 L 290 300 Z" fill="none"/>
-    
-    <!-- Frente y ojos -->
-    <path d="M 160 140 L 180 120 L 200 140 L 220 120 L 240 140" fill="none"/>
-    <circle cx="175" cy="150" r="8" fill="url(#lionGradient)"/>
-    <circle cx="225" cy="150" r="8" fill="url(#lionGradient)"/>
-    
-    <!-- Nariz -->
-    <path d="M 190 170 L 200 180 L 210 170" fill="none"/>
-    <circle cx="200" cy="175" r="6" fill="url(#lionGradient)"/>
-    
-    <!-- Hocico -->
-    <path d="M 200 180 L 200 200" fill="none"/>
-    <path d="M 180 190 Q 200 210 220 190" fill="none"/>
-    
-    <!-- Detalles faciales -->
-    <path d="M 160 160 L 180 180 L 160 200" fill="none"/>
-    <path d="M 240 160 L 220 180 L 240 200" fill="none"/>
-    
-    <!-- Barba/melena inferior -->
-    <path d="M 160 220 L 180 240 L 160 260 L 140 250 Z" fill="none"/>
-    <path d="M 240 220 L 220 240 L 240 260 L 260 250 Z" fill="none"/>
-    <path d="M 180 260 L 200 280 L 220 260 L 200 240 Z" fill="none"/>
-    
-    <!-- Detalles adicionales melena -->
-    <path d="M 130 100 L 150 120 L 140 140 L 120 125 Z" fill="none"/>
-    <path d="M 270 100 L 250 120 L 260 140 L 280 125 Z" fill="none"/>
-    
-    <!-- Melena inferior extendida -->
-    <path d="M 150 280 L 170 300 L 150 320 L 130 310 Z" fill="none"/>
-    <path d="M 250 280 L 230 300 L 250 320 L 270 310 Z" fill="none"/>
-    <path d="M 170 320 L 200 340 L 230 320 L 200 300 Z" fill="none"/>
+
+  <!-- Background -->
+  <rect width="400" height="400" fill="#1a1a1a" rx="20"/>
+
+  <!-- Shield shape -->
+  <path d="M 60 80 L 340 80 L 340 200 Q 340 350 200 380 Q 60 350 60 200 Z"
+        fill="url(#redGradient)" stroke="url(#goldGradient)" stroke-width="5" filter="url(#shadow)"/>
+
+  <!-- Inner shield line -->
+  <path d="M 75 95 L 325 95 L 325 200 Q 325 330 200 355 Q 75 330 75 200 Z"
+        fill="none" stroke="url(#goldGradient)" stroke-width="2" opacity="0.5"/>
+
+  <!-- LEON - Front view aggressive -->
+  <g>
+    <!-- Main face - angular and aggressive -->
+    <path d="M 130 130 L 200 100 L 270 130 L 290 180 L 290 250 L 200 290 L 110 250 L 110 180 Z"
+          fill="url(#goldGradient)" stroke="#8B4513" stroke-width="3"/>
+
+    <!-- Forehead aggressive brow -->
+    <path d="M 140 125 L 200 110 L 260 125 L 240 140 L 200 130 L 160 140 Z"
+          fill="#B8860B" stroke="#8B4513" stroke-width="2"/>
+
+    <!-- Eyes - ANGRY -->
+    <g>
+      <!-- Left eye -->
+      <path d="M 140 150 L 175 145 L 185 160 L 150 170 Z" fill="#FFFFFF"/>
+      <circle cx="160" cy="158" r="10" fill="#1a1a1a"/>
+      <circle cx="158" cy="156" r="4" fill="#FF0000"/>
+      <path d="M 135 140 L 175 148" stroke="#8B0000" stroke-width="6" stroke-linecap="round"/>
+
+      <!-- Right eye -->
+      <path d="M 260 150 L 225 145 L 215 160 L 250 170 Z" fill="#FFFFFF"/>
+      <circle cx="240" cy="158" r="10" fill="#1a1a1a"/>
+      <circle cx="242" cy="156" r="4" fill="#FF0000"/>
+      <path d="M 265 140 L 225 148" stroke="#8B0000" stroke-width="6" stroke-linecap="round"/>
+    </g>
+
+    <!-- Nose - big and aggressive -->
+    <path d="M 180 185 L 220 185 L 210 205 L 190 205 Z" fill="#1a1a1a"/>
+    <ellipse cx="200" cy="195" rx="15" ry="10" fill="#1a1a1a"/>
+    <line x1="200" y1="185" x2="200" y2="205" stroke="#333" stroke-width="2"/>
+
+    <!-- Mouth - SNARLING -->
+    <path d="M 165 225 Q 200 215 235 225" fill="none" stroke="#1a1a1a" stroke-width="3"/>
+    <path d="M 175 230 Q 200 245 225 230" fill="none" stroke="#1a1a1a" stroke-width="3"/>
+    <path d="M 185 225 L 185 238" stroke="#1a1a1a" stroke-width="2"/>
+    <path d="M 215 225 L 215 238" stroke="#1a1a1a" stroke-width="2"/>
+    <path d="M 200 230 L 200 240" stroke="#1a1a1a" stroke-width="2"/>
+
+    <!-- Teeth - showing -->
+    <path d="M 170 228 L 175 218 L 180 228" fill="#FFFFFF" stroke="#333" stroke-width="1"/>
+    <path d="M 220 228 L 225 218 L 230 228" fill="#FFFFFF" stroke="#333" stroke-width="1"/>
+
+    <!-- Ears -->
+    <path d="M 105 140 L 125 120 L 130 160 L 110 170 Z" fill="url(#goldGradient)" stroke="#8B4513" stroke-width="2"/>
+    <path d="M 295 140 L 275 120 L 270 160 L 290 170 Z" fill="url(#goldGradient)" stroke="#8B4513" stroke-width="2"/>
   </g>
+
+  <!-- MANE - Spiky and aggressive -->
+  <g fill="url(#redGradient)" stroke="#600000" stroke-width="2">
+    <!-- Top spikes -->
+    <path d="M 150 70 L 170 50 L 175 80 L 155 85 Z"/>
+    <path d="M 185 65 L 200 40 L 215 65 L 200 80 Z"/>
+    <path d="M 225 70 L 245 50 L 250 80 L 230 85 Z"/>
+
+    <!-- Side spikes left -->
+    <path d="M 90 120 L 70 110 L 65 140 L 85 145 Z"/>
+    <path d="M 80 170 L 55 165 L 50 195 L 75 200 Z"/>
+    <path d="M 85 220 L 60 230 L 65 260 L 90 255 Z"/>
+    <path d="M 100 270 L 85 300 L 105 310 L 120 280 Z"/>
+
+    <!-- Side spikes right -->
+    <path d="M 310 120 L 330 110 L 335 140 L 315 145 Z"/>
+    <path d="M 320 170 L 345 165 L 350 195 L 325 200 Z"/>
+    <path d="M 315 220 L 340 230 L 335 260 L 310 255 Z"/>
+    <path d="M 300 270 L 315 300 L 295 310 L 280 280 Z"/>
+  </g>
+
+  <!-- Athletic text -->
+  <text x="200" y="350" text-anchor="middle" font-family="Arial Black, sans-serif" font-size="22" font-weight="bold" fill="#FFFFFF" letter-spacing="3">ATHLETIC</text>
 </svg>
