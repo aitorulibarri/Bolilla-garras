@@ -11,7 +11,7 @@ const jwt = require('jsonwebtoken');
 const app = express();
 app.set('trust proxy', 1); // Fix for express-rate-limit with Vercel
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-fallback-jwt-secret-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET || 'bolilla-garras-secret-2026-seguro';
 const TOKEN_EXPIRY = '24h';
 
 // Admin usernames (lowercase) - these users will have is_admin = true on registration
@@ -86,14 +86,22 @@ function authenticateToken(req, res, next) {
 // Convenience middleware for requireAuth (same as authenticateToken)
 const requireAuth = authenticateToken;
 
-// Convenience middleware for requireAdmin - simplified
-function requireAdmin(req, res, next) {
+// Convenience middleware for requireAdmin - checks user after auth
+const requireAdmin = (req, res, next) => {
+    // Check if user exists (set by authenticateToken middleware)
     if (!req.user) {
-        return res.status(401).json({ error: 'No autenticado' });
+        // User not authenticated, run authenticateToken first
+        return authenticateToken(req, res, () => {
+            checkAdmin(req, res, next);
+        });
     }
-    // Always allow garras, aitor, admin - simpler check
+    checkAdmin(req, res, next);
+};
+
+function checkAdmin(req, res, next) {
+    // Always allow garras, GARRAS, aitor, admin - simpler check
     const username = req.user.username?.toLowerCase();
-    if (['garras', 'aitor', 'admin', 'aitoruli'].includes(username)) {
+    if (['garras', 'garrras', 'aitor', 'admin', 'aitoruli'].includes(username)) {
         return next();
     }
     // Also check isAdmin flag
@@ -181,6 +189,11 @@ async function dbInit() {
                     UNIQUE(player_name, match_id)
                 );
             `);
+
+            // Add player_name column if it doesn't exist (for old databases)
+            try {
+                await pool.query(`ALTER TABLE predictions ADD COLUMN IF NOT EXISTS player_name TEXT`);
+            } catch (e) { /* ignore if exists */ }
 
             dbReady = true;
             console.log('✅ Tables initialized');
