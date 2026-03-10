@@ -433,25 +433,26 @@ async function loadMatches() {
   }
 }
 
-// ==================== TEAMS DATA ====================
+// ==================== TEAMS DATA (Temporada 2025/26) ====================
 const LEAGUE_TEAMS = {
-  'Athletic Club': [ // LaLiga EA Sports
-    'Deportivo Alavés', 'Atlético de Madrid', 'FC Barcelona', 'Real Betis', 'RC Celta',
-    'RCD Espanyol', 'Getafe CF', 'Girona FC', 'UD Las Palmas', 'CD Leganés',
-    'RCD Mallorca', 'CA Osasuna', 'Rayo Vallecano', 'Real Madrid', 'Real Sociedad',
-    'Sevilla FC', 'Valencia CF', 'Real Valladolid', 'Villarreal CF'
+  'Athletic Club': [ // LaLiga EA Sports 2025/26
+    'Atlético de Madrid', 'FC Barcelona', 'Real Madrid', 'Real Betis', 'Real Sociedad',
+    'Sevilla FC', 'Valencia CF', 'Villarreal CF', 'Celta de Vigo', 'CA Osasuna',
+    'Girona FC', 'Rayo Vallecano', 'Getafe CF', 'RCD Espanyol', 'RCD Mallorca',
+    'Real Oviedo', 'Deportivo Alavés', 'Elche CF', 'Levante UD', 'UD Las Palmas'
   ],
-  'Athletic Femenino': [ // Liga F
-    'Atlético de Madrid', 'FC Barcelona', 'Deportivo Abanca', 'SD Eibar', 'RCD Espanyol',
-    'Costa Adeje Tenerife', 'Granada CF', 'Levante UD', 'Levante Badalona', 'Madrid CFF',
-    'Real Betis', 'Real Madrid', 'Real Sociedad', 'Sevilla FC', 'Valencia CF'
+  'Athletic Femenino': [ // Liga F Moeve 2025/26
+    'Atlético de Madrid', 'FC Barcelona', 'Alhama CF ElPozo', 'Badalona Femenino',
+    'Deportivo de La Coruña Femenino', 'DUX Logroño', 'Eibar Femenino', 'RCD Espanyol',
+    'Granada CF', 'Levante UD', 'Madrid CFF', 'Real Madrid', 'Real Sociedad',
+    'Sevilla FC', 'Tenerife Femenino'
   ],
-  'Bilbao Athletic': [ // Primera Federación - Grupo 1 (24/25)
-    'Barakaldo CF', 'Sestao River', 'SD Amorebieta', 'Real Unión', 'Real Sociedad B',
-    'CA Osasuna B', 'Gimnàstic de Tarragona', 'Cultural Leonesa', 'SD Ponferradina',
-    'Zamora CF', 'Unionistas de Salamanca', 'Gimnástica Segoviana', 'Ourense CF',
-    'CD Arenteiro', 'CD Lugo', 'RC Celta Fortuna', 'FC Andorra', 'FC Barcelona Atlètic',
-    'SD Tarazona', 'SD Ponferradina'
+  'Bilbao Athletic': [ // 1ª RFEF Grupo 1 2025/26
+    'CD Tenerife', 'Racing de Ferrol', 'CD Lugo', 'CA Osasuna B',
+    'SD Ponferradina', 'Pontevedra CF', 'RC Celta Fortuna', 'Ourense CF',
+    'Unionistas CF', 'CP Mérida', 'Zamora CF', 'Real Avilés CF',
+    'CD Guadalajara', 'Barakaldo CF', 'CF Talavera de la Reina',
+    'CP Cacereño', 'CD Arenteiro', 'Real Madrid Castilla', 'Arenas Club'
   ]
 };
 
@@ -460,91 +461,98 @@ const LEAGUE_TEAMS = {
 // Carpetas: laliga, segunda, ligaf, rfef
 const LOGO_MAP = {
   // ── ATHLETIC CLUB (equipo "raíz" - usa logo de LaLiga) ──
-  'Athletic Club':            'logos/laliga/athletic-bilbao-logo-vector.png',
-  'Athletic Femenino':        'logos/laliga/athletic-bilbao-logo-vector.png',
-  'Bilbao Athletic':          'logos/rfef/BILBAO ATHLETIC.png',
+  'Athletic Club':                    'logos/laliga/athletic-bilbao-logo-vector.png',
+  'Athletic Femenino':                'logos/laliga/athletic-bilbao-logo-vector.png',
+  'Bilbao Athletic':                  'logos/rfef/BILBAO ATHLETIC.png',
 
-  // ── LaLiga EA Sports ──
-  'Atlético de Madrid':       'logos/laliga/ATLETICO.png',
-  'FC Barcelona':             'logos/laliga/FC-Barcelona.png',
-  'Real Madrid':              'logos/laliga/RMADRID.png',
-  'Real Sociedad':            'logos/laliga/REAL SOCIEDAD.png',
-  'Real Betis':               'logos/laliga/BETIS.png',
-  'Sevilla FC':               'logos/laliga/SEVILLA.png',
-  'Valencia CF':              'logos/laliga/Valencia.png',
-  'Villarreal CF':            'logos/laliga/VILLAREAL.png',
-  'RC Celta':                 'logos/laliga/CELTA.png',
-  'CA Osasuna':               'logos/laliga/OSASUNA.png',
-  'Girona FC':                'logos/laliga/Girona FC.png',
-  'Rayo Vallecano':           'logos/laliga/RAYO-VALLECANO-SAD.png',
-  'Getafe CF':                'logos/laliga/GETAFE.png',
-  'RCD Espanyol':             'logos/laliga/ESPAÑOL.png',
-  'RCD Mallorca':             'logos/laliga/MALLORCA.png',
-  'UD Las Palmas':            'logos/segunda/UD LAS PALMAS.png',
-  'Deportivo Alavés':         'logos/laliga/DEPORTIVO ALAVES 2021.png',
-  'CD Leganés':               'logos/segunda/LEGANES.png',
-  'Real Valladolid':          'logos/segunda/valladolid.png',
-  'Levante UD':               'logos/laliga/LEVANTE.png',
-  'Real Oviedo':              'logos/laliga/OVIEDO.png',
-  'Elche CF':                 'logos/laliga/Escudo_Elche_CF.png',
-  'ATB':                      'logos/laliga/ATB.png',
+  // ── LaLiga EA Sports 2025/26 ──
+  'Atlético de Madrid':               'logos/laliga/ATLETICO.png',
+  'FC Barcelona':                     'logos/laliga/FC-Barcelona.png',
+  'Real Madrid':                      'logos/laliga/RMADRID.png',
+  'Real Sociedad':                    'logos/laliga/REAL SOCIEDAD.png',
+  'Real Betis':                       'logos/laliga/BETIS.png',
+  'Sevilla FC':                       'logos/laliga/SEVILLA.png',
+  'Valencia CF':                      'logos/laliga/Valencia.png',
+  'Villarreal CF':                    'logos/laliga/VILLAREAL.png',
+  'Celta de Vigo':                    'logos/laliga/CELTA.png',
+  'RC Celta':                         'logos/laliga/CELTA.png',
+  'CA Osasuna':                       'logos/laliga/OSASUNA.png',
+  'Girona FC':                        'logos/laliga/Girona FC.png',
+  'Rayo Vallecano':                   'logos/laliga/RAYO-VALLECANO-SAD.png',
+  'Getafe CF':                        'logos/laliga/GETAFE.png',
+  'RCD Espanyol':                     'logos/laliga/ESPAÑOL.png',
+  'RCD Mallorca':                     'logos/laliga/MALLORCA.png',
+  'Real Oviedo':                      'logos/laliga/OVIEDO.png',
+  'Deportivo Alavés':                 'logos/laliga/DEPORTIVO ALAVES 2021.png',
+  'Elche CF':                         'logos/laliga/Escudo_Elche_CF.png',
+  'Levante UD':                       'logos/laliga/LEVANTE.png',
+  'UD Las Palmas':                    'logos/segunda/UD LAS PALMAS.png',
 
-  // ── Segunda División ──
-  'Albacete Balompié':        'logos/segunda/ALBACETE.png',
-  'UD Almería':               'logos/segunda/ALMERIA.png',
-  'Cádiz CF':                 'logos/segunda/CADIZ.png',
-  'CD Castellón':             'logos/segunda/CD Castellón.png',
-  'Córdoba CF':               'logos/segunda/CORDOBA.png',
-  'Cultural Leonesa':         'logos/segunda/CULTURAL LEONESA.png',
-  'RC Deportivo':             'logos/segunda/DEPORTIVO DE LA CORUÑA.PNG',
-  'Deportivo de La Coruña':   'logos/segunda/DEPORTIVO DE LA CORUÑA.PNG',
-  'SD Eibar':                 'logos/segunda/EIBAR.png',
-  'FC Andorra':               'logos/segunda/FC ANDORRA.png',
-  'Granada CF':               'logos/segunda/GRANADA.png',
-  'SD Huesca':                'logos/segunda/HUESCA.png',
-  'CD Mirandés':              'logos/segunda/MIRANDES.png',
-  'Málaga CF':                'logos/segunda/Málaga.png',
-  'Racing de Santander':      'logos/segunda/RACING SANTANDER.png',
-  'Real Sociedad B':          'logos/segunda/REAL SOCIEDAD B.png',
-  'Sporting de Gijón':        'logos/segunda/SPORTING GIJON.png',
-  'Real Zaragoza':            'logos/segunda/ZARAGOZA.png',
-  'Burgos CF':                'logos/segunda/burgos c.f..png',
-  'AD Ceuta FC':              'logos/segunda/AD CEUTA CF.jpg',
-  'RC Celta Fortuna':         'logos/segunda/CELTA.png',  // Usan el logo del Celta
-  'FC Barcelona Atlètic':     'logos/segunda/FC-Barcelona.png',  // Usan el logo del Barça
+  // ── Segunda División (equipos con logo) ──
+  'Albacete Balompié':                'logos/segunda/ALBACETE.png',
+  'UD Almería':                       'logos/segunda/ALMERIA.png',
+  'Cádiz CF':                         'logos/segunda/CADIZ.png',
+  'CD Castellón':                     'logos/segunda/CD Castellón.png',
+  'Córdoba CF':                       'logos/segunda/CORDOBA.png',
+  'Cultural Leonesa':                 'logos/segunda/CULTURAL LEONESA.png',
+  'RC Deportivo':                     'logos/segunda/DEPORTIVO DE LA CORUÑA.PNG',
+  'Deportivo de La Coruña':           'logos/segunda/DEPORTIVO DE LA CORUÑA.PNG',
+  'SD Eibar':                         'logos/segunda/EIBAR.png',
+  'FC Andorra':                       'logos/segunda/FC ANDORRA.png',
+  'Granada CF':                       'logos/segunda/GRANADA.png',
+  'SD Huesca':                        'logos/segunda/HUESCA.png',
+  'CD Mirandés':                      'logos/segunda/MIRANDES.png',
+  'Málaga CF':                        'logos/segunda/Málaga.png',
+  'Racing de Santander':              'logos/segunda/RACING SANTANDER.png',
+  'Real Sociedad B':                  'logos/segunda/REAL SOCIEDAD B.png',
+  'Sporting de Gijón':                'logos/segunda/SPORTING GIJON.png',
+  'Real Zaragoza':                    'logos/segunda/ZARAGOZA.png',
+  'Burgos CF':                        'logos/segunda/burgos c.f..png',
+  'AD Ceuta FC':                      'logos/segunda/AD CEUTA CF.jpg',
+  'Real Valladolid':                  'logos/segunda/valladolid.png',
+  'CD Leganés':                       'logos/segunda/LEGANES.png',
 
-  // ── Liga F (Femenina) ──
-  'Alhama CF El Pozo':        'logos/ligaf/ALHAMA EL POZO FEM.png',
-  'Levante Badalona':         'logos/ligaf/Badalona_Women.png',
-  'Deportivo Abanca':         'logos/ligaf/DEPOR.png',
-  'DUX Logroño':              'logos/ligaf/DUX LOGROÑO.png',
-  'Levante Las Planas':       'logos/ligaf/levante-femenino.png',
-  'Madrid CFF':               'logos/ligaf/images-Photoroom.png',
-  'Costa Adeje Tenerife':     'logos/ligaf/U.D.-Granadilla-Tenerife-Egatesa.png',
-  'UD Granadilla Tenerife':   'logos/ligaf/U.D.-Granadilla-Tenerife-Egatesa.png',
-  // Equipos Liga F que comparten logo con otras ligas:
-  'Real Betis Femenino':      'logos/laliga/BETIS.png',
+  // ── Liga F (Femenina) 2025/26 ──
+  'Alhama CF ElPozo':                 'logos/ligaf/ALHAMA EL POZO FEM.png',
+  'Alhama CF El Pozo':                'logos/ligaf/ALHAMA EL POZO FEM.png',
+  'Badalona Femenino':                'logos/ligaf/Badalona_Women.png',
+  'Levante Badalona':                 'logos/ligaf/Badalona_Women.png',
+  'Deportivo de La Coruña Femenino':  'logos/ligaf/DEPOR.png',
+  'Deportivo Abanca':                 'logos/ligaf/DEPOR.png',
+  'DUX Logroño':                      'logos/ligaf/DUX LOGROÑO.png',
+  'Eibar Femenino':                   'logos/ligaf/EIBAR.png',
+  'Levante Las Planas':               'logos/ligaf/levante-femenino.png',
+  'Madrid CFF':                       'logos/ligaf/images-Photoroom.png',
+  'Tenerife Femenino':                'logos/ligaf/U.D.-Granadilla-Tenerife-Egatesa.png',
+  'Costa Adeje Tenerife':             'logos/ligaf/U.D.-Granadilla-Tenerife-Egatesa.png',
+  'UD Granadilla Tenerife':           'logos/ligaf/U.D.-Granadilla-Tenerife-Egatesa.png',
 
-  // ── 1ª RFEF Grupo 1 ──
-  'Barakaldo CF':             'logos/rfef/BARAKALDO.png',
-  'Cacereño':                 'logos/rfef/CACEREÑO.png',
-  'CD Cacereño':              'logos/rfef/CACEREÑO.png',
-  'CD Arenteiro':             'logos/rfef/c.d. arenteiro.png',
-  'CD Lugo':                  'logos/rfef/LUGO.png',
-  'CP Mérida':                'logos/rfef/MERIDA.png',
-  'CA Osasuna B':             'logos/rfef/OSASUNA-B.png',
-  'Ourense CF':               'logos/rfef/OURENSE.png',
-  'Pontevedra CF':            'logos/rfef/PONTEVEDRA CF.png',
-  'Racing de Ferrol':         'logos/rfef/RACING DE FERROL.png',
-  'Real Madrid Castilla':     'logos/rfef/RMADRID CASTILLA.png',
-  'Real Avilés CF':           'logos/rfef/Real Avilés.png',
-  'CF Talavera de la Reina':  'logos/rfef/TALAVERA DE LA REINA.png',
-  'CD Tenerife':              'logos/rfef/TENERIFE.png',
-  'Unionistas de Salamanca':  'logos/rfef/Unionistas_Salamanca.png',
-  'Zamora CF':                'logos/rfef/ZAMORA-CF.png',
-  'Arenas Club':              'logos/rfef/arenasclub.png',
-  'CD Guadalajara':           'logos/rfef/club deportivo guadalajara.png',
-  'SD Ponferradina':          'logos/rfef/sd_ponferradina.png',
+  // ── 1ª RFEF Grupo 1 2025/26 ──
+  'Barakaldo CF':                     'logos/rfef/BARAKALDO.png',
+  'CP Cacereño':                      'logos/rfef/CACEREÑO.png',
+  'Cacereño':                         'logos/rfef/CACEREÑO.png',
+  'CD Arenteiro':                     'logos/rfef/c.d. arenteiro.png',
+  'CD Lugo':                          'logos/rfef/LUGO.png',
+  'CP Mérida':                        'logos/rfef/MERIDA.png',
+  'Mérida AD':                        'logos/rfef/MERIDA.png',
+  'CA Osasuna B':                     'logos/rfef/OSASUNA-B.png',
+  'Osasuna Promesas':                 'logos/rfef/OSASUNA-B.png',
+  'Ourense CF':                       'logos/rfef/OURENSE.png',
+  'Pontevedra CF':                    'logos/rfef/PONTEVEDRA CF.png',
+  'Racing de Ferrol':                 'logos/rfef/RACING DE FERROL.png',
+  'Real Madrid Castilla':             'logos/rfef/RMADRID CASTILLA.png',
+  'Real Avilés CF':                   'logos/rfef/Real Avilés.png',
+  'Real Avilés Industrial':           'logos/rfef/Real Avilés.png',
+  'CF Talavera de la Reina':          'logos/rfef/TALAVERA DE LA REINA.png',
+  'CD Tenerife':                      'logos/rfef/TENERIFE.png',
+  'Unionistas CF':                    'logos/rfef/Unionistas_Salamanca.png',
+  'Unionistas de Salamanca':          'logos/rfef/Unionistas_Salamanca.png',
+  'Zamora CF':                        'logos/rfef/ZAMORA-CF.png',
+  'Arenas Club':                      'logos/rfef/arenasclub.png',
+  'CD Guadalajara':                   'logos/rfef/club deportivo guadalajara.png',
+  'SD Ponferradina':                  'logos/rfef/sd_ponferradina.png',
+  // Filiales - usan el logo del club padre desde laliga/
+  'RC Celta Fortuna':                 'logos/laliga/CELTA.png',
 };
 
 function getShieldUrl(teamName) {
