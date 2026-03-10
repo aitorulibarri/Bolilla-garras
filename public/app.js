@@ -392,6 +392,16 @@ async function loadMatches() {
     const res = await fetchWithRetry('/api/matches/upcoming');
     const matches = await res.json();
 
+    // Guard: if the API returned an error object (e.g. 401), show a message instead of crashing
+    if (!Array.isArray(matches)) {
+      if (res.status === 401) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔒</div><h3>Sesión expirada</h3><p>Cierra sesión y vuelve a entrar</p></div>`;
+      } else {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar partidos</h3><p>${matches.error || 'Error desconocido'}</p></div>`;
+      }
+      return;
+    }
+
     // Update last refresh timestamp
     const lastUpdate = document.getElementById('last-update');
     if (lastUpdate) {
@@ -419,7 +429,7 @@ async function loadMatches() {
     });
   } catch (err) {
     console.error(err);
-    container.innerHTML = '<p>Error al cargar partidos</p>';
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar partidos</h3><p>Inténtalo de nuevo</p></div>';
   }
 }
 
@@ -880,6 +890,12 @@ async function loadAdminMatches() {
   try {
     const res = await fetchWithRetry('/api/matches');
     const matches = await res.json();
+
+    // Guard: if the API returned an error object (e.g. 401), show a message instead of crashing
+    if (!Array.isArray(matches)) {
+      container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔒</div><h3>${res.status === 401 ? 'Sin permisos de admin' : 'Error al cargar'}</h3><p>${matches.error || ''}</p></div>`;
+      return;
+    }
 
     if (matches.length === 0) {
       container.innerHTML = `
