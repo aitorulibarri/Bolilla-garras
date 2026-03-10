@@ -937,6 +937,8 @@ async function loadAdminMatches() {
               
               ${!match.is_finished ? `<button id="btn-edit-${match.id}" class="btn btn-secondary btn-sm" title="Editar partido">📝</button>` : ''}
               
+              <button id="btn-preds-${match.id}" class="btn btn-sm" style="background: rgba(255,165,0,0.15); border: 1px solid rgba(255,165,0,0.4); color: #FFA500;" title="Ver/ocultar pronósticos">👁️ Pronósticos</button>
+              
               <button id="btn-delete-${match.id}" class="btn btn-danger btn-sm">🗑️</button>
             </div>
           </div>
@@ -960,6 +962,14 @@ async function loadAdminMatches() {
             </div>
           </div>
           ` : ''}
+
+          <!-- Panel de pronósticos (siempre presente, oculto por defecto) -->
+          <div id="preds-panel-${match.id}" style="display: none; margin-top: 16px;">
+            <div style="padding: 14px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid rgba(255,165,0,0.2);">
+              <h5 style="margin-bottom: 10px; color: #FFA500; font-size: 13px;">📝 Pronósticos del partido</h5>
+              <div id="preds-list-${match.id}"><div class="loading"><div class="spinner"></div></div></div>
+            </div>
+          </div>
         </div>
       `;
     }).join('');
@@ -973,6 +983,10 @@ async function loadAdminMatches() {
       // Delete Match
       const deleteBtn = document.getElementById(`btn-delete-${match.id}`);
       if (deleteBtn) deleteBtn.addEventListener('click', () => deleteMatch(match.id));
+
+      // Toggle predictions panel
+      const predsBtn = document.getElementById(`btn-preds-${match.id}`);
+      if (predsBtn) predsBtn.addEventListener('click', () => togglePredictions(match.id));
 
       if (!match.is_finished) {
         // Toggle Edit Form
@@ -1243,5 +1257,98 @@ async function loadAdminStats() {
     `;
   } catch (err) {
     container.innerHTML = '<p style="color: var(--error); text-align: center;">Error de conexión</p>';
+  }
+}
+
+// ==================== ADMIN: VER Y BORRAR PRONÓSTICOS ====================
+
+async function togglePredictions(matchId) {
+  const panel = document.getElementById(`preds-panel-${matchId}`);
+  if (!panel) return;
+
+  // Toggle: si ya está visible, lo ocultamos
+  if (panel.style.display !== 'none') {
+    panel.style.display = 'none';
+    return;
+  }
+
+  // Mostrar y cargar
+  panel.style.display = 'block';
+  const listEl = document.getElementById(`preds-list-${matchId}`);
+  listEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  try {
+    const res = await fetchWithRetry(`/api/admin/matches/${matchId}/predictions`);
+    const preds = await res.json();
+
+    if (!Array.isArray(preds) || preds.length === 0) {
+      listEl.innerHTML = '<p style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 12px;">Sin pronósticos todavía</p>';
+      return;
+    }
+
+    listEl.innerHTML = `
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        <thead>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.08);">
+            <th style="text-align: left; padding: 6px 8px; color: var(--text-secondary); font-weight: 600;">Jugador</th>
+            <th style="text-align: center; padding: 6px 8px; color: var(--text-secondary); font-weight: 600;">Pronóstico</th>
+            <th style="text-align: center; padding: 6px 8px; color: var(--text-secondary); font-weight: 600;">Puntos</th>
+            <th style="text-align: center; padding: 6px 8px; color: var(--text-secondary); font-weight: 600;">Borrar</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${preds.map(p => `
+            <tr id="pred-row-${p.id}" style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+              <td style="padding: 8px; font-weight: 600; color: var(--text-primary);">${p.player_name}</td>
+              <td style="padding: 8px; text-align: center; font-family: 'Orbitron', sans-serif; color: #00F5A0;">${p.home_goals} - ${p.away_goals}</td>
+              <td style="padding: 8px; text-align: center; color: #FFD700;">${p.points !== null ? p.points + ' pts' : '—'}</td>
+              <td style="padding: 8px; text-align: center;">
+                <button id="del-pred-${p.id}" class="btn btn-danger btn-sm" style="padding: 4px 10px; font-size: 11px;">🗑️</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+
+    // Attach delete listeners
+    preds.forEach(p => {
+      const delBtn = document.getElementById(`del-pred-${p.id}`);
+      if (delBtn) delBtn.addEventListener('click', () => deletePrediction(p.id, p.player_name, matchId));
+    });
+
+  } catch (err) {
+    listEl.innerHTML = '<p style="color: var(--error);">Error al cargar pronósticos</p>';
+    console.error(err);
+  }
+}
+
+async function deletePrediction(predId, playerName, matchId) {
+  const confirmed = confirm(`⚠️ ¿Borrar el pronóstico de "${playerName}"?\n\nEl jugador podrá volver a pronosticar si el plazo no ha cerrado.`);
+  if (!confirmed) return;
+
+  try {
+    const token = localStorage.getItem('bolilla_token') || '';
+    const res = await fetch(`/api/admin/predictions/${predId}`, {
+      method: 'DELETE',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    });
+
+    if (res.ok) {
+      // Eliminar fila del DOM sin recargar
+      const row = document.getElementById(`pred-row-${predId}`);
+      if (row) {
+        row.style.transition = 'opacity 0.3s ease';
+        row.style.opacity = '0';
+        setTimeout(() => row.remove(), 300);
+      }
+      showToast(`Pronóstico de ${playerName} borrado`, 'success');
+    } else {
+      const data = await res.json();
+      showToast(data.error || 'Error al borrar pronóstico', 'error');
+    }
+  } catch (err) {
+    showToast('Error de conexión', 'error');
+    console.error(err);
   }
 }

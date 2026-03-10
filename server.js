@@ -815,6 +815,47 @@ function calculatePoints(predHome, predAway, realHome, realAway) {
     return Math.min(points, 3); // Max 3 if not exact
 }
 
+// Get all predictions for a specific match (admin only)
+app.get('/api/admin/matches/:id/predictions', requireAdmin, async (req, res) => {
+    try {
+        const matchId = parseInt(req.params.id);
+        if (!IS_POSTGRES) return res.json([]);
+
+        const predictions = await query(
+            `SELECT id, player_name, home_goals, away_goals, points, created_at
+             FROM predictions
+             WHERE match_id = $1
+             ORDER BY player_name ASC`,
+            [matchId]
+        );
+
+        res.json(predictions);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete a single prediction by ID (admin only)
+app.delete('/api/admin/predictions/:id', requireAdmin, async (req, res) => {
+    try {
+        const predId = parseInt(req.params.id);
+        if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
+
+        const deleted = await pool.query(
+            'DELETE FROM predictions WHERE id = $1 RETURNING id, player_name',
+            [predId]
+        );
+
+        if (deleted.rows.length === 0) {
+            return res.status(404).json({ error: 'Pronóstico no encontrado' });
+        }
+
+        res.json({ success: true, deleted: deleted.rows[0] });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Serve frontend
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
