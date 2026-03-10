@@ -1556,3 +1556,31 @@ body::before {
   background: linear-gradient(90deg, rgba(205, 127, 50, 0.05), transparent);
   border-left: 3px solid #CD7F32;
 }
+
+/* ==================== TEAM NAME LABEL & LOGO FALLBACK ==================== */
+
+.team-name-label {
+  display: block;
+  margin-top: 8px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  max-width: 100px;
+  word-break: break-word;
+}
+
+.shield-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  font-size: 44px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}

@@ -445,71 +445,115 @@ const LEAGUE_TEAMS = {
   ]
 };
 
-const TEAM_MAPPINGS = {
-  'Athletic Club': 'athletic_club',
-  'Athletic Femenino': 'athletic_club',
-  'Bilbao Athletic': 'bilbao_athletic',
-  'FC Barcelona': 'barcelona',
-  'Real Madrid': 'real_madrid',
-  'Atlético de Madrid': 'atletico_madrid',
-  'Real Sociedad': 'real_sociedad',
-  'Real Betis': 'real_betis',
-  'Sevilla FC': 'sevilla',
-  'Valencia CF': 'valencia',
-  'Villarreal CF': 'villarreal',
-  'Celta de Vigo': 'celta',
-  'CA Osasuna': 'osasuna',
-  'Girona FC': 'girona',
-  'Rayo Vallecano': 'rayo_vallecano',
-  'Getafe CF': 'getafe',
-  'RCD Espanyol': 'espanyol',
-  'RCD Mallorca': 'mallorca',
-  'UD Las Palmas': 'las_palmas',
-  'Deportivo Alavés': 'alaves',
-  'CD Leganés': 'leganes',
-  'Real Valladolid': 'valladolid',
-  'Levante UD': 'levante',
-  'SD Eibar': 'eibar',
-  'Real Oviedo': 'real_oviedo',
-  'Racing de Santander': 'racing_santander',
-  'Sporting de Gijón': 'sporting_gijon',
-  'Helvetia Anaitasuna': 'anaitasuna' // Ejemplo genérico
+// ==================== LOGO MAP ====================
+// Mapeo directo: nombre del equipo -> ruta al logo en public/logos/
+// Carpetas: laliga, segunda, ligaf, rfef
+const LOGO_MAP = {
+  // ── ATHLETIC CLUB (equipo "raíz" - usa logo de LaLiga) ──
+  'Athletic Club':            'logos/laliga/athletic-bilbao-logo-vector.png',
+  'Athletic Femenino':        'logos/laliga/athletic-bilbao-logo-vector.png',
+  'Bilbao Athletic':          'logos/rfef/BILBAO ATHLETIC.png',
+
+  // ── LaLiga EA Sports ──
+  'Atlético de Madrid':       'logos/laliga/ATLETICO.png',
+  'FC Barcelona':             'logos/laliga/FC-Barcelona.png',
+  'Real Madrid':              'logos/laliga/RMADRID.png',
+  'Real Sociedad':            'logos/laliga/REAL SOCIEDAD.png',
+  'Real Betis':               'logos/laliga/BETIS.png',
+  'Sevilla FC':               'logos/laliga/SEVILLA.png',
+  'Valencia CF':              'logos/laliga/Valencia.png',
+  'Villarreal CF':            'logos/laliga/VILLAREAL.png',
+  'RC Celta':                 'logos/laliga/CELTA.png',
+  'CA Osasuna':               'logos/laliga/OSASUNA.png',
+  'Girona FC':                'logos/laliga/Girona FC.png',
+  'Rayo Vallecano':           'logos/laliga/RAYO-VALLECANO-SAD.png',
+  'Getafe CF':                'logos/laliga/GETAFE.png',
+  'RCD Espanyol':             'logos/laliga/ESPAÑOL.png',
+  'RCD Mallorca':             'logos/laliga/MALLORCA.png',
+  'UD Las Palmas':            'logos/segunda/UD LAS PALMAS.png',
+  'Deportivo Alavés':         'logos/laliga/DEPORTIVO ALAVES 2021.png',
+  'CD Leganés':               'logos/segunda/LEGANES.png',
+  'Real Valladolid':          'logos/segunda/valladolid.png',
+  'Levante UD':               'logos/laliga/LEVANTE.png',
+  'Real Oviedo':              'logos/laliga/OVIEDO.png',
+  'Elche CF':                 'logos/laliga/Escudo_Elche_CF.png',
+  'ATB':                      'logos/laliga/ATB.png',
+
+  // ── Segunda División ──
+  'Albacete Balompié':        'logos/segunda/ALBACETE.png',
+  'UD Almería':               'logos/segunda/ALMERIA.png',
+  'Cádiz CF':                 'logos/segunda/CADIZ.png',
+  'CD Castellón':             'logos/segunda/CD Castellón.png',
+  'Córdoba CF':               'logos/segunda/CORDOBA.png',
+  'Cultural Leonesa':         'logos/segunda/CULTURAL LEONESA.png',
+  'RC Deportivo':             'logos/segunda/DEPORTIVO DE LA CORUÑA.PNG',
+  'Deportivo de La Coruña':   'logos/segunda/DEPORTIVO DE LA CORUÑA.PNG',
+  'SD Eibar':                 'logos/segunda/EIBAR.png',
+  'FC Andorra':               'logos/segunda/FC ANDORRA.png',
+  'Granada CF':               'logos/segunda/GRANADA.png',
+  'SD Huesca':                'logos/segunda/HUESCA.png',
+  'CD Mirandés':              'logos/segunda/MIRANDES.png',
+  'Málaga CF':                'logos/segunda/Málaga.png',
+  'Racing de Santander':      'logos/segunda/RACING SANTANDER.png',
+  'Real Sociedad B':          'logos/segunda/REAL SOCIEDAD B.png',
+  'Sporting de Gijón':        'logos/segunda/SPORTING GIJON.png',
+  'Real Zaragoza':            'logos/segunda/ZARAGOZA.png',
+  'Burgos CF':                'logos/segunda/burgos c.f..png',
+  'AD Ceuta FC':              'logos/segunda/AD CEUTA CF.jpg',
+  'RC Celta Fortuna':         'logos/segunda/CELTA.png',  // Usan el logo del Celta
+  'FC Barcelona Atlètic':     'logos/segunda/FC-Barcelona.png',  // Usan el logo del Barça
+
+  // ── Liga F (Femenina) ──
+  'Alhama CF El Pozo':        'logos/ligaf/ALHAMA EL POZO FEM.png',
+  'Levante Badalona':         'logos/ligaf/Badalona_Women.png',
+  'Deportivo Abanca':         'logos/ligaf/DEPOR.png',
+  'DUX Logroño':              'logos/ligaf/DUX LOGROÑO.png',
+  'Levante Las Planas':       'logos/ligaf/levante-femenino.png',
+  'Madrid CFF':               'logos/ligaf/images-Photoroom.png',
+  'Costa Adeje Tenerife':     'logos/ligaf/U.D.-Granadilla-Tenerife-Egatesa.png',
+  'UD Granadilla Tenerife':   'logos/ligaf/U.D.-Granadilla-Tenerife-Egatesa.png',
+  // Equipos Liga F que comparten logo con otras ligas:
+  'Real Betis Femenino':      'logos/laliga/BETIS.png',
+
+  // ── 1ª RFEF Grupo 1 ──
+  'Barakaldo CF':             'logos/rfef/BARAKALDO.png',
+  'Cacereño':                 'logos/rfef/CACEREÑO.png',
+  'CD Cacereño':              'logos/rfef/CACEREÑO.png',
+  'CD Arenteiro':             'logos/rfef/c.d. arenteiro.png',
+  'CD Lugo':                  'logos/rfef/LUGO.png',
+  'CP Mérida':                'logos/rfef/MERIDA.png',
+  'CA Osasuna B':             'logos/rfef/OSASUNA-B.png',
+  'Ourense CF':               'logos/rfef/OURENSE.png',
+  'Pontevedra CF':            'logos/rfef/PONTEVEDRA CF.png',
+  'Racing de Ferrol':         'logos/rfef/RACING DE FERROL.png',
+  'Real Madrid Castilla':     'logos/rfef/RMADRID CASTILLA.png',
+  'Real Avilés CF':           'logos/rfef/Real Avilés.png',
+  'CF Talavera de la Reina':  'logos/rfef/TALAVERA DE LA REINA.png',
+  'CD Tenerife':              'logos/rfef/TENERIFE.png',
+  'Unionistas de Salamanca':  'logos/rfef/Unionistas_Salamanca.png',
+  'Zamora CF':                'logos/rfef/ZAMORA-CF.png',
+  'Arenas Club':              'logos/rfef/arenasclub.png',
+  'CD Guadalajara':           'logos/rfef/club deportivo guadalajara.png',
+  'SD Ponferradina':          'logos/rfef/sd_ponferradina.png',
 };
 
-function getTeamSlug(name) {
-  // 1. Check direct mapping
-  if (TEAM_MAPPINGS[name]) return TEAM_MAPPINGS[name];
+function getShieldUrl(teamName) {
+  // 1. Búsqueda directa exacta
+  if (LOGO_MAP[teamName]) return LOGO_MAP[teamName];
 
-  // 2. Normalize
-  return name.toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove accents
-    .replace(/ fc$/i, '') // Remove trailing FC
-    .replace(/^fc /i, '') // Remove leading FC
-    .replace(/ cf$/i, '')
-    .replace(/ ud$/i, '')
-    .replace(/ cd$/i, '')
-    .replace(/ sd$/i, '')
-    .replace(/ rcd$/i, '')
-    .trim()
-    .replace(/\s+/g, '_');
-}
-
-function getShieldUrl(teamName, matchContextTeam) {
-  const slug = getTeamSlug(teamName);
-  let folder = 'laliga';
-
-  if (matchContextTeam === 'Athletic Femenino' || teamName.includes('Femenino')) {
-    folder = 'femenina';
-  } else if (matchContextTeam === 'Bilbao Athletic') {
-    folder = 'segunda';
+  // 2. Búsqueda insensible a mayúsculas/minúsculas
+  const lower = teamName.toLowerCase();
+  for (const [key, val] of Object.entries(LOGO_MAP)) {
+    if (key.toLowerCase() === lower) return val;
   }
 
-  // Special cases for Athletic Club teams using same shield filename but different folders
-  if (teamName === 'Athletic Club') return `assets/escudos/laliga/athletic_club.png`;
-  if (teamName === 'Athletic Femenino') return `assets/escudos/femenina/athletic_club.png`;
-  if (teamName === 'Bilbao Athletic') return `assets/escudos/segunda/bilbao_athletic.png`;
+  // 3. Búsqueda parcial (si el nombre contiene o está contenido)
+  for (const [key, val] of Object.entries(LOGO_MAP)) {
+    if (lower.includes(key.toLowerCase()) || key.toLowerCase().includes(lower)) return val;
+  }
 
-  return `assets/escudos/${folder}/${slug}.png`;
+  // 4. Sin logo: devuelve null (la imagen se ocultará con onerror)
+  return null;
 }
 
 
@@ -527,18 +571,24 @@ function renderMatchCard(match, userPrediction) {
   const homeTeam = match.is_home ? match.team : match.opponent;
   const awayTeam = match.is_home ? match.opponent : match.team;
 
-  // Context for Shield Folder
-  const contextTeam = match.team;
-  const homeShield = getShieldUrl(homeTeam, contextTeam);
-  const awayShield = getShieldUrl(awayTeam, contextTeam);
+  const homeShield = getShieldUrl(homeTeam);
+  const awayShield = getShieldUrl(awayTeam);
 
   const userHomeGoals = hasPrediction ? userPrediction.home_goals : '';
   const userAwayGoals = hasPrediction ? userPrediction.away_goals : '';
 
-  // Determine League Badge (Simplified logic)
+  // Determine League Badge
+  const contextTeam = match.team;
   let leagueName = 'LaLiga';
-  if (contextTeam.includes('Femenino')) leagueName = 'Liga F';
-  if (contextTeam.includes('Bilbao')) leagueName = '1ª RFEF';
+  if (contextTeam === 'Athletic Femenino' || contextTeam.includes('Femenino')) leagueName = 'Liga F';
+  if (contextTeam === 'Bilbao Athletic') leagueName = '1ª RFEF';
+
+  const homeShieldHtml = homeShield
+    ? `<img src="${homeShield}" class="big-shield" alt="${homeTeam}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'shield-fallback',textContent:'⚽'}));">`
+    : `<span class="shield-fallback">⚽</span>`;
+  const awayShieldHtml = awayShield
+    ? `<img src="${awayShield}" class="big-shield" alt="${awayTeam}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'shield-fallback',textContent:'⚽'}));">`
+    : `<span class="shield-fallback">⚽</span>`;
 
   return `
     <div class="match-card ${canPredict ? '' : 'expired'}">
@@ -552,8 +602,8 @@ function renderMatchCard(match, userPrediction) {
       <div class="match-content-grid">
         <!-- Home Team -->
         <div class="team-container">
-            <img src="${homeShield}" class="big-shield" 
-                 onerror="this.style.display='none';">
+            ${homeShieldHtml}
+            <span class="team-name-label">${homeTeam}</span>
         </div>
 
         <!-- Score / Inputs -->
@@ -577,8 +627,8 @@ function renderMatchCard(match, userPrediction) {
 
         <!-- Away Team -->
         <div class="team-container">
-             <img src="${awayShield}" class="big-shield" 
-                 onerror="this.style.display='none';">
+            ${awayShieldHtml}
+            <span class="team-name-label">${awayTeam}</span>
         </div>
       </div>
 
