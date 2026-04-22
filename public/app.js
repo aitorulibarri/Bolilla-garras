@@ -28,7 +28,7 @@ async function fetchWithRetry(url, options = {}, retries = 3, delay = 1000) {
       ...(options.headers || {})
     }
   };
-  const mergedOptions = { ...defaultOptions, ...options };
+  const mergedOptions = { ...defaultOptions, ...options, headers: defaultOptions.headers };
 
   // Remove credentials: 'include' since we're using JWT now
   delete mergedOptions.credentials;
