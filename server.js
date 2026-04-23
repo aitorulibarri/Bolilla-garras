@@ -15,7 +15,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'bolilla-garras-secret-2026-seguro'
 const TOKEN_EXPIRY = '24h';
 
 // Admin usernames (lowercase) - these users will have is_admin = true on registration
-const ADMIN_USERNAMES = ['admin', 'aitor', 'garras', 'aitoruli'];
+const ADMIN_USERNAMES = ['admin', 'garras'];
 
 function isAdminUsername(username) {
     return ADMIN_USERNAMES.includes(username?.toLowerCase());
@@ -101,9 +101,9 @@ const requireAdmin = (req, res, next) => {
 };
 
 function checkAdmin(req, res, next) {
-    // Always allow garras, GARRAS, aitor, admin - simpler check
+    // Allow admin usernames
     const username = req.user.username?.toLowerCase();
-    if (['garras', 'garrras', 'aitor', 'admin', 'aitoruli'].includes(username)) {
+    if (['garras', 'admin'].includes(username)) {
         return next();
     }
     // Also check isAdmin flag
@@ -195,6 +195,11 @@ async function dbInit() {
             // Add player_name column if it doesn't exist (for old databases)
             try {
                 await pool.query(`ALTER TABLE predictions ADD COLUMN IF NOT EXISTS player_name TEXT`);
+            } catch (e) { /* ignore if exists */ }
+
+            // Ensure UNIQUE constraint exists (required for ON CONFLICT upsert)
+            try {
+                await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS predictions_player_match_unique ON predictions(player_name, match_id)`);
             } catch (e) { /* ignore if exists */ }
 
             dbReady = true;
@@ -335,27 +340,17 @@ app.post('/api/login', authLimiter, async (req, res) => {
         });
     } catch (err) {
         console.error('Login error:', err);
-        res.status(500).json({ error: 'Error al iniciar sesión', detail: err.message });
+        res.status(500).json({ error: 'Error al iniciar sesión' });
     }
 });
 
-// Logout
+// Logout (JWT es stateless — el frontend borra el token de localStorage)
 app.post('/api/logout', (req, res) => {
-    req.session.destroy((err) => {
-        if (err) {
-            return res.status(500).json({ error: 'Error al cerrar sesión' });
-        }
-        res.json({ success: true });
-    });
+    res.json({ success: true });
 });
 
-// Legacy endpoint for backward compatibility (will be removed later)
-app.post('/api/register-simple', async (req, res) => {
-    res.json({ success: true, message: 'Use /api/register instead' });
-});
-
-// Reset password for GARRAS (uppercase)
-app.get('/api/admin/reset-garras-password', async (req, res) => {
+// Reset password for GARRAS (admin only)
+app.get('/api/admin/reset-garras-password', requireAdmin, async (req, res) => {
     try {
         await dbInit();
         const salt = await bcrypt.genSalt(10);
@@ -393,17 +388,6 @@ app.get('/api/admin/emergency-reset-garras', async (req, res) => {
             msg = 'GARRAS creado. ';
         }
 
-        // Create aitoruli admin
-        const passwordHash2 = await bcrypt.hash('1234', salt);
-        const existing2 = await queryOne('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', ['aitoruli']);
-        if (existing2) {
-            await pool.query('UPDATE users SET password_hash = $1, is_admin = 1 WHERE LOWER(username) = LOWER($2)', [passwordHash2, 'aitoruli']);
-            msg += 'aitoruli actualizado.';
-        } else {
-            await pool.query('INSERT INTO users (username, display_name, password_hash, is_admin) VALUES ($1, $2, $3, 1)', ['aitoruli', 'Aitor Ulibarri', passwordHash2]);
-            msg += 'aitoruli creado.';
-        }
-
         res.json({ success: true, message: msg });
     } catch (err) {
         console.error('Emergency reset error:', err);
@@ -411,8 +395,8 @@ app.get('/api/admin/emergency-reset-garras', async (req, res) => {
     }
 });
 
-// Debug endpoint to check current user (with token from query for testing)
-app.get('/api/debug/me', async (req, res) => {
+// Debug endpoint to check current user (admin only)
+app.get('/api/debug/me', requireAdmin, async (req, res) => {
     // Show secret info (only first few chars for security)
     const secretInfo = JWT_SECRET ? JWT_SECRET.substring(0, 10) + '...' : 'NOT SET';
     const envSecret = process.env.JWT_SECRET ? process.env.JWT_SECRET.substring(0, 10) + '...' : 'NOT SET';
@@ -443,8 +427,8 @@ app.get('/api/debug/me', async (req, res) => {
     }
 });
 
-// Debug endpoint to list all users (public, no auth)
-app.get('/api/debug/users', async (req, res) => {
+// Debug endpoint to list all users (admin only)
+app.get('/api/debug/users', requireAdmin, async (req, res) => {
     try {
         await dbInit();
         const users = await query('SELECT id, username, display_name, is_admin, created_at FROM users ORDER BY id');
@@ -454,8 +438,8 @@ app.get('/api/debug/users', async (req, res) => {
     }
 });
 
-// Emergency: clear all matches and predictions (no auth required for emergency)
-app.get('/api/admin/clear-matches', async (req, res) => {
+// Emergency: clear all matches and predictions (admin only)
+app.get('/api/admin/clear-matches', requireAdmin, async (req, res) => {
     try {
         await dbInit();
         await pool.query('DELETE FROM predictions');
@@ -467,18 +451,18 @@ app.get('/api/admin/clear-matches', async (req, res) => {
     }
 });
 
-// Emergency: keep only garras and aitoruli users
-app.get('/api/admin/clean-users', async (req, res) => {
+// Emergency: keep only GARRAS admin (admin only)
+app.get('/api/admin/clean-users', requireAdmin, async (req, res) => {
     try {
         await dbInit();
         // Delete predictions from users being deleted
         await pool.query(`
             DELETE FROM predictions
-            WHERE player_name NOT IN ('garras', 'aitoruli')
+            WHERE LOWER(player_name) NOT IN ('garras')
         `);
-        // Delete users except garras and aitoruli
-        await pool.query(`DELETE FROM users WHERE LOWER(username) NOT IN ('garras', 'aitoruli')`);
-        res.json({ success: true, message: 'Usuarios eliminados (solo quedan garras y aitoruli)' });
+        // Delete all users except GARRAS
+        await pool.query(`DELETE FROM users WHERE LOWER(username) != 'garras'`);
+        res.json({ success: true, message: 'Usuarios eliminados (solo queda GARRAS)' });
     } catch (err) {
         console.error('Clean users error:', err);
         res.status(500).json({ error: 'Error al limpiar usuarios' });
@@ -586,8 +570,8 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
                 SELECT 1
                 FROM predictions pr
                 JOIN matches m ON pr.match_id = m.id
-                WHERE pr.player_name = p.display_name
-                  AND m.is_finished = 0 
+                WHERE LOWER(pr.player_name) = LOWER(p.username)
+                  AND m.is_finished = 0
                   AND m.deadline > NOW()
             )
             ORDER BY p.display_name
@@ -661,19 +645,25 @@ app.put('/api/matches/:id/result', requireAdmin, async (req, res) => {
         const { homeGoals, awayGoals } = req.body;
         const matchId = parseInt(req.params.id);
 
+        const hg = parseInt(homeGoals);
+        const ag = parseInt(awayGoals);
+        if (isNaN(hg) || isNaN(ag) || hg < 0 || hg > 20 || ag < 0 || ag > 20) {
+            return res.status(400).json({ error: 'Goles deben ser números entre 0 y 20' });
+        }
+
         if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
 
         // Update match
         await pool.query(
             'UPDATE matches SET home_goals = $1, away_goals = $2, is_finished = 1 WHERE id = $3',
-            [homeGoals, awayGoals, matchId]
+            [hg, ag, matchId]
         );
 
         // Calculate points for all predictions
         const predictions = await query('SELECT * FROM predictions WHERE match_id = $1', [matchId]);
 
         for (const pred of predictions) {
-            const points = calculatePoints(pred.home_goals, pred.away_goals, homeGoals, awayGoals);
+            const points = calculatePoints(pred.home_goals, pred.away_goals, hg, ag);
             await pool.query('UPDATE predictions SET points = $1 WHERE id = $2', [points, pred.id]);
         }
 
@@ -683,12 +673,23 @@ app.put('/api/matches/:id/result', requireAdmin, async (req, res) => {
     }
 });
 
-// Delete match (admin only)
+// Delete match (admin only) — solo permitido si el partido NO está finalizado,
+// para preservar los puntos ya sumados a la clasificación y el historial de usuarios.
 app.delete('/api/matches/:id', requireAdmin, async (req, res) => {
     try {
         const matchId = parseInt(req.params.id);
 
         if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
+
+        const match = await queryOne('SELECT is_finished FROM matches WHERE id = $1', [matchId]);
+        if (!match) {
+            return res.status(404).json({ error: 'Partido no encontrado' });
+        }
+        if (match.is_finished) {
+            return res.status(400).json({
+                error: 'No se puede eliminar un partido finalizado: se perderían los puntos de la clasificación y el historial de los usuarios.'
+            });
+        }
 
         await pool.query('DELETE FROM predictions WHERE match_id = $1', [matchId]);
         await pool.query('DELETE FROM matches WHERE id = $1', [matchId]);
@@ -729,15 +730,37 @@ app.post('/api/predictions', requireAuth, async (req, res) => {
             return res.status(400).json({ error: 'El plazo para pronósticos ha terminado' });
         }
 
-        // Upsert prediction
-        await pool.query(`
-      INSERT INTO predictions (player_name, match_id, home_goals, away_goals)
-      VALUES ($1, $2, $3, $4)
-      ON CONFLICT(player_name, match_id) DO UPDATE SET home_goals = $3, away_goals = $4
-    `, [playerName, matchId, homeGoalsNum, awayGoalsNum]);
+        // Check if prediction already exists
+        const userId = req.user.id;
+        const existing = await queryOne(
+            'SELECT id FROM predictions WHERE LOWER(player_name) = LOWER($1) AND match_id = $2',
+            [playerName, matchId]
+        );
+
+        if (existing) {
+            await pool.query(
+                'UPDATE predictions SET home_goals = $1, away_goals = $2 WHERE id = $3',
+                [homeGoalsNum, awayGoalsNum, existing.id]
+            );
+        } else {
+            // Include user_id for legacy DB schemas that have this column
+            try {
+                await pool.query(
+                    'INSERT INTO predictions (player_name, match_id, home_goals, away_goals, user_id) VALUES ($1, $2, $3, $4, $5)',
+                    [playerName, matchId, homeGoalsNum, awayGoalsNum, userId]
+                );
+            } catch (insertErr) {
+                // Fallback: try without user_id (for clean schemas)
+                await pool.query(
+                    'INSERT INTO predictions (player_name, match_id, home_goals, away_goals) VALUES ($1, $2, $3, $4)',
+                    [playerName, matchId, homeGoalsNum, awayGoalsNum]
+                );
+            }
+        }
 
         res.json({ success: true });
     } catch (err) {
+        console.error('Prediction error:', err);
         res.status(500).json({ error: 'Error al guardar pronóstico' });
     }
 });
@@ -770,13 +793,15 @@ app.get('/api/leaderboard', async (req, res) => {
         if (!IS_POSTGRES) return res.json([]);
 
         const leaderboard = await query(`
-      SELECT 
-        player_name as name,
-        COALESCE(SUM(points), 0) as total_points,
-        COUNT(CASE WHEN points = 5 THEN 1 END) as exact_predictions,
-        COUNT(CASE WHEN points IS NOT NULL THEN 1 END) as total_predictions
-      FROM predictions
-      GROUP BY player_name
+      SELECT
+        pr.player_name as name,
+        COALESCE(u.display_name, pr.player_name) as display_name,
+        COALESCE(SUM(pr.points), 0) as total_points,
+        COUNT(CASE WHEN pr.points = 5 THEN 1 END) as exact_predictions,
+        COUNT(CASE WHEN pr.points IS NOT NULL THEN 1 END) as total_predictions
+      FROM predictions pr
+      LEFT JOIN users u ON LOWER(pr.player_name) = LOWER(u.username)
+      GROUP BY pr.player_name, u.display_name
       ORDER BY total_points DESC, exact_predictions DESC
     `);
 
@@ -814,6 +839,46 @@ function calculatePoints(predHome, predAway, realHome, realAway) {
 
     return Math.min(points, 3); // Max 3 if not exact
 }
+
+// List all users (admin only) — nunca devuelve password_hash
+app.get('/api/admin/users', requireAdmin, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.json([]);
+        const users = await query(
+            'SELECT id, username, display_name, is_admin, created_at FROM users ORDER BY display_name ASC'
+        );
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Reset a user's password (admin only) — el admin escribe la nueva contraseña
+app.put('/api/admin/users/:id/password', requireAdmin, async (req, res) => {
+    try {
+        const userId = parseInt(req.params.id);
+        const { newPassword } = req.body;
+
+        if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
+            return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
+        }
+
+        if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
+
+        const target = await queryOne('SELECT id, username FROM users WHERE id = $1', [userId]);
+        if (!target) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(newPassword, salt);
+
+        await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
+
+        res.json({ success: true, username: target.username });
+    } catch (err) {
+        console.error('Reset password error:', err);
+        res.status(500).json({ error: 'Error al cambiar la contraseña' });
+    }
+});
 
 // Get all predictions for a specific match (admin only)
 app.get('/api/admin/matches/:id/predictions', requireAdmin, async (req, res) => {

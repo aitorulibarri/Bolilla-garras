@@ -21,14 +21,12 @@ async function fetchWithRetry(url, options = {}, retries = 3, delay = 1000) {
   // Get JWT token from localStorage
   const token = localStorage.getItem('bolilla_token') || '';
 
-  // Add Authorization header with JWT token
-  const defaultOptions = {
-    headers: {
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      ...(options.headers || {})
-    }
+  // Merge headers: Authorization + caller's headers
+  const mergedHeaders = {
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...(options.headers || {})
   };
-  const mergedOptions = { ...defaultOptions, ...options, headers: defaultOptions.headers };
+  const mergedOptions = { ...options, headers: mergedHeaders };
 
   // Remove credentials: 'include' since we're using JWT now
   delete mergedOptions.credentials;
@@ -99,6 +97,22 @@ function checkSavedUser() {
 }
 
 function setupEventListeners() {
+  // Password visibility toggle (delegado, cubre login y registro).
+  // mousedown + preventDefault para no robar el foco del input entre el press y el release;
+  // así el toggle funciona igual tenga o no el foco en el campo.
+  document.querySelectorAll('.password-toggle').forEach(btn => {
+    btn.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      const input = document.getElementById(btn.dataset.target);
+      if (!input) return;
+      const isHidden = input.type === 'password';
+      input.type = isHidden ? 'text' : 'password';
+      btn.classList.toggle('is-visible', isHidden);
+      btn.setAttribute('aria-pressed', String(isHidden));
+      btn.setAttribute('aria-label', isHidden ? 'Ocultar contraseña' : 'Mostrar contraseña');
+    });
+  });
+
   // Auth tab switching
   authTabs.forEach(tab => {
     tab.addEventListener('click', () => {
@@ -171,16 +185,16 @@ function setupEventListeners() {
       showAuthError('Usuario debe tener al menos 3 caracteres');
       return;
     }
-    if (!/^[a-zA-Z0-9_ ]+$/.test(username)) {
-      showAuthError('Usuario solo puede contener letras, números, espacios y guión bajo');
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      showAuthError('Usuario solo puede contener letras, números y guión bajo');
       return;
     }
     if (displayName.length < 2) {
       showAuthError('Nombre debe tener al menos 2 caracteres');
       return;
     }
-    if (password.length < 4) {
-      showAuthError('Contraseña debe tener al menos 4 caracteres');
+    if (password.length < 8) {
+      showAuthError('Contraseña debe tener al menos 8 caracteres');
       return;
     }
     if (password !== passwordConfirm) {
@@ -378,6 +392,7 @@ function loadTabContent(tabId) {
     case 'admin':
       loadAdminMatches();
       loadAdminStats();
+      loadAdminUsers();
       break;
   }
 }
@@ -694,7 +709,7 @@ async function loadLeaderboardWidget() {
             <div class="leaderboard-row ${rankClass}">
                 <div class="rank-badge">${icon}</div>
                 <div class="user-info">
-                    <span class="user-name">${user.name || user.display_name}</span>
+                    <span class="user-name">${user.display_name || user.name}</span>
                     <span class="user-team">${user.exact_predictions} plenos</span>
                 </div>
                 <div class="user-points">${user.total_points} pts</div>
@@ -803,7 +818,7 @@ async function loadLeaderboard() {
               <tr>
                 <td class="rank">${rankEmoji}</td>
                 <td>
-                    <div style="font-weight: 700; color: var(--text-primary); font-size: 16px;">${user.name || user.display_name}</div>
+                    <div style="font-weight: 700; color: var(--text-primary); font-size: 16px;">${user.display_name || user.name}</div>
                 </td>
                 <td>
                     <span style="font-family: 'Orbitron', sans-serif; font-size: 20px; color: var(--neon-red); font-weight: 700; text-shadow: 0 0 10px rgba(255, 51, 51, 0.3);">${user.total_points}</span>
@@ -938,8 +953,8 @@ async function loadAdminMatches() {
               ${!match.is_finished ? `<button id="btn-edit-${match.id}" class="btn btn-secondary btn-sm" title="Editar partido">📝</button>` : ''}
               
               <button id="btn-preds-${match.id}" class="btn btn-sm" style="background: rgba(255,165,0,0.15); border: 1px solid rgba(255,165,0,0.4); color: #FFA500;" title="Ver/ocultar pronósticos">👁️ Pronósticos</button>
-              
-              <button id="btn-delete-${match.id}" class="btn btn-danger btn-sm">🗑️</button>
+
+              ${!match.is_finished ? `<button id="btn-delete-${match.id}" class="btn btn-danger btn-sm" title="Eliminar partido">🗑️</button>` : ''}
             </div>
           </div>
           
@@ -1009,6 +1024,102 @@ async function loadAdminMatches() {
   }
 }
 
+// ==================== ADMIN: USERS ====================
+
+async function loadAdminUsers() {
+  const container = document.getElementById('admin-users-container');
+  if (!container) return;
+  container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  try {
+    const res = await fetchWithRetry('/api/admin/users');
+    const users = await res.json().catch(() => ({}));
+
+    if (!res.ok || !Array.isArray(users)) {
+      container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔒</div><h3>${res.status === 401 ? 'Sin permisos de admin' : 'Error al cargar usuarios'}</h3><p>${(users && users.error) || ''}</p></div>`;
+      return;
+    }
+
+    if (users.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><h3>No hay usuarios registrados</h3></div>';
+      return;
+    }
+
+    const rows = users.map(u => {
+      const safeUsername = String(u.username).replace(/"/g, '&quot;');
+      const safeDisplay = String(u.display_name).replace(/</g, '&lt;');
+      const adminBadge = u.is_admin ? '<span style="background: rgba(255,51,51,0.2); color: var(--neon-red, #ff3333); padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;">ADMIN</span>' : '';
+      return `
+        <tr data-user-id="${u.id}">
+          <td style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.06);">
+            <strong>${safeDisplay}</strong> ${adminBadge}
+            <div style="font-size: 12px; color: var(--text-secondary);">@${safeUsername}</div>
+          </td>
+          <td style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.06); text-align: right;">
+            <button class="btn btn-secondary btn-sm" data-action="reset-pwd"
+              data-user-id="${u.id}" data-username="${safeUsername}" data-display="${safeDisplay}">
+              🔑 Resetear contraseña
+            </button>
+          </td>
+        </tr>`;
+    }).join('');
+
+    container.innerHTML = `
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="text-align: left; color: var(--text-secondary); font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">
+              <th style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1);">Usuario</th>
+              <th style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: right;">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+
+    container.querySelectorAll('button[data-action="reset-pwd"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        resetUserPassword(
+          parseInt(btn.dataset.userId),
+          btn.dataset.username,
+          btn.dataset.display
+        );
+      });
+    });
+  } catch (err) {
+    console.error(err);
+    container.innerHTML = '<p>Error al cargar usuarios</p>';
+  }
+}
+
+async function resetUserPassword(userId, username, displayName) {
+  const newPassword = prompt(`Nueva contraseña para ${displayName} (@${username}).\n\nMínimo 8 caracteres. Se la tendrás que comunicar tú (WhatsApp, etc.).`);
+  if (newPassword === null) return;
+
+  if (!newPassword || newPassword.length < 8) {
+    showToast('La contraseña debe tener al menos 8 caracteres', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetchWithRetry(`/api/admin/users/${userId}/password`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newPassword })
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok) {
+      showToast(`Contraseña de ${displayName} actualizada`, 'success');
+    } else {
+      showToast(data.error || 'Error al cambiar contraseña', 'error');
+    }
+  } catch (err) {
+    console.error(err);
+    showToast('Error de conexión', 'error');
+  }
+}
+
 async function setResult(matchId) {
   console.log('Intentando guardar resultado para partido:', matchId);
   const homeInput = document.getElementById(`result-home-${matchId}`);
@@ -1028,6 +1139,9 @@ async function setResult(matchId) {
     showToast('Introduce el resultado completo', 'warning');
     return;
   }
+
+  const confirmed = confirm(`¿Confirmas el resultado: ${homeGoals} - ${awayGoals}?\n\nSe calcularán los puntos de todos los pronósticos.`);
+  if (!confirmed) return;
 
   if (btn) {
     btn.disabled = true;
@@ -1068,7 +1182,7 @@ async function setResult(matchId) {
 }
 
 async function deleteMatch(matchId) {
-  if (!confirm('¿Seguro que quieres eliminar este partido?')) return;
+  if (!confirm('¿Seguro que quieres eliminar este partido? Solo se pueden borrar partidos sin resultado; los finalizados no se pueden borrar para no perder la clasificación.')) return;
 
   const token = localStorage.getItem('bolilla_token') || '';
   try {
@@ -1077,12 +1191,14 @@ async function deleteMatch(matchId) {
       headers: token ? { 'Authorization': `Bearer ${token}` } : {}
     });
 
+    const data = await res.json().catch(() => ({}));
+
     if (res.ok) {
       showToast('Partido eliminado', 'success');
       loadAdminMatches();
       loadMatches();
     } else {
-      showToast('Error al eliminar partido', 'error');
+      showToast(data.error || 'Error al eliminar partido', 'error');
     }
   } catch (err) {
     showToast('Error al eliminar partido', 'error');

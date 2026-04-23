@@ -273,6 +273,69 @@ body::before {
   margin-top: 6px;
 }
 
+.password-wrapper {
+  position: relative;
+}
+
+.password-wrapper input {
+  padding-right: 56px;
+}
+
+/* Ocultar el botón nativo "reveal" de Edge/IE para que no se superponga con el nuestro */
+.password-wrapper input::-ms-reveal,
+.password-wrapper input::-ms-clear {
+  display: none;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  color: var(--text-primary);
+  line-height: 0;
+  padding: 8px 10px;
+  cursor: pointer;
+  border-radius: 8px;
+  opacity: 0.9;
+  transition: background 0.2s ease, opacity 0.2s ease;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.password-toggle .icon-eye-off {
+  display: none;
+}
+
+.password-toggle.is-visible .icon-eye {
+  display: none;
+}
+
+.password-toggle.is-visible .icon-eye-off {
+  display: inline-block;
+}
+
+.password-toggle.is-visible {
+  opacity: 1;
+  background: rgba(255, 51, 51, 0.18);
+  color: var(--neon-red, #ff3333);
+}
+
+.password-toggle:hover {
+  background: rgba(255, 255, 255, 0.14);
+  opacity: 1;
+}
+
+.password-toggle:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.14);
+  opacity: 1;
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;

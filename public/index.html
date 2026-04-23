@@ -56,8 +56,24 @@
                 </div>
                 <div class="form-group">
                     <label for="login-password">Contraseña</label>
-                    <input type="password" id="login-password" placeholder="Tu contraseña"
-                        autocomplete="current-password" required minlength="4">
+                    <div class="password-wrapper">
+                        <input type="password" id="login-password" placeholder="Tu contraseña"
+                            autocomplete="current-password" required minlength="4"
+                            data-lpignore="true" data-1p-ignore data-bwignore="true">
+                        <button type="button" class="password-toggle" data-target="login-password"
+                            aria-controls="login-password"
+                            aria-label="Mostrar contraseña" aria-pressed="false">
+                            <svg class="icon-eye" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                                <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                    d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/>
+                                <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                            <svg class="icon-eye-off" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                                <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                    d="M3 3l18 18M10.6 10.6a3 3 0 0 0 4.24 4.24M9.88 5.09A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a18.6 18.6 0 0 1-3.17 4.19M6.61 6.61A18.7 18.7 0 0 0 2 12s3.5 7 10 7a10.9 10.9 0 0 0 5.17-1.3"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <button type="submit" class="btn btn-primary">
                     🦁 Entrar
@@ -80,13 +96,45 @@
                 </div>
                 <div class="form-group">
                     <label for="register-password">Contraseña</label>
-                    <input type="password" id="register-password" placeholder="Mínimo 4 caracteres"
-                        autocomplete="new-password" required minlength="4">
+                    <div class="password-wrapper">
+                        <input type="password" id="register-password" placeholder="Mínimo 8 caracteres"
+                            autocomplete="new-password" required minlength="8"
+                            data-lpignore="true" data-1p-ignore data-bwignore="true">
+                        <button type="button" class="password-toggle" data-target="register-password"
+                            aria-controls="register-password"
+                            aria-label="Mostrar contraseña" aria-pressed="false">
+                            <svg class="icon-eye" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                                <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                    d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/>
+                                <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                            <svg class="icon-eye-off" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                                <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                    d="M3 3l18 18M10.6 10.6a3 3 0 0 0 4.24 4.24M9.88 5.09A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a18.6 18.6 0 0 1-3.17 4.19M6.61 6.61A18.7 18.7 0 0 0 2 12s3.5 7 10 7a10.9 10.9 0 0 0 5.17-1.3"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="register-password-confirm">Confirmar contraseña</label>
-                    <input type="password" id="register-password-confirm" placeholder="Repite la contraseña"
-                        autocomplete="new-password" required minlength="4">
+                    <div class="password-wrapper">
+                        <input type="password" id="register-password-confirm" placeholder="Repite la contraseña"
+                            autocomplete="new-password" required minlength="8"
+                            data-lpignore="true" data-1p-ignore data-bwignore="true">
+                        <button type="button" class="password-toggle" data-target="register-password-confirm"
+                            aria-controls="register-password-confirm"
+                            aria-label="Mostrar contraseña" aria-pressed="false">
+                            <svg class="icon-eye" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                                <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                    d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/>
+                                <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                            <svg class="icon-eye-off" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                                <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                    d="M3 3l18 18M10.6 10.6a3 3 0 0 0 4.24 4.24M9.88 5.09A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a18.6 18.6 0 0 1-3.17 4.19M6.61 6.61A18.7 18.7 0 0 0 2 12s3.5 7 10 7a10.9 10.9 0 0 0 5.17-1.3"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <button type="submit" class="btn btn-primary">
                     📝 Registrarse
@@ -247,6 +295,21 @@
                         <h3 class="card-title">📋 Gestionar Partidos</h3>
                     </div>
                     <div id="admin-matches-container" class="admin-match-list">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Manage Users Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">👥 Gestionar Usuarios</h3>
+                        <p style="margin: 6px 0 0; font-size: 12px; color: var(--text-secondary);">
+                            Resetear contraseñas cuando alguien la olvide. Las contraseñas actuales no se pueden ver (están cifradas); solo puedes asignar una nueva.
+                        </p>
+                    </div>
+                    <div id="admin-users-container">
                         <div class="loading">
                             <div class="spinner"></div>
                         </div>
