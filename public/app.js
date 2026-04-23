@@ -1094,11 +1094,11 @@ async function loadAdminUsers() {
 }
 
 async function resetUserPassword(userId, username, displayName) {
-  const newPassword = prompt(`Nueva contraseña para ${displayName} (@${username}).\n\nMínimo 8 caracteres. Se la tendrás que comunicar tú (WhatsApp, etc.).`);
+  const newPassword = prompt(`Nueva contraseña para ${displayName} (@${username}).\n\nSe la tendrás que comunicar tú (WhatsApp, etc.).`);
   if (newPassword === null) return;
 
-  if (!newPassword || newPassword.length < 8) {
-    showToast('La contraseña debe tener al menos 8 caracteres', 'error');
+  if (!newPassword) {
+    showToast('La contraseña no puede estar vacía', 'error');
     return;
   }
 

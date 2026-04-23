@@ -859,8 +859,8 @@ app.put('/api/admin/users/:id/password', requireAdmin, async (req, res) => {
         const userId = parseInt(req.params.id);
         const { newPassword } = req.body;
 
-        if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
-            return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
+        if (!newPassword || typeof newPassword !== 'string') {
+            return res.status(400).json({ error: 'La contraseña no puede estar vacía' });
         }
 
         if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
