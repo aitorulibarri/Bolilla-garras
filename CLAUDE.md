@@ -4,96 +4,91 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Bolilla Garras is a football prediction game ("quiniela") for the Garras Taldea peña from Sestao. Users predict match scores and earn points based on accuracy.
+Bolilla Garras es una quiniela de pronósticos de fútbol para la peña Garras Taldea de Sestao. Los usuarios pronostican resultados de partidos del Athletic Club, Athletic Femenino y Bilbao Athletic, y ganan puntos según la precisión.
+
+## Commands
+
+```bash
+npm install          # Instalar dependencias
+npm start            # Arrancar server.js en puerto 3000
+vercel deploy        # Deploy preview
+vercel --prod        # Deploy producción
+```
+
+No hay tests ni linter configurados. El backend Flask (`app.py`) es legacy y NO se usa en producción.
 
 ## Architecture
 
-This is a **dual-backend** application with both Python (Flask) and Node.js (Express) implementations:
+**Backend único**: `server.js` (Express + PostgreSQL en producción via Neon).
 
-- **server.js** (Node.js/Express) - Primary backend, deployed to Vercel
-- **app.py** (Flask) - Alternative backend, local development option
-- **public/** - Frontend (vanilla JS, CSS, HTML)
-- **bolilla.db** - SQLite database (local), PostgreSQL for production
+**Frontend SPA**: Vanilla JS en `public/` — sin build step, sin framework.
 
-### Database Schema
-
-Three main tables:
-- **players** (or users) - User accounts with username, display_name, password_hash, is_admin
-- **matches** - Football matches with team, opponent, match_date, deadline, home_goals, away_goals, is_finished
-- **predictions** - User predictions linking player_name to match_id with home_goals, away_goals, points
-
-### Points System (Official Rules 25/26)
-
-- Exact score: **5 points**
-- Partial (max 3 points):
-  - Correct sign: +1
-  - Correct goal difference: +1
-  - Correct goals (home OR away): +2
-
-## Common Commands
-
-### Node.js Backend (Primary/Production)
-```bash
-npm install          # Install dependencies
-npm start            # Run server.js on port 3000
-npm run dev          # Same as start (dev mode)
+```
+server.js          → Express backend (JWT auth, PostgreSQL via pg)
+public/index.html  → SPA entry point
+public/app.js      → Toda la lógica frontend (API calls, rendering, state)
+public/podium.js   → Componente de podio para clasificación
+public/styles.css  → Estilos
+public/sw.js       → Service Worker (pass-through, no cache)
+vercel.json        → Config de deploy (rutas, builds)
 ```
 
-### Python Backend (Alternative/Local)
-```bash
-pip install -r requirements.txt
-python app.py        # Run Flask on port 5000
-```
+## Database
 
-### Deployment
-```bash
-vercel deploy        # Deploy to Vercel
-vercel --prod       # Production deployment
-```
+PostgreSQL en Neon. Tres tablas: `users`, `matches`, `predictions`.
 
-## Environment Variables
+**IMPORTANTE**: La tabla `predictions` en producción tiene una columna legacy `user_id` (NOT NULL) que NO está en el schema del código. El INSERT de predictions incluye `user_id` con fallback para schemas sin esa columna.
 
-Create a `.env` file based on `.env.example`:
+`predictions.player_name` almacena el **username** (no display_name). Cualquier query que cruce predictions con users debe hacer JOIN por `LOWER(player_name) = LOWER(username)`.
 
-```bash
-PORT=3000
-SESSION_SECRET=<generate-with-openssl-rand-base64-32>
-DATABASE_URL=       # Leave empty for local SQLite, set for PostgreSQL (Vercel)
-```
+## Auth
 
-## Key Files
+JWT stateless. Token en `localStorage` como `bolilla_token`. No hay sesiones server-side.
 
-| File | Purpose |
-|------|---------|
-| server.js | Express backend with PostgreSQL |
-| app.py | Flask backend with SQLite |
-| public/index.html | Main SPA entry point |
-| public/app.js | Frontend JavaScript (API calls, UI logic) |
-| public/styles.css | Frontend styles |
-| vercel.json | Vercel deployment configuration |
+- **Admin principal**: `GARRAS` / `GARRAS123`
+- Admin se determina por lista estática `ADMIN_USERNAMES` O campo `is_admin` en DB
+- Middleware chain: `requireAuth` (JWT verify) → `requireAdmin` (check admin)
+- Emergency reset: `/api/admin/emergency-reset-garras?key=GARRAS_SECRET_RESET_2026`
+- `JWT_SECRET` y `PASSWORD_ENCRYPTION_KEY` configurados como env vars en Vercel (no usar los defaults hardcoded)
 
-## Admin Access
+## Password Storage
 
-- Default admin username: `GARRAS` (Python/Flask) or `admin`/`aitor` (Node.js)
-- Default password: `GARRAS123`
-- Emergency reset endpoint (Python): `/api/emergency-reset-garras?key=GARRAS_SECRET_RESET_2026`
+**Cada contraseña se guarda DOS veces** en `users`:
+- `password_hash` — bcrypt, usado para autenticar (one-way).
+- `password_encrypted` — AES-256-GCM, usado para que el admin vea el claro desde la pestaña Usuarios.
 
-## API Endpoints (Node.js/server.js)
+Clave de cifrado: env `PASSWORD_ENCRYPTION_KEY` (32 bytes base64). Si falta, `getEncryptionKey()` deriva una desde `JWT_SECRET` con SHA-256 — funciona pero acopla ambas claves.
 
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User login
-- `POST /api/auth/logout` - User logout
-- `GET /api/matches` - Get all matches
-- `GET /api/matches/upcoming` - Get upcoming matches with user predictions
-- `POST /api/matches` - Create match (admin)
-- `PUT /api/matches/:id/result` - Set match result (admin)
-- `GET /api/predictions` - Get user predictions
-- `POST /api/predictions` - Submit prediction
-- `GET /api/leaderboard` - Get standings
+Usuarios registrados antes de existir la columna `password_encrypted` la tienen en NULL: el login los actualiza de forma oportunista la primera vez que entran con la contraseña correcta. Hasta entonces, el admin los ve como "(no capturada)".
 
-## Development Notes
+## Admin UI
 
-- The frontend uses vanilla JavaScript with no build step
-- Both backends share similar API structures but differ in database handling
-- Admin users are created automatically or via special username patterns
-- Predictions cannot be modified once submitted (enforced by deadline check)
+Dos pestañas visibles solo si `currentUser.isAdmin`:
+- **Admin** (`#tab-admin`): añadir partidos, gestionar partidos existentes (editar fecha/deadline, meter resultado, ver pronósticos por partido, borrar partido NO finalizado).
+- **Usuarios** (`#tab-users`): tabla con todos los usuarios + botones Ver contraseña / Renombrar / Resetear contraseña.
+
+## Points System
+
+Implementado en `calculatePoints()` (server.js).
+
+- Resultado exacto: **5 puntos**
+- Parcial (máximo 3): signo correcto +1, diferencia goles +1, goles de un equipo +2
+
+## Key Patterns
+
+- **fetchWithRetry** (app.js): Inyecta Authorization header automáticamente. Los headers del caller se MERGEN (no sobreescriben) con el header de auth. Añade `_cb=Date.now()` para bust cache.
+- **Deadline enforcement**: Frontend compara hora local, backend hora del servidor (UTC en Vercel).
+- **Upsert predictions**: SELECT + INSERT/UPDATE manual (no ON CONFLICT) para compatibilidad con schema legacy.
+- **Borrado de partidos**: `DELETE /api/matches/:id` **rechaza con 400 si `is_finished = 1`** para no perder los puntos ya sumados a la clasificación. Partidos sin resultado sí se pueden borrar (aún no puntúan).
+- **Leaderboard agrega todas las ligas**: `/api/leaderboard` suma `points` de todas las predictions del usuario sin filtrar por liga ni jornada. Única tabla única para Athletic Club + Athletic Femenino + Bilbao Athletic.
+
+## Deploy
+
+Vercel con PostgreSQL en Neon. Auto-deploy al hacer `git push origin main` (integración GitHub). Variables de entorno en Vercel:
+- `DATABASE_URL` — Connection string de Neon
+- `JWT_SECRET` — Secret para firmar tokens JWT
+- `PASSWORD_ENCRYPTION_KEY` — 32 bytes base64 para AES-GCM de `password_encrypted` (opcional; si falta, se deriva de JWT_SECRET)
+
+## Teams Data
+
+Equipos y rivales hardcodeados en `public/app.js` como `LEAGUE_TEAMS` (3 ligas). Escudos en `LOGO_MAP` con archivos en `public/logos/`.
