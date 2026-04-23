@@ -65,12 +65,23 @@
   box-sizing: border-box;
 }
 
+html {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
 body {
   font-family: 'Rajdhani', 'Arial', sans-serif;
   background: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
+  max-width: 100vw;
   overflow-x: hidden;
+}
+
+img, svg, video, iframe {
+  max-width: 100%;
+  height: auto;
 }
 
 /* Animated Background Effect */
@@ -996,24 +1007,68 @@ body::before {
 
 @media (max-width: 768px) {
   .login-card {
-    padding: 32px;
+    padding: 24px 20px;
   }
 
   .header {
-    padding: 12px 20px;
+    padding: 10px 14px;
   }
 
   .header-logo h1 {
-    font-size: 18px;
+    font-size: 16px;
   }
 
   .main-content {
-    padding: 20px;
+    padding: 14px;
+  }
+
+  /* Tabs: que entren todas en pantalla envolviéndose, sin scroll horizontal */
+  .nav-tabs {
+    padding: 10px 14px;
+    gap: 6px;
+    overflow-x: visible;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .nav-tab {
+    padding: 8px 12px;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    flex: 0 1 auto;
+  }
+
+  /* Cards: menos padding para no comerse el ancho */
+  .card {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .match-card {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .match-header-gemini {
+    margin-bottom: 18px;
+  }
+
+  /* Forms admin: input y selects al 100% */
+  .admin-form input,
+  .admin-form select,
+  .form-group input,
+  .form-group select {
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .leaderboard-podium {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .podium-place {
+    min-width: 0;
   }
 
   .podium-place.first {
@@ -1027,6 +1082,26 @@ body::before {
 
   .podium-place.third {
     order: 3;
+  }
+
+  /* Toast: que no se salga */
+  .toast {
+    min-width: 0;
+    width: calc(100vw - 28px);
+    max-width: 100%;
+  }
+
+  .toast-container {
+    top: 10px;
+    right: 14px;
+    left: 14px;
+  }
+
+  /* Modal Reglas: full ancho con margen */
+  .modal-content {
+    width: calc(100vw - 28px);
+    max-width: 100%;
+    margin: 14px;
   }
 
   /* Users table → tarjetas verticales en móvil */
