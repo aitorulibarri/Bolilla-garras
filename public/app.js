@@ -1056,10 +1056,18 @@ async function loadAdminUsers() {
             <strong>${safeDisplay}</strong> ${adminBadge}
             <div style="font-size: 12px; color: var(--text-secondary);">@${safeUsername}</div>
           </td>
-          <td style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.06); text-align: right;">
+          <td style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.06);">
+            <div id="pwd-view-${u.id}" style="font-family: monospace; font-size: 13px; color: var(--text-secondary);">••••••••</div>
+          </td>
+          <td style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.06); text-align: right; white-space: nowrap;">
+            <button class="btn btn-sm" data-action="view-pwd"
+              data-user-id="${u.id}" data-display="${safeDisplay}"
+              style="background: rgba(255,165,0,0.15); border: 1px solid rgba(255,165,0,0.4); color: #FFA500;">
+              🔎 Ver
+            </button>
             <button class="btn btn-secondary btn-sm" data-action="reset-pwd"
               data-user-id="${u.id}" data-username="${safeUsername}" data-display="${safeDisplay}">
-              🔑 Resetear contraseña
+              🔑 Resetear
             </button>
           </td>
         </tr>`;
@@ -1071,6 +1079,7 @@ async function loadAdminUsers() {
           <thead>
             <tr style="text-align: left; color: var(--text-secondary); font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">
               <th style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1);">Usuario</th>
+              <th style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1);">Contraseña</th>
               <th style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: right;">Acciones</th>
             </tr>
           </thead>
@@ -1087,9 +1096,55 @@ async function loadAdminUsers() {
         );
       });
     });
+
+    container.querySelectorAll('button[data-action="view-pwd"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        viewUserPassword(parseInt(btn.dataset.userId), btn.dataset.display, btn);
+      });
+    });
   } catch (err) {
     console.error(err);
     container.innerHTML = '<p>Error al cargar usuarios</p>';
+  }
+}
+
+async function viewUserPassword(userId, displayName, btn) {
+  const view = document.getElementById(`pwd-view-${userId}`);
+  if (!view) return;
+
+  // Si ya está mostrada, ocultar (toggle)
+  if (view.dataset.revealed === '1') {
+    view.textContent = '••••••••';
+    view.dataset.revealed = '0';
+    if (btn) btn.textContent = '🔎 Ver';
+    return;
+  }
+
+  view.textContent = '…';
+  try {
+    const res = await fetchWithRetry(`/api/admin/users/${userId}/password`);
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      view.textContent = '••••••••';
+      showToast(data.error || 'Error al ver contraseña', 'error');
+      return;
+    }
+
+    if (data.password === null || data.password === undefined) {
+      view.textContent = '(no capturada)';
+      view.title = data.message || 'Aún no disponible';
+      showToast(data.message || 'Contraseña no disponible todavía', 'info');
+      return;
+    }
+
+    view.textContent = data.password;
+    view.dataset.revealed = '1';
+    if (btn) btn.textContent = '🙈 Ocultar';
+  } catch (err) {
+    console.error(err);
+    view.textContent = '••••••••';
+    showToast('Error de conexión', 'error');
   }
 }
 

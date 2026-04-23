@@ -7,6 +7,49 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+
+// ==================== PASSWORD REVERSIBLE ENCRYPTION ====================
+// Guarda la contraseña cifrada con AES-256-GCM para que el admin pueda verla.
+// Clave: env var PASSWORD_ENCRYPTION_KEY (32 bytes base64) o derivada de JWT_SECRET.
+function getEncryptionKey() {
+    const raw = process.env.PASSWORD_ENCRYPTION_KEY;
+    if (raw) {
+        try {
+            const buf = Buffer.from(raw, 'base64');
+            if (buf.length === 32) return buf;
+        } catch {}
+        console.warn('⚠️ PASSWORD_ENCRYPTION_KEY inválida (debe ser 32 bytes base64). Derivando de JWT_SECRET.');
+    }
+    return crypto.createHash('sha256').update(String(process.env.JWT_SECRET || 'bolilla-garras-secret-2026-seguro')).digest();
+}
+
+function encryptPassword(plaintext) {
+    if (!plaintext) return null;
+    const key = getEncryptionKey();
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+    const encrypted = Buffer.concat([cipher.update(String(plaintext), 'utf8'), cipher.final()]);
+    const tag = cipher.getAuthTag();
+    // Formato: base64(iv):base64(tag):base64(ciphertext)
+    return `${iv.toString('base64')}:${tag.toString('base64')}:${encrypted.toString('base64')}`;
+}
+
+function decryptPassword(blob) {
+    if (!blob) return null;
+    try {
+        const [ivB64, tagB64, dataB64] = String(blob).split(':');
+        if (!ivB64 || !tagB64 || !dataB64) return null;
+        const key = getEncryptionKey();
+        const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivB64, 'base64'));
+        decipher.setAuthTag(Buffer.from(tagB64, 'base64'));
+        const decrypted = Buffer.concat([decipher.update(Buffer.from(dataB64, 'base64')), decipher.final()]);
+        return decrypted.toString('utf8');
+    } catch (err) {
+        console.error('decryptPassword error:', err.message);
+        return null;
+    }
+}
 
 const app = express();
 app.set('trust proxy', 1); // Fix for express-rate-limit with Vercel
@@ -197,6 +240,11 @@ async function dbInit() {
                 await pool.query(`ALTER TABLE predictions ADD COLUMN IF NOT EXISTS player_name TEXT`);
             } catch (e) { /* ignore if exists */ }
 
+            // Add password_encrypted column (para que el admin pueda ver contraseñas)
+            try {
+                await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_encrypted TEXT`);
+            } catch (e) { /* ignore if exists */ }
+
             // Ensure UNIQUE constraint exists (required for ON CONFLICT upsert)
             try {
                 await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS predictions_player_match_unique ON predictions(player_name, match_id)`);
@@ -265,11 +313,21 @@ app.post('/api/register', authLimiter, async (req, res) => {
         // Determine if admin
         const isAdmin = isAdminUsername(username);
 
-        // Create user
-        const result = await pool.query(
-            'INSERT INTO users (username, display_name, password_hash, is_admin) VALUES ($1, $2, $3, $4) RETURNING id, username, display_name, is_admin',
-[username.toLowerCase(), displayName, passwordHash, isAdmin ? 1 : 0]
-        );
+        // Create user — guardamos también contraseña cifrada para el admin
+        const encrypted = encryptPassword(password);
+        let result;
+        try {
+            result = await pool.query(
+                'INSERT INTO users (username, display_name, password_hash, is_admin, password_encrypted) VALUES ($1, $2, $3, $4, $5) RETURNING id, username, display_name, is_admin',
+                [username.toLowerCase(), displayName, passwordHash, isAdmin ? 1 : 0, encrypted]
+            );
+        } catch (insertErr) {
+            // Fallback por si la columna no existe todavía en la DB
+            result = await pool.query(
+                'INSERT INTO users (username, display_name, password_hash, is_admin) VALUES ($1, $2, $3, $4) RETURNING id, username, display_name, is_admin',
+                [username.toLowerCase(), displayName, passwordHash, isAdmin ? 1 : 0]
+            );
+        }
 
         const user = result.rows[0];
 
@@ -318,6 +376,18 @@ app.post('/api/login', authLimiter, async (req, res) => {
         const validPassword = await bcrypt.compare(password, user.password_hash);
         if (!validPassword) {
             return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+        }
+
+        // Captura oportunista: si el usuario no tiene password_encrypted todavía,
+        // lo rellenamos ahora que tenemos la contraseña en claro (solo usuarios
+        // antiguos registrados antes de existir esta columna).
+        if (!user.password_encrypted) {
+            try {
+                const enc = encryptPassword(password);
+                if (enc) {
+                    await pool.query('UPDATE users SET password_encrypted = $1 WHERE id = $2', [enc, user.id]);
+                }
+            } catch (e) { /* columna puede no existir aún */ }
         }
 
         // Generate JWT token
@@ -853,6 +923,42 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
     }
 });
 
+// Ver contraseña en claro de un usuario (admin only)
+// Solo funciona si el usuario se ha registrado / logueado / reseteado después de
+// activar la columna password_encrypted. Los bcrypt antiguos no son recuperables.
+app.get('/api/admin/users/:id/password', requireAdmin, async (req, res) => {
+    try {
+        const userId = parseInt(req.params.id);
+        if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
+
+        let user;
+        try {
+            user = await queryOne('SELECT id, username, password_encrypted FROM users WHERE id = $1', [userId]);
+        } catch (e) {
+            return res.status(503).json({ error: 'Columna password_encrypted no disponible. Reinicia el servidor.' });
+        }
+
+        if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+        if (!user.password_encrypted) {
+            return res.json({
+                password: null,
+                reason: 'no-capturada',
+                message: 'Aún no tenemos la contraseña de este usuario en claro. Cuando haga login la próxima vez la capturaremos automáticamente. Si ha olvidado cuál era, resetéala.'
+            });
+        }
+
+        const plain = decryptPassword(user.password_encrypted);
+        if (plain === null) {
+            return res.status(500).json({ error: 'Error al descifrar (clave cambiada?)' });
+        }
+        res.json({ password: plain });
+    } catch (err) {
+        console.error('View password error:', err);
+        res.status(500).json({ error: 'Error al ver contraseña' });
+    }
+});
+
 // Reset a user's password (admin only) — el admin escribe la nueva contraseña
 app.put('/api/admin/users/:id/password', requireAdmin, async (req, res) => {
     try {
@@ -870,8 +976,13 @@ app.put('/api/admin/users/:id/password', requireAdmin, async (req, res) => {
 
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(newPassword, salt);
+        const encrypted = encryptPassword(newPassword);
 
-        await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
+        try {
+            await pool.query('UPDATE users SET password_hash = $1, password_encrypted = $2 WHERE id = $3', [passwordHash, encrypted, userId]);
+        } catch (e) {
+            await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
+        }
 
         res.json({ success: true, username: target.username });
     } catch (err) {
