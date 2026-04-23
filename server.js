@@ -959,6 +959,33 @@ app.get('/api/admin/users/:id/password', requireAdmin, async (req, res) => {
     }
 });
 
+// Cambiar display_name de un usuario (admin only)
+app.put('/api/admin/users/:id/display-name', requireAdmin, async (req, res) => {
+    try {
+        const userId = parseInt(req.params.id);
+        const { displayName } = req.body;
+
+        if (!displayName || typeof displayName !== 'string' || displayName.trim().length < 2) {
+            return res.status(400).json({ error: 'El nombre debe tener al menos 2 caracteres' });
+        }
+        if (displayName.length > 30) {
+            return res.status(400).json({ error: 'El nombre no puede tener más de 30 caracteres' });
+        }
+
+        if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
+
+        const target = await queryOne('SELECT id, username FROM users WHERE id = $1', [userId]);
+        if (!target) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+        await pool.query('UPDATE users SET display_name = $1 WHERE id = $2', [displayName.trim(), userId]);
+
+        res.json({ success: true, username: target.username, displayName: displayName.trim() });
+    } catch (err) {
+        console.error('Rename error:', err);
+        res.status(500).json({ error: 'Error al cambiar el nombre' });
+    }
+});
+
 // Reset a user's password (admin only) — el admin escribe la nueva contraseña
 app.put('/api/admin/users/:id/password', requireAdmin, async (req, res) => {
     try {

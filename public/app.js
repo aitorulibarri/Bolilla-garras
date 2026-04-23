@@ -1064,6 +1064,10 @@ async function loadAdminUsers() {
               data-user-id="${u.id}" data-display="${safeDisplay}">
               🔎 Ver
             </button>
+            <button class="btn btn-secondary btn-sm" data-action="rename"
+              data-user-id="${u.id}" data-display="${safeDisplay}">
+              ✏️ Renombrar
+            </button>
             <button class="btn btn-secondary btn-sm" data-action="reset-pwd"
               data-user-id="${u.id}" data-username="${safeUsername}" data-display="${safeDisplay}">
               🔑 Resetear
@@ -1101,9 +1105,45 @@ async function loadAdminUsers() {
         viewUserPassword(parseInt(btn.dataset.userId), btn.dataset.display, btn);
       });
     });
+
+    container.querySelectorAll('button[data-action="rename"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        renameUser(parseInt(btn.dataset.userId), btn.dataset.display);
+      });
+    });
   } catch (err) {
     console.error(err);
     container.innerHTML = '<p>Error al cargar usuarios</p>';
+  }
+}
+
+async function renameUser(userId, currentDisplayName) {
+  const newName = prompt(`Nuevo nombre visible para "${currentDisplayName}":`, currentDisplayName);
+  if (newName === null) return;
+  const trimmed = newName.trim();
+  if (trimmed.length < 2) {
+    showToast('El nombre debe tener al menos 2 caracteres', 'error');
+    return;
+  }
+  if (trimmed === currentDisplayName) return;
+
+  try {
+    const res = await fetchWithRetry(`/api/admin/users/${userId}/display-name`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ displayName: trimmed })
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok) {
+      showToast(`Renombrado a "${trimmed}"`, 'success');
+      loadAdminUsers();
+    } else {
+      showToast(data.error || 'Error al renombrar', 'error');
+    }
+  } catch (err) {
+    console.error(err);
+    showToast('Error de conexión', 'error');
   }
 }
 
