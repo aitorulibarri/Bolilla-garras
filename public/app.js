@@ -1049,20 +1049,19 @@ async function loadAdminUsers() {
     const rows = users.map(u => {
       const safeUsername = String(u.username).replace(/"/g, '&quot;');
       const safeDisplay = String(u.display_name).replace(/</g, '&lt;');
-      const adminBadge = u.is_admin ? '<span style="background: rgba(255,51,51,0.2); color: var(--neon-red, #ff3333); padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;">ADMIN</span>' : '';
+      const adminBadge = u.is_admin ? '<span class="user-badge-admin">ADMIN</span>' : '';
       return `
         <tr data-user-id="${u.id}">
-          <td style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.06);">
+          <td data-label="Usuario">
             <strong>${safeDisplay}</strong> ${adminBadge}
-            <div style="font-size: 12px; color: var(--text-secondary);">@${safeUsername}</div>
+            <div class="user-username">@${safeUsername}</div>
           </td>
-          <td style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.06);">
-            <div id="pwd-view-${u.id}" style="font-family: monospace; font-size: 13px; color: var(--text-secondary);">••••••••</div>
+          <td data-label="Contraseña">
+            <div id="pwd-view-${u.id}" class="user-pwd-view">••••••••</div>
           </td>
-          <td style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.06); text-align: right; white-space: nowrap;">
-            <button class="btn btn-sm" data-action="view-pwd"
-              data-user-id="${u.id}" data-display="${safeDisplay}"
-              style="background: rgba(255,165,0,0.15); border: 1px solid rgba(255,165,0,0.4); color: #FFA500;">
+          <td data-label="Acciones" class="user-actions">
+            <button class="btn btn-sm btn-view-pwd" data-action="view-pwd"
+              data-user-id="${u.id}" data-display="${safeDisplay}">
               🔎 Ver
             </button>
             <button class="btn btn-secondary btn-sm" data-action="reset-pwd"
@@ -1074,13 +1073,13 @@ async function loadAdminUsers() {
     }).join('');
 
     container.innerHTML = `
-      <div style="overflow-x: auto;">
-        <table style="width: 100%; border-collapse: collapse;">
+      <div class="users-table-wrapper">
+        <table class="users-table">
           <thead>
-            <tr style="text-align: left; color: var(--text-secondary); font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">
-              <th style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1);">Usuario</th>
-              <th style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1);">Contraseña</th>
-              <th style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: right;">Acciones</th>
+            <tr>
+              <th>Usuario</th>
+              <th>Contraseña</th>
+              <th class="user-actions-col">Acciones</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
