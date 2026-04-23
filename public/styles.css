@@ -1012,10 +1012,46 @@ body::before {
 
   .header {
     padding: 10px 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+    row-gap: 8px;
+  }
+
+  .header-logo {
+    gap: 8px;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .header-logo .icon,
+  .header-logo img.icon {
+    width: 36px !important;
+    height: 36px !important;
   }
 
   .header-logo h1 {
-    font-size: 16px;
+    font-size: 15px;
+    letter-spacing: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .header-user {
+    gap: 6px;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .header-user span {
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .header-user .btn-sm {
+    padding: 6px 10px;
+    font-size: 11px;
   }
 
   .main-content {
