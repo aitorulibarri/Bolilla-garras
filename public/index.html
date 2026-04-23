@@ -177,6 +177,10 @@
                 aria-selected="false">
                 ⚙️ Admin
             </button>
+            <button class="nav-tab" data-tab="users" id="users-tab" style="display: none;" role="tab"
+                aria-selected="false">
+                👥 Usuarios
+            </button>
         </nav>
 
         <!-- Main Content -->
@@ -301,12 +305,18 @@
                     </div>
                 </div>
 
-                <!-- Manage Users Card -->
+            </section>
+
+            <!-- USERS TAB (admin only) -->
+            <section id="tab-users" class="tab-content" role="tabpanel">
+                <div class="section-header">
+                    <h2 class="section-title">👥 Gestionar Usuarios</h2>
+                </div>
                 <div class="card">
                     <div class="card-header">
-                        <h3 class="card-title">👥 Gestionar Usuarios</h3>
+                        <h3 class="card-title">Listado y reseteo de contraseñas</h3>
                         <p style="margin: 6px 0 0; font-size: 12px; color: var(--text-secondary);">
-                            Resetear contraseñas cuando alguien la olvide. Las contraseñas actuales no se pueden ver (están cifradas); solo puedes asignar una nueva.
+                            Las contraseñas actuales no se pueden ver (están cifradas). Solo puedes asignar una nueva y comunicársela al usuario.
                         </p>
                     </div>
                     <div id="admin-users-container">

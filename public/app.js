@@ -12,6 +12,7 @@ const authError = document.getElementById('auth-error');
 const changeNameBtn = document.getElementById('change-name-btn');
 const userName = document.getElementById('user-name');
 const adminTab = document.getElementById('admin-tab');
+const usersTab = document.getElementById('users-tab');
 const navTabs = document.querySelectorAll('.nav-tab');
 const tabContents = document.querySelectorAll('.tab-content');
 const authTabs = document.querySelectorAll('.auth-tab');
@@ -366,12 +367,10 @@ function showApp() {
   app.classList.add('active');
   userName.textContent = currentUser.displayName;
 
-  // Show admin tab only for admin users
-  if (currentUser.isAdmin) {
-    adminTab.style.display = 'block';
-  } else {
-    adminTab.style.display = 'none';
-  }
+  // Show admin and users tabs only for admin users
+  const adminVisible = currentUser.isAdmin ? 'block' : 'none';
+  adminTab.style.display = adminVisible;
+  if (usersTab) usersTab.style.display = adminVisible;
 
   loadMatches();
   loadLeaderboardWidget();
@@ -392,6 +391,8 @@ function loadTabContent(tabId) {
     case 'admin':
       loadAdminMatches();
       loadAdminStats();
+      break;
+    case 'users':
       loadAdminUsers();
       break;
   }
