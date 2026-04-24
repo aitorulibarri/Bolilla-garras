@@ -3,6 +3,75 @@ console.log('📱 Bolilla Garras App v4.0 loaded - CACHE BUSTED');
 // ==================== STATE ====================
 let currentUser = null;
 
+// ==================== PWA INSTALL PROMPT ====================
+let deferredInstallPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  showAndroidInstallBanner();
+});
+
+window.addEventListener('appinstalled', () => {
+  hideInstallBanner();
+  deferredInstallPrompt = null;
+});
+
+function showAndroidInstallBanner() {
+  if (window.matchMedia('(display-mode: standalone)').matches) return;
+  if (document.getElementById('pwa-install-banner')) return;
+  const banner = createInstallBanner(
+    'Instala <strong>Bolilla Garras</strong> en tu móvil',
+    'Instalar',
+    async () => {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      const { outcome } = await deferredInstallPrompt.userChoice;
+      if (outcome === 'accepted') hideInstallBanner();
+      deferredInstallPrompt = null;
+    }
+  );
+  document.body.appendChild(banner);
+}
+
+function showIOSInstallBanner() {
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isStandalone = window.navigator.standalone === true;
+  const dismissed = sessionStorage.getItem('pwa-ios-banner-dismissed');
+  if (!isIOS || isStandalone || dismissed) return;
+  if (document.getElementById('pwa-install-banner')) return;
+  const banner = createInstallBanner(
+    'Toca <strong>Compartir</strong> (□↑) → <strong>Añadir a pantalla de inicio</strong>',
+    '✕',
+    () => {
+      sessionStorage.setItem('pwa-ios-banner-dismissed', '1');
+      hideInstallBanner();
+    }
+  );
+  document.body.appendChild(banner);
+}
+
+function createInstallBanner(message, btnText, btnAction) {
+  const banner = document.createElement('div');
+  banner.id = 'pwa-install-banner';
+  banner.className = 'pwa-install-banner';
+  const msg = document.createElement('span');
+  msg.className = 'pwa-banner-msg';
+  msg.innerHTML = message;
+  const btn = document.createElement('button');
+  btn.className = 'pwa-banner-btn';
+  btn.textContent = btnText;
+  btn.addEventListener('click', btnAction);
+  banner.appendChild(msg);
+  banner.appendChild(btn);
+  return banner;
+}
+
+function hideInstallBanner() {
+  const banner = document.getElementById('pwa-install-banner');
+  if (banner) banner.remove();
+}
+
 // ==================== DOM ELEMENTS ====================
 const authPage = document.getElementById('auth-page');
 const app = document.getElementById('app');
@@ -83,6 +152,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   checkSavedUser();
   setupEventListeners();
+  showIOSInstallBanner();
 });
 
 function checkSavedUser() {

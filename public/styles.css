@@ -1884,3 +1884,66 @@ body::before {
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
+
+/* ==================== PWA INSTALL BANNER ==================== */
+.pwa-install-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #E41E26;
+  color: #fff;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  z-index: 9999;
+  box-shadow: 0 -3px 12px rgba(0, 0, 0, 0.4);
+  font-size: 14px;
+  font-family: inherit;
+  animation: pwa-slide-up 0.3s ease-out;
+}
+
+@keyframes pwa-slide-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.pwa-banner-msg {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.pwa-banner-msg strong {
+  font-weight: 700;
+}
+
+.pwa-banner-btn {
+  flex-shrink: 0;
+  background: #fff;
+  color: #E41E26;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.pwa-banner-btn:hover {
+  background: #f0f0f0;
+}
+
+@media (min-width: 600px) {
+  .pwa-install-banner {
+    max-width: 480px;
+    left: 50%;
+    right: auto;
+    margin-left: -240px;
+    border-radius: 12px 12px 0 0;
+    animation: none;
+  }
+}
