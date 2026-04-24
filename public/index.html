@@ -313,8 +313,11 @@
 
             <!-- TRACKER TAB (admin only) - ver pronósticos de partidos abiertos -->
             <section id="tab-tracker" class="tab-content" role="tabpanel">
-                <div class="section-header">
+                <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                     <h2 class="section-title">👀 Seguimiento de Pronósticos</h2>
+                    <button id="tracker-print-btn" class="btn btn-secondary btn-sm" style="display: none;" title="Genera un informe imprimible en una pestaña nueva">
+                        🖨️ Imprimir / PDF
+                    </button>
                 </div>
                 <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
                     Partidos sin cerrar (sin resultado). Para cada uno, quién ha pronosticado y quién falta.

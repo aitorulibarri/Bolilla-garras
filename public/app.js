@@ -99,6 +99,12 @@ function checkSavedUser() {
 }
 
 function setupEventListeners() {
+  // Botón de imprimir/PDF de la pestaña Seguimiento
+  const trackerPrintBtn = document.getElementById('tracker-print-btn');
+  if (trackerPrintBtn) {
+    trackerPrintBtn.addEventListener('click', printTrackerReport);
+  }
+
   // Password visibility toggle (delegado, cubre login y registro).
   // mousedown + preventDefault para no robar el foco del input entre el press y el release;
   // así el toggle funciona igual tenga o no el foco en el campo.
@@ -1032,6 +1038,8 @@ async function loadAdminMatches() {
 
 // ==================== ADMIN: SEGUIMIENTO DE PRONÓSTICOS ====================
 
+let _trackerData = null; // cache para el botón de imprimir
+
 async function loadOpenPredictions() {
   const container = document.getElementById('admin-tracker-container');
   if (!container) return;
@@ -1048,6 +1056,11 @@ async function loadOpenPredictions() {
 
     const matches = data.matches || [];
     const totalUsers = data.totalUsers || 0;
+    _trackerData = { matches, totalUsers };
+
+    // Botón de imprimir/PDF
+    const printBtn = document.getElementById('tracker-print-btn');
+    if (printBtn) printBtn.style.display = matches.length > 0 ? 'inline-flex' : 'none';
 
     if (matches.length === 0) {
       container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><h3>No hay partidos abiertos</h3><p>Todos los partidos tienen resultado.</p></div>';
@@ -1104,6 +1117,200 @@ async function loadOpenPredictions() {
     console.error(err);
     container.innerHTML = '<p>Error al cargar seguimiento</p>';
   }
+}
+
+// Construye un HTML imprimible con una tabla por partido abierto
+// y lo abre en una ventana nueva con el diálogo de imprimir activado.
+function printTrackerReport() {
+  if (!_trackerData || !_trackerData.matches || _trackerData.matches.length === 0) {
+    showToast('Carga primero la pestaña Seguimiento', 'error');
+    return;
+  }
+
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const { matches, totalUsers } = _trackerData;
+  const reportDate = new Date().toLocaleString('es-ES', {
+    day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+
+  const sections = matches.map(m => {
+    const homeTeam = m.is_home ? m.team : m.opponent;
+    const awayTeam = m.is_home ? m.opponent : m.team;
+    const fecha = new Date(m.match_date).toLocaleString('es-ES', {
+      weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+    });
+    const deadlineStatus = m.deadline_passed ? 'PLAZO CERRADO' : 'PLAZO ABIERTO';
+
+    const allRows = [
+      ...m.predictions.map(p => ({
+        name: p.display_name,
+        score: `${p.home_goals} - ${p.away_goals}`,
+        predicted: true
+      })),
+      ...m.missing.map(u => ({
+        name: u.display_name,
+        score: '—',
+        predicted: false
+      }))
+    ].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+
+    const tableRows = allRows.map(r => `
+      <tr class="${r.predicted ? '' : 'missing'}">
+        <td>${esc(r.name)}</td>
+        <td class="score">${esc(r.score)}</td>
+      </tr>`).join('');
+
+    return `
+      <section class="match-block">
+        <div class="match-header">
+          <h2>${esc(homeTeam)} vs ${esc(awayTeam)}</h2>
+          <div class="match-meta">
+            <span>📅 ${esc(fecha)}</span>
+            <span class="status ${m.deadline_passed ? 'closed' : 'open'}">${deadlineStatus}</span>
+          </div>
+          <div class="counts">
+            Pronosticaron <strong>${m.predictions.length}</strong> de ${totalUsers} — Faltan <strong>${m.missing.length}</strong>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Usuario</th><th class="score">Pronóstico</th></tr></thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </section>`;
+  }).join('');
+
+  const html = `<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Pronósticos Bolilla Garras — ${esc(reportDate)}</title>
+<style>
+  @page { size: A4; margin: 15mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Helvetica', 'Arial', sans-serif;
+    color: #111;
+    background: #fff;
+    margin: 0;
+    padding: 20px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  header {
+    text-align: center;
+    border-bottom: 3px solid #c00;
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+  }
+  header h1 {
+    margin: 0 0 4px 0;
+    font-size: 22px;
+    color: #c00;
+    letter-spacing: 1px;
+  }
+  header .sub {
+    font-size: 11px;
+    color: #555;
+  }
+  .match-block {
+    page-break-inside: avoid;
+    margin-bottom: 22px;
+  }
+  .match-header h2 {
+    margin: 0 0 4px 0;
+    font-size: 15px;
+    color: #000;
+  }
+  .match-meta {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    font-size: 11px;
+    color: #444;
+    margin-bottom: 2px;
+  }
+  .status.open {
+    color: #080;
+    font-weight: 700;
+  }
+  .status.closed {
+    color: #c00;
+    font-weight: 700;
+  }
+  .counts {
+    font-size: 11px;
+    color: #444;
+    margin-bottom: 6px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 4px;
+  }
+  thead th {
+    text-align: left;
+    background: #f4f4f4;
+    border-bottom: 2px solid #999;
+    padding: 6px 8px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  th.score, td.score {
+    text-align: right;
+    font-family: 'Courier New', monospace;
+  }
+  tbody td {
+    padding: 5px 8px;
+    border-bottom: 1px solid #ddd;
+  }
+  tbody tr.missing td { color: #999; font-style: italic; }
+  footer {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 10px;
+    color: #888;
+    border-top: 1px solid #ccc;
+    padding-top: 8px;
+  }
+  .print-btn {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background: #c00;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 700;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  @media print {
+    .print-btn { display: none; }
+  }
+</style>
+</head>
+<body>
+  <button class="print-btn" onclick="window.print()">🖨️ Imprimir / Guardar como PDF</button>
+  <header>
+    <h1>🦁 BOLILLA GARRAS — Pronósticos</h1>
+    <div class="sub">Peña Garras Taldea Sestao · Generado ${esc(reportDate)}</div>
+  </header>
+  ${sections}
+  <footer>Bolilla Garras · ${matches.length} partido${matches.length === 1 ? '' : 's'} abierto${matches.length === 1 ? '' : 's'}</footer>
+  <script>setTimeout(() => window.print(), 400);</script>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  if (!win) {
+    showToast('Permite ventanas emergentes para imprimir', 'error');
+    return;
+  }
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
 }
 
 // ==================== ADMIN: USERS ====================
