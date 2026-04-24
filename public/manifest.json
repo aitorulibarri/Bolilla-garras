@@ -10,15 +10,15 @@
     "icons": [
         {
             "src": "assets/garras-logo.png",
-            "sizes": "192x192",
+            "sizes": "1080x1291",
             "type": "image/png",
-            "purpose": "any maskable"
+            "purpose": "any"
         },
         {
             "src": "assets/garras-logo.png",
-            "sizes": "512x512",
+            "sizes": "1080x1291",
             "type": "image/png",
-            "purpose": "any maskable"
+            "purpose": "maskable"
         }
     ],
     "categories": [
