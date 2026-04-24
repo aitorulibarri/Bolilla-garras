@@ -583,7 +583,14 @@ app.get('/api/matches/upcoming', requireAuth, async (req, res) => {
             FROM matches m
             LEFT JOIN predictions p ON m.id = p.match_id AND LOWER(p.player_name) = LOWER($1)
             WHERE m.is_finished = 0
-            ORDER BY m.match_date ASC
+            ORDER BY
+                CASE m.team
+                    WHEN 'Athletic Club' THEN 1
+                    WHEN 'Athletic Femenino' THEN 2
+                    WHEN 'Bilbao Athletic' THEN 3
+                    ELSE 4
+                END,
+                m.match_date ASC
         `, [username]);
         // Transform to userPrediction format
         matches = matches.map(m => ({
