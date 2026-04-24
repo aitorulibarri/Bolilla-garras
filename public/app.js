@@ -1038,6 +1038,17 @@ async function loadAdminMatches() {
 
 // ==================== ADMIN: SEGUIMIENTO DE PRONÓSTICOS ====================
 
+// Las match_date / deadline vienen como "2026-04-27T21:00:00.000Z" desde el
+// driver de pg, pero el valor almacenado no tiene zona horaria real (el admin
+// escribió "21:00" local). Si dejamos la Z, JS lo trata como UTC y al mostrar
+// en Madrid añade +1/+2h. Quitando la Z se parsea como hora local → sale igual
+// que lo que escribió el admin.
+function parseMatchDate(raw) {
+  if (!raw) return new Date(NaN);
+  const s = String(raw).replace(/Z$/, '').replace(/\.\d+$/, '');
+  return new Date(s);
+}
+
 let _trackerData = null; // cache para el botón de imprimir
 
 async function loadOpenPredictions() {
@@ -1072,7 +1083,7 @@ async function loadOpenPredictions() {
     container.innerHTML = matches.map(m => {
       const homeTeam = m.is_home ? m.team : m.opponent;
       const awayTeam = m.is_home ? m.opponent : m.team;
-      const fecha = new Date(m.match_date).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      const fecha = parseMatchDate(m.match_date).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
       const deadlineLabel = m.deadline_passed
         ? '<span style="background: rgba(255,51,51,0.2); color: #ff3333; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;">⏰ PLAZO CERRADO</span>'
         : '<span style="background: rgba(16,185,129,0.2); color: #10B981; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;">✅ PLAZO ABIERTO</span>';
@@ -1140,7 +1151,7 @@ function printTrackerReport() {
     const homeTeam = m.is_home ? m.team : m.opponent;
     const awayTeam = m.is_home ? m.opponent : m.team;
     const matchLabel = `${homeTeam} vs ${awayTeam}`;
-    const dateShort = new Date(m.match_date).toLocaleString('es-ES', {
+    const dateShort = parseMatchDate(m.match_date).toLocaleString('es-ES', {
       day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
     });
 

@@ -976,7 +976,14 @@ app.get('/api/admin/open-predictions', requireAdmin, async (req, res) => {
             SELECT id, team, opponent, is_home, match_date, deadline
             FROM matches
             WHERE is_finished = 0
-            ORDER BY match_date ASC
+            ORDER BY
+                CASE team
+                    WHEN 'Athletic Club' THEN 1
+                    WHEN 'Athletic Femenino' THEN 2
+                    WHEN 'Bilbao Athletic' THEN 3
+                    ELSE 4
+                END,
+                match_date ASC
         `);
 
         const allUsers = await query('SELECT username, display_name FROM users ORDER BY display_name ASC');
