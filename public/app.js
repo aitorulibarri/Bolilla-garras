@@ -1072,6 +1072,10 @@ async function loadAdminUsers() {
               data-user-id="${u.id}" data-username="${safeUsername}" data-display="${safeDisplay}">
               🔑 Resetear
             </button>
+            <button class="btn btn-danger btn-sm" data-action="delete-user"
+              data-user-id="${u.id}" data-username="${safeUsername}" data-display="${safeDisplay}">
+              🗑️ Borrar
+            </button>
           </td>
         </tr>`;
     }).join('');
@@ -1111,9 +1115,40 @@ async function loadAdminUsers() {
         renameUser(parseInt(btn.dataset.userId), btn.dataset.display);
       });
     });
+
+    container.querySelectorAll('button[data-action="delete-user"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        deleteUser(
+          parseInt(btn.dataset.userId),
+          btn.dataset.username,
+          btn.dataset.display
+        );
+      });
+    });
   } catch (err) {
     console.error(err);
     container.innerHTML = '<p>Error al cargar usuarios</p>';
+  }
+}
+
+async function deleteUser(userId, username, displayName) {
+  const msg = `¿Seguro que quieres borrar a ${displayName} (@${username})?\n\n⚠️ Esto también borrará TODOS sus pronósticos y los puntos que haya acumulado en la clasificación. No se puede deshacer.`;
+  if (!confirm(msg)) return;
+
+  try {
+    const res = await fetchWithRetry(`/api/admin/users/${userId}`, { method: 'DELETE' });
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok) {
+      const n = data.deletedPredictions || 0;
+      showToast(`${displayName} borrado (${n} pronóstico${n === 1 ? '' : 's'} eliminados)`, 'success');
+      loadAdminUsers();
+    } else {
+      showToast(data.error || 'Error al borrar usuario', 'error');
+    }
+  } catch (err) {
+    console.error(err);
+    showToast('Error de conexión', 'error');
   }
 }
 

@@ -959,6 +959,42 @@ app.get('/api/admin/users/:id/password', requireAdmin, async (req, res) => {
     }
 });
 
+// Borrar usuario + todas sus predictions (admin only)
+// Protecciones: no auto-borrado, no borrado de admins hardcodeados.
+app.delete('/api/admin/users/:id', requireAdmin, async (req, res) => {
+    try {
+        const userId = parseInt(req.params.id);
+        if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
+
+        const target = await queryOne('SELECT id, username, display_name FROM users WHERE id = $1', [userId]);
+        if (!target) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+        if (userId === req.user.id) {
+            return res.status(400).json({ error: 'No puedes borrarte a ti mismo' });
+        }
+        if (isAdminUsername(target.username)) {
+            return res.status(400).json({ error: `No se puede borrar al admin principal (${target.username})` });
+        }
+
+        // Borrado en dos pasos — predictions por player_name (case-insensitive) y luego el user
+        const delPreds = await pool.query(
+            'DELETE FROM predictions WHERE LOWER(player_name) = LOWER($1)',
+            [target.username]
+        );
+        await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+
+        res.json({
+            success: true,
+            username: target.username,
+            displayName: target.display_name,
+            deletedPredictions: delPreds.rowCount || 0
+        });
+    } catch (err) {
+        console.error('Delete user error:', err);
+        res.status(500).json({ error: 'Error al borrar usuario' });
+    }
+});
+
 // Cambiar display_name de un usuario (admin only)
 app.put('/api/admin/users/:id/display-name', requireAdmin, async (req, res) => {
     try {
