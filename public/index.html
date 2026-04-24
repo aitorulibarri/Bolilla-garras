@@ -181,6 +181,10 @@
                 aria-selected="false">
                 👥 Usuarios
             </button>
+            <button class="nav-tab" data-tab="tracker" id="tracker-tab" style="display: none;" role="tab"
+                aria-selected="false">
+                👀 Seguimiento
+            </button>
         </nav>
 
         <!-- Main Content -->
@@ -305,6 +309,21 @@
                     </div>
                 </div>
 
+            </section>
+
+            <!-- TRACKER TAB (admin only) - ver pronósticos de partidos abiertos -->
+            <section id="tab-tracker" class="tab-content" role="tabpanel">
+                <div class="section-header">
+                    <h2 class="section-title">👀 Seguimiento de Pronósticos</h2>
+                </div>
+                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+                    Partidos sin cerrar (sin resultado). Para cada uno, quién ha pronosticado y quién falta.
+                </p>
+                <div id="admin-tracker-container">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
             </section>
 
             <!-- USERS TAB (admin only) -->

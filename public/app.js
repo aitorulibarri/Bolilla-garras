@@ -13,6 +13,7 @@ const changeNameBtn = document.getElementById('change-name-btn');
 const userName = document.getElementById('user-name');
 const adminTab = document.getElementById('admin-tab');
 const usersTab = document.getElementById('users-tab');
+const trackerTab = document.getElementById('tracker-tab');
 const navTabs = document.querySelectorAll('.nav-tab');
 const tabContents = document.querySelectorAll('.tab-content');
 const authTabs = document.querySelectorAll('.auth-tab');
@@ -367,10 +368,11 @@ function showApp() {
   app.classList.add('active');
   userName.textContent = currentUser.displayName;
 
-  // Show admin and users tabs only for admin users
+  // Show admin tabs only for admin users
   const adminVisible = currentUser.isAdmin ? 'block' : 'none';
   adminTab.style.display = adminVisible;
   if (usersTab) usersTab.style.display = adminVisible;
+  if (trackerTab) trackerTab.style.display = adminVisible;
 
   loadMatches();
   loadLeaderboardWidget();
@@ -394,6 +396,9 @@ function loadTabContent(tabId) {
       break;
     case 'users':
       loadAdminUsers();
+      break;
+    case 'tracker':
+      loadOpenPredictions();
       break;
   }
 }
@@ -1022,6 +1027,82 @@ async function loadAdminMatches() {
   } catch (err) {
     console.error(err);
     container.innerHTML = '<p>Error al cargar partidos</p>';
+  }
+}
+
+// ==================== ADMIN: SEGUIMIENTO DE PRONÓSTICOS ====================
+
+async function loadOpenPredictions() {
+  const container = document.getElementById('admin-tracker-container');
+  if (!container) return;
+  container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  try {
+    const res = await fetchWithRetry('/api/admin/open-predictions');
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔒</div><h3>${res.status === 401 ? 'Sin permisos de admin' : 'Error al cargar'}</h3><p>${data.error || ''}</p></div>`;
+      return;
+    }
+
+    const matches = data.matches || [];
+    const totalUsers = data.totalUsers || 0;
+
+    if (matches.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><h3>No hay partidos abiertos</h3><p>Todos los partidos tienen resultado.</p></div>';
+      return;
+    }
+
+    const esc = (s) => String(s).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    container.innerHTML = matches.map(m => {
+      const homeTeam = m.is_home ? m.team : m.opponent;
+      const awayTeam = m.is_home ? m.opponent : m.team;
+      const fecha = new Date(m.match_date).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      const deadlineLabel = m.deadline_passed
+        ? '<span style="background: rgba(255,51,51,0.2); color: #ff3333; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;">⏰ PLAZO CERRADO</span>'
+        : '<span style="background: rgba(16,185,129,0.2); color: #10B981; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;">✅ PLAZO ABIERTO</span>';
+
+      const predsList = m.predictions.length === 0
+        ? '<li style="color: var(--text-muted); font-style: italic;">Nadie ha pronosticado todavía</li>'
+        : m.predictions.map(p => `
+            <li style="padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between;">
+              <span>${esc(p.display_name)}</span>
+              <strong style="font-family: 'Orbitron', monospace; color: var(--neon-red, #ff3333);">${p.home_goals} - ${p.away_goals}</strong>
+            </li>`).join('');
+
+      const missingList = m.missing.length === 0
+        ? '<li style="color: #10B981;">🎉 ¡Todos han pronosticado!</li>'
+        : m.missing.map(u => `<li style="padding: 4px 0; color: var(--text-secondary);">${esc(u.display_name)}</li>`).join('');
+
+      return `
+        <div class="card" style="margin-bottom: 16px;">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <h3 class="card-title" style="margin: 0;">${esc(homeTeam)} vs ${esc(awayTeam)}</h3>
+            ${deadlineLabel}
+          </div>
+          <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">📅 ${fecha}</p>
+
+          <div class="tracker-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 14px;">
+            <div>
+              <h4 style="font-size: 13px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">
+                ✅ Han pronosticado (${m.predictions.length}/${totalUsers})
+              </h4>
+              <ul style="list-style: none; padding: 0; margin: 0;">${predsList}</ul>
+            </div>
+            <div>
+              <h4 style="font-size: 13px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">
+                ⏳ Faltan (${m.missing.length})
+              </h4>
+              <ul style="list-style: none; padding: 0; margin: 0;">${missingList}</ul>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  } catch (err) {
+    console.error(err);
+    container.innerHTML = '<p>Error al cargar seguimiento</p>';
   }
 }
 

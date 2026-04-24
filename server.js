@@ -959,6 +959,61 @@ app.get('/api/admin/users/:id/password', requireAdmin, async (req, res) => {
     }
 });
 
+// Seguimiento: pronósticos por partido abierto (admin only)
+// Para cada partido is_finished=0, devuelve quién ha pronosticado y quién falta.
+app.get('/api/admin/open-predictions', requireAdmin, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.json({ matches: [] });
+
+        const matches = await query(`
+            SELECT id, team, opponent, is_home, match_date, deadline
+            FROM matches
+            WHERE is_finished = 0
+            ORDER BY match_date ASC
+        `);
+
+        const allUsers = await query('SELECT username, display_name FROM users ORDER BY display_name ASC');
+
+        const now = new Date();
+        const result = [];
+        for (const m of matches) {
+            const preds = await query(`
+                SELECT p.player_name, p.home_goals, p.away_goals,
+                       COALESCE(u.display_name, p.player_name) AS display_name
+                FROM predictions p
+                LEFT JOIN users u ON LOWER(u.username) = LOWER(p.player_name)
+                WHERE p.match_id = $1
+                ORDER BY display_name ASC
+            `, [m.id]);
+
+            const predictedSet = new Set(preds.map(p => p.player_name.toLowerCase()));
+            const missing = allUsers.filter(u => !predictedSet.has(u.username.toLowerCase()));
+
+            result.push({
+                id: m.id,
+                team: m.team,
+                opponent: m.opponent,
+                is_home: m.is_home,
+                match_date: m.match_date,
+                deadline: m.deadline,
+                deadline_passed: new Date(m.deadline) < now,
+                predictions: preds.map(p => ({
+                    username: p.player_name,
+                    display_name: p.display_name,
+                    home_goals: p.home_goals,
+                    away_goals: p.away_goals
+                })),
+                missing: missing.map(u => ({ username: u.username, display_name: u.display_name }))
+            });
+        }
+
+        res.json({ matches: result, totalUsers: allUsers.length });
+    } catch (err) {
+        console.error('Open predictions error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Borrar usuario + todas sus predictions (admin only)
 // Protecciones: no auto-borrado, no borrado de admins hardcodeados.
 app.delete('/api/admin/users/:id', requireAdmin, async (req, res) => {

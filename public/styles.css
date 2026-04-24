@@ -1140,6 +1140,11 @@ body::before {
     margin: 14px;
   }
 
+  /* Seguimiento: grid de 2 columnas → 1 en móvil */
+  .tracker-grid {
+    grid-template-columns: 1fr !important;
+  }
+
   /* Users table → tarjetas verticales en móvil */
   .users-table thead {
     display: none;
