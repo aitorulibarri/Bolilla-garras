@@ -1119,8 +1119,8 @@ async function loadOpenPredictions() {
   }
 }
 
-// Construye un HTML imprimible con una tabla por partido abierto
-// y lo abre en una ventana nueva con el diálogo de imprimir activado.
+// Construye un HTML imprimible agrupado POR USUARIO (una sección por persona,
+// con todos sus pronósticos debajo) y lo abre en una ventana nueva.
 function printTrackerReport() {
   if (!_trackerData || !_trackerData.matches || _trackerData.matches.length === 0) {
     showToast('Carga primero la pestaña Seguimiento', 'error');
@@ -1133,47 +1133,53 @@ function printTrackerReport() {
     day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
   });
 
-  const sections = matches.map(m => {
+  // Pivotar: { username: { displayName, rows: [{matchLabel, date, score, missing}] } }
+  // Mantenemos el orden de los partidos tal como viene del backend.
+  const byUser = {};
+  matches.forEach(m => {
     const homeTeam = m.is_home ? m.team : m.opponent;
     const awayTeam = m.is_home ? m.opponent : m.team;
-    const fecha = new Date(m.match_date).toLocaleString('es-ES', {
-      weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+    const matchLabel = `${homeTeam} vs ${awayTeam}`;
+    const dateShort = new Date(m.match_date).toLocaleString('es-ES', {
+      day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
     });
-    const deadlineStatus = m.deadline_passed ? 'PLAZO CERRADO' : 'PLAZO ABIERTO';
 
-    const allRows = [
-      ...m.predictions.map(p => ({
-        name: p.display_name,
+    m.predictions.forEach(p => {
+      const key = p.username.toLowerCase();
+      if (!byUser[key]) byUser[key] = { displayName: p.display_name, rows: [] };
+      byUser[key].rows.push({
+        matchLabel, dateShort,
         score: `${p.home_goals} - ${p.away_goals}`,
-        predicted: true
-      })),
-      ...m.missing.map(u => ({
-        name: u.display_name,
-        score: '—',
-        predicted: false
-      }))
-    ].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+        missing: false
+      });
+    });
+    m.missing.forEach(u => {
+      const key = u.username.toLowerCase();
+      if (!byUser[key]) byUser[key] = { displayName: u.display_name, rows: [] };
+      byUser[key].rows.push({ matchLabel, dateShort, score: '—', missing: true });
+    });
+  });
 
-    const tableRows = allRows.map(r => `
-      <tr class="${r.predicted ? '' : 'missing'}">
-        <td>${esc(r.name)}</td>
+  // Ordenar usuarios alfabéticamente por nombre visible
+  const users = Object.values(byUser).sort((a, b) => a.displayName.localeCompare(b.displayName, 'es'));
+
+  const sections = users.map(u => {
+    const predCount = u.rows.filter(r => !r.missing).length;
+    const tableRows = u.rows.map(r => `
+      <tr class="${r.missing ? 'missing' : ''}">
+        <td>${esc(r.matchLabel)}</td>
+        <td class="date">${esc(r.dateShort)}</td>
         <td class="score">${esc(r.score)}</td>
       </tr>`).join('');
 
     return `
-      <section class="match-block">
-        <div class="match-header">
-          <h2>${esc(homeTeam)} vs ${esc(awayTeam)}</h2>
-          <div class="match-meta">
-            <span>📅 ${esc(fecha)}</span>
-            <span class="status ${m.deadline_passed ? 'closed' : 'open'}">${deadlineStatus}</span>
-          </div>
-          <div class="counts">
-            Pronosticaron <strong>${m.predictions.length}</strong> de ${totalUsers} — Faltan <strong>${m.missing.length}</strong>
-          </div>
+      <section class="user-block">
+        <div class="user-header">
+          <h2>${esc(u.displayName)}</h2>
+          <div class="counts">Pronosticó <strong>${predCount}</strong> de ${u.rows.length} partido${u.rows.length === 1 ? '' : 's'} abierto${u.rows.length === 1 ? '' : 's'}</div>
         </div>
         <table>
-          <thead><tr><th>Usuario</th><th class="score">Pronóstico</th></tr></thead>
+          <thead><tr><th>Partido</th><th class="date">Fecha</th><th class="score">Pronóstico</th></tr></thead>
           <tbody>${tableRows}</tbody>
         </table>
       </section>`;
@@ -1212,35 +1218,28 @@ function printTrackerReport() {
     font-size: 11px;
     color: #555;
   }
-  .match-block {
+  .user-block {
     page-break-inside: avoid;
-    margin-bottom: 22px;
+    margin-bottom: 18px;
+    border-left: 3px solid #c00;
+    padding-left: 10px;
   }
-  .match-header h2 {
-    margin: 0 0 4px 0;
+  .user-header h2 {
+    margin: 0 0 2px 0;
     font-size: 15px;
     color: #000;
   }
-  .match-meta {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    font-size: 11px;
-    color: #444;
-    margin-bottom: 2px;
-  }
-  .status.open {
-    color: #080;
-    font-weight: 700;
-  }
-  .status.closed {
-    color: #c00;
-    font-weight: 700;
-  }
   .counts {
     font-size: 11px;
-    color: #444;
+    color: #555;
     margin-bottom: 6px;
+  }
+  th.date, td.date {
+    text-align: center;
+    font-size: 10px;
+    color: #555;
+    white-space: nowrap;
+    width: 1%;
   }
   table {
     width: 100%;
@@ -1298,7 +1297,7 @@ function printTrackerReport() {
     <div class="sub">Peña Garras Taldea Sestao · Generado ${esc(reportDate)}</div>
   </header>
   ${sections}
-  <footer>Bolilla Garras · ${matches.length} partido${matches.length === 1 ? '' : 's'} abierto${matches.length === 1 ? '' : 's'}</footer>
+  <footer>Bolilla Garras · ${users.length} usuario${users.length === 1 ? '' : 's'} · ${matches.length} partido${matches.length === 1 ? '' : 's'} abierto${matches.length === 1 ? '' : 's'}</footer>
   <script>setTimeout(() => window.print(), 400);</script>
 </body>
 </html>`;
