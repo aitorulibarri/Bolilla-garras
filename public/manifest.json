@@ -4,7 +4,7 @@
     "description": "Pronósticos de partidos del Athletic Club - Peña Garras Taldea Sestao",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#0A0E17",
+    "background_color": "#ffffff",
     "theme_color": "#E41E26",
     "orientation": "portrait",
     "icons": [
