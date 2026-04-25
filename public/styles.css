@@ -1885,6 +1885,22 @@ body::before {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+/* ==================== RANK ICONS ====================  */
+.podium-crown-img {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+}
+
+.rank-crown-img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  vertical-align: middle;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));
+}
+
 /* ==================== PWA INSTALL BANNER ==================== */
 .pwa-install-banner {
   position: fixed;

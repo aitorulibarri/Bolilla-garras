@@ -9,7 +9,7 @@ function createPodium(leaderboardData) {
         <div class="leaderboard-podium">
             <!-- Segundo Lugar -->
             <div class="podium-place second">
-                <div class="podium-crown">👑</div>
+                <div class="podium-crown"><img src="/assets/garras-lion.png" class="podium-crown-img" alt="🦁"></div>
                 <div class="podium-rank">#2</div>
                 <div class="podium-name">${second.display_name}</div>
                 <div class="podium-points">${second.total_points} pts</div>
@@ -18,7 +18,7 @@ function createPodium(leaderboardData) {
             
             <!-- Primer Lugar -->
             <div class="podium-place first">
-                <div class="podium-crown">👑</div>
+                <div class="podium-crown">🏆</div>
                 <div class="podium-rank">#1</div>
                 <div class="podium-name">${first.display_name}</div>
                 <div class="podium-points">${first.total_points} pts</div>
@@ -27,7 +27,7 @@ function createPodium(leaderboardData) {
             
             <!-- Tercer Lugar -->
             <div class="podium-place third">
-                <div class="podium-crown">👑</div>
+                <div class="podium-crown">🐾</div>
                 <div class="podium-rank">#3</div>
                 <div class="podium-name">${third.display_name}</div>
                 <div class="podium-points">${third.total_points} pts</div>
