@@ -18,7 +18,7 @@ function createPodium(leaderboardData) {
             
             <!-- Primer Lugar -->
             <div class="podium-place first">
-                <div class="podium-crown"><img src="/assets/copa-del-rey-v4.png" class="podium-crown-img" alt="Copa del Rey"></div>
+                <div class="podium-crown"><img src="/assets/trofeo.png" class="podium-crown-img" alt="Copa del Rey"></div>
                 <div class="podium-rank">#1</div>
                 <div class="podium-name">${first.display_name}</div>
                 <div class="podium-points">${first.total_points} pts</div>
