@@ -1894,8 +1894,8 @@ body::before {
 }
 
 .rank-crown-img {
-  width: 34px;
-  height: 34px;
+  width: 58px;
+  height: 58px;
   object-fit: contain;
   vertical-align: middle;
   filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));
