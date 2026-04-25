@@ -838,7 +838,7 @@ async function loadLeaderboardWidget() {
       let icon = `#${index + 1}`;
       if (index === 0) { rankClass = 'row-rank-1'; icon = '<img src="/assets/copa-del-rey.png" class="rank-crown-img" alt="Copa del Rey">'; }
       if (index === 1) { rankClass = 'row-rank-2'; icon = '<img src="/assets/garras-lion.png" class="rank-crown-img" alt="🦁">'; }
-      if (index === 2) { rankClass = 'row-rank-3'; icon = '<span class="rank-crown">🐾</span>'; }
+      if (index === 2) { rankClass = 'row-rank-3'; icon = '<img src="/assets/lion-paw.png" class="rank-crown-img" alt="🐾">'; }
 
       return `
             <div class="leaderboard-row ${rankClass}">
@@ -945,7 +945,7 @@ async function loadLeaderboard() {
           </thead>
           <tbody>
             ${leaderboard.map((user, index) => {
-      const rankEmoji = index === 0 ? '<img src="/assets/copa-del-rey.png" class="rank-crown-img" alt="Copa del Rey">' : (index === 1 ? '<img src="/assets/garras-lion.png" class="rank-crown-img" alt="🦁">' : (index === 2 ? '🐾' : `#${index + 1}`));
+      const rankEmoji = index === 0 ? '<img src="/assets/copa-del-rey.png" class="rank-crown-img" alt="Copa del Rey">' : (index === 1 ? '<img src="/assets/garras-lion.png" class="rank-crown-img" alt="🦁">' : (index === 2 ? '<img src="/assets/lion-paw.png" class="rank-crown-img" alt="🐾">' : `#${index + 1}`));
       return `
               <tr>
                 <td class="rank">${rankEmoji}</td>

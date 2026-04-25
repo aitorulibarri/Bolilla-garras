@@ -27,7 +27,7 @@ function createPodium(leaderboardData) {
             
             <!-- Tercer Lugar -->
             <div class="podium-place third">
-                <div class="podium-crown">🐾</div>
+                <div class="podium-crown"><img src="/assets/lion-paw.png" class="podium-crown-img" alt="🐾"></div>
                 <div class="podium-rank">#3</div>
                 <div class="podium-name">${third.display_name}</div>
                 <div class="podium-points">${third.total_points} pts</div>
