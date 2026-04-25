@@ -864,6 +864,30 @@ app.get('/api/predictions', requireAuth, async (req, res) => {
     }
 });
 
+// Get leaderboard detail (per-prediction breakdown, finished matches only)
+app.get('/api/leaderboard/detail', requireAuth, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.json([]);
+        const rows = await query(`
+            SELECT
+                pr.player_name,
+                COALESCE(u.display_name, pr.player_name) as display_name,
+                m.team, m.opponent, m.is_home, m.match_date,
+                pr.home_goals as pred_home, pr.away_goals as pred_away,
+                m.home_goals as real_home, m.away_goals as real_away,
+                COALESCE(pr.points, 0) as points
+            FROM predictions pr
+            JOIN matches m ON pr.match_id = m.id
+            LEFT JOIN users u ON LOWER(pr.player_name) = LOWER(u.username)
+            WHERE m.is_finished = 1
+            ORDER BY COALESCE(u.display_name, pr.player_name), m.match_date ASC
+        `);
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Get leaderboard
 app.get('/api/leaderboard', async (req, res) => {
     try {

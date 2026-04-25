@@ -222,6 +222,12 @@ function setupEventListeners() {
     trackerPrintBtn.addEventListener('click', printTrackerReport);
   }
 
+  // Botón de exportar PDF de la Clasificación General
+  const leaderboardPrintBtn = document.getElementById('leaderboard-print-btn');
+  if (leaderboardPrintBtn) {
+    leaderboardPrintBtn.addEventListener('click', printLeaderboardReport);
+  }
+
   // Password visibility toggle (delegado, cubre login y registro).
   // mousedown + preventDefault para no robar el foco del input entre el press y el release;
   // así el toggle funciona igual tenga o no el foco en el campo.
@@ -935,14 +941,11 @@ async function loadLeaderboard() {
               <th>Jugador</th>
               <th>Puntos</th>
               <th>Plenos</th>
-              <th>Predicciones</th>
             </tr>
           </thead>
           <tbody>
             ${leaderboard.map((user, index) => {
-      // Highlight top 3 if needed, though podium handles that visual
       const rankEmoji = index === 0 ? '👑' : (index === 1 ? '🥈' : (index === 2 ? '🥉' : `#${index + 1}`));
-
       return `
               <tr>
                 <td class="rank">${rankEmoji}</td>
@@ -953,7 +956,6 @@ async function loadLeaderboard() {
                     <span style="font-family: 'Orbitron', sans-serif; font-size: 20px; color: var(--neon-red); font-weight: 700; text-shadow: 0 0 10px rgba(255, 51, 51, 0.3);">${user.total_points}</span>
                 </td>
                 <td style="color: #00F5A0; font-weight: 600; font-size: 15px;">${user.exact_predictions} 🎯</td>
-                <td style="color: var(--text-secondary); font-size: 14px;">${user.total_predictions}</td>
               </tr>
               `;
     }).join('')}
@@ -961,6 +963,10 @@ async function loadLeaderboard() {
         </table>
       </div>
     `;
+
+    // Mostrar botón PDF
+    const printBtn = document.getElementById('leaderboard-print-btn');
+    if (printBtn) printBtn.style.display = leaderboard.length > 0 ? 'inline-flex' : 'none';
 
     container.innerHTML = podiumHtml + tableHtml;
 
@@ -1433,6 +1439,263 @@ function printTrackerReport() {
   const win = window.open('', '_blank');
   if (!win) {
     showToast('Permite ventanas emergentes para imprimir', 'error');
+    return;
+  }
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+}
+
+// ==================== LEADERBOARD PDF ====================
+
+async function printLeaderboardReport() {
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  let leaderboard, detail;
+  try {
+    const [r1, r2] = await Promise.all([
+      fetchWithRetry('/api/leaderboard'),
+      fetchWithRetry('/api/leaderboard/detail')
+    ]);
+    leaderboard = await r1.json();
+    detail = await r2.json();
+  } catch (err) {
+    showToast('Error al cargar datos para el PDF', 'error');
+    return;
+  }
+
+  if (!leaderboard.length) {
+    showToast('No hay datos de clasificación aún', 'error');
+    return;
+  }
+
+  const reportDate = new Date().toLocaleString('es-ES', {
+    day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+
+  // Agrupar detalle por player_name (lower)
+  const byPlayer = {};
+  detail.forEach(row => {
+    const key = row.player_name.toLowerCase();
+    if (!byPlayer[key]) byPlayer[key] = [];
+    byPlayer[key].push(row);
+  });
+
+  // Secciones por usuario en orden de clasificación
+  const sections = leaderboard.map((user, index) => {
+    const rank = index + 1;
+    const rankLabel = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+    const key = user.name.toLowerCase();
+    const preds = byPlayer[key] || [];
+
+    const rows = preds.map(p => {
+      const homeTeam = p.is_home ? p.team : p.opponent;
+      const awayTeam = p.is_home ? p.opponent : p.team;
+      const predScore = p.is_home
+        ? `${p.pred_home} - ${p.pred_away}`
+        : `${p.pred_away} - ${p.pred_home}`;
+      const realScore = p.is_home
+        ? `${p.real_home} - ${p.real_away}`
+        : `${p.real_away} - ${p.real_home}`;
+      const pts = Number(p.points);
+      const ptsClass = pts === 5 ? 'pts-exact' : pts > 0 ? 'pts-partial' : 'pts-zero';
+      const ptsLabel = pts === 5 ? `5 🎯` : String(pts);
+      const dateShort = parseMatchDate(p.match_date).toLocaleString('es-ES', {
+        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+      });
+      return `
+        <tr>
+          <td>${esc(homeTeam)} vs ${esc(awayTeam)}</td>
+          <td class="center">${esc(dateShort)}</td>
+          <td class="center mono">${esc(predScore)}</td>
+          <td class="center mono">${esc(realScore)}</td>
+          <td class="center ${ptsClass}">${ptsLabel}</td>
+        </tr>`;
+    }).join('');
+
+    const emptyRow = preds.length === 0
+      ? `<tr><td colspan="5" class="empty">Sin pronósticos en partidos disputados</td></tr>`
+      : '';
+
+    return `
+      <section class="user-block">
+        <div class="user-header">
+          <span class="rank-badge">${rankLabel}</span>
+          <h2>${esc(user.display_name || user.name)}</h2>
+          <div class="user-meta">
+            <span class="total-pts">${user.total_points} pts</span>
+            <span class="exact-badge">${user.exact_predictions} 🎯 plenos</span>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Partido</th>
+              <th class="center">Fecha</th>
+              <th class="center">Pronóstico</th>
+              <th class="center">Resultado</th>
+              <th class="center">Pts</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}${emptyRow}
+            <tr class="total-row">
+              <td colspan="4" style="text-align:right; font-weight:700;">TOTAL</td>
+              <td class="center total-pts-cell">${user.total_points}</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>`;
+  }).join('');
+
+  // Tabla final de clasificación general
+  const rankingRows = leaderboard.map((user, index) => {
+    const rank = index + 1;
+    const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}`;
+    return `
+      <tr class="${rank <= 3 ? 'top' + rank : ''}">
+        <td class="center">${medal}</td>
+        <td>${esc(user.display_name || user.name)}</td>
+        <td class="center total-pts-cell">${user.total_points}</td>
+        <td class="center">${user.exact_predictions} 🎯</td>
+      </tr>`;
+  }).join('');
+
+  const html = `<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Clasificación Bolilla Garras — ${esc(reportDate)}</title>
+<style>
+  @page { size: A4; margin: 15mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Helvetica', 'Arial', sans-serif;
+    color: #111;
+    background: #fff;
+    padding: 20px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  header {
+    text-align: center;
+    border-bottom: 3px solid #c00;
+    padding-bottom: 12px;
+    margin-bottom: 24px;
+  }
+  header h1 { font-size: 22px; color: #c00; letter-spacing: 1px; margin-bottom: 4px; }
+  header .sub { font-size: 11px; color: #555; }
+
+  .user-block {
+    page-break-inside: avoid;
+    margin-bottom: 22px;
+    border-left: 3px solid #c00;
+    padding-left: 10px;
+  }
+  .user-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+  .rank-badge { font-size: 16px; }
+  .user-header h2 { font-size: 15px; color: #000; }
+  .user-meta { margin-left: auto; display: flex; gap: 12px; align-items: center; }
+  .total-pts { font-size: 15px; font-weight: 700; color: #c00; }
+  .exact-badge { font-size: 11px; color: #555; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 4px;
+    font-size: 11px;
+  }
+  thead th {
+    background: #f4f4f4;
+    border-bottom: 2px solid #bbb;
+    padding: 5px 8px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  tbody td { padding: 4px 8px; border-bottom: 1px solid #e8e8e8; }
+  .center { text-align: center; }
+  .mono { font-family: 'Courier New', monospace; letter-spacing: 0.5px; }
+  .pts-exact  { color: #007a3d; font-weight: 700; }
+  .pts-partial { color: #b25000; font-weight: 600; }
+  .pts-zero   { color: #999; }
+  .empty { color: #aaa; font-style: italic; text-align: center; }
+  .total-row td { background: #f9f9f9; border-top: 2px solid #bbb; padding: 6px 8px; }
+  .total-pts-cell { font-size: 13px; font-weight: 700; color: #c00; font-family: 'Courier New', monospace; }
+
+  .ranking-section {
+    page-break-before: always;
+    margin-top: 8px;
+  }
+  .ranking-section h2 {
+    font-size: 16px;
+    color: #c00;
+    border-bottom: 2px solid #c00;
+    padding-bottom: 6px;
+    margin-bottom: 12px;
+    letter-spacing: 0.5px;
+  }
+  .top1 td { background: #fffbe6; }
+  .top2 td { background: #f6f6f6; }
+  .top3 td { background: #fff5ee; }
+  .ranking-section thead th { font-size: 11px; }
+  .ranking-section tbody td { padding: 6px 8px; font-size: 12px; }
+
+  footer {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 10px;
+    color: #888;
+    border-top: 1px solid #ccc;
+    padding-top: 8px;
+  }
+  .print-btn {
+    position: fixed; top: 10px; right: 10px;
+    background: #c00; color: white; border: none;
+    padding: 10px 16px; font-size: 14px; font-weight: 700;
+    border-radius: 6px; cursor: pointer;
+  }
+  @media print { .print-btn { display: none; } }
+</style>
+</head>
+<body>
+  <button class="print-btn" onclick="window.print()">🖨️ Imprimir / Guardar como PDF</button>
+  <header>
+    <h1>🦁 BOLILLA GARRAS — Clasificación General</h1>
+    <div class="sub">Peña Garras Taldea Sestao · Generado ${esc(reportDate)}</div>
+  </header>
+
+  ${sections}
+
+  <section class="ranking-section">
+    <h2>🏆 Clasificación General</h2>
+    <table>
+      <thead>
+        <tr>
+          <th class="center" style="width:50px;">Pos</th>
+          <th>Jugador</th>
+          <th class="center" style="width:70px;">Puntos</th>
+          <th class="center" style="width:70px;">Plenos</th>
+        </tr>
+      </thead>
+      <tbody>${rankingRows}</tbody>
+    </table>
+  </section>
+
+  <footer>Bolilla Garras · ${leaderboard.length} jugador${leaderboard.length === 1 ? '' : 'es'} · ${esc(reportDate)}</footer>
+  <script>setTimeout(() => window.print(), 400);</script>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  if (!win) {
+    showToast('Permite ventanas emergentes para exportar el PDF', 'error');
     return;
   }
   win.document.open();
