@@ -39,16 +39,63 @@ function showIOSInstallBanner() {
   const isStandalone = window.navigator.standalone === true;
   const dismissed = sessionStorage.getItem('pwa-ios-banner-dismissed');
   if (!isIOS || isStandalone || dismissed) return;
-  if (document.getElementById('pwa-install-banner')) return;
-  const banner = createInstallBanner(
-    'Toca <strong>Compartir</strong> (□↑) → <strong>Añadir a pantalla de inicio</strong>',
-    '✕',
-    () => {
-      sessionStorage.setItem('pwa-ios-banner-dismissed', '1');
-      hideInstallBanner();
-    }
-  );
-  document.body.appendChild(banner);
+  if (document.getElementById('pwa-ios-modal')) return;
+
+  const modal = document.createElement('div');
+  modal.id = 'pwa-ios-modal';
+  modal.className = 'pwa-ios-overlay';
+
+  const sheet = document.createElement('div');
+  sheet.className = 'pwa-ios-sheet';
+  sheet.innerHTML = `
+    <div class="pwa-ios-handle"></div>
+    <img src="/icons/icon-192.png" class="pwa-ios-app-icon" alt="Bolilla Garras">
+    <h3 class="pwa-ios-title">Instala Bolilla Garras</h3>
+    <p class="pwa-ios-subtitle">Accede en un tap desde tu pantalla de inicio</p>
+    <div class="pwa-ios-steps">
+      <div class="pwa-ios-step">
+        <div class="pwa-ios-step-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+            <polyline points="16 6 12 2 8 6"/>
+            <line x1="12" y1="2" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <div class="pwa-ios-step-text">
+          <strong>1.</strong> Pulsa el botón <strong>Compartir</strong>
+          <span class="pwa-ios-hint">el de la flecha hacia arriba ↑</span>
+        </div>
+      </div>
+      <div class="pwa-ios-step">
+        <div class="pwa-ios-step-icon pwa-ios-step-add">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <rect x="3" y="3" width="18" height="18" rx="3"/>
+            <line x1="12" y1="8" x2="12" y2="16"/>
+            <line x1="8" y1="12" x2="16" y2="12"/>
+          </svg>
+        </div>
+        <div class="pwa-ios-step-text">
+          <strong>2.</strong> Toca <strong>"Añadir a pantalla<br>de inicio"</strong>
+        </div>
+      </div>
+    </div>
+    <div class="pwa-ios-arrow-hint">
+      <span class="pwa-ios-arrow-bounce">▼</span>
+      el botón Compartir está en la barra de Safari
+    </div>
+    <button class="pwa-ios-close-btn">Ahora no</button>
+  `;
+
+  const closeModal = () => {
+    sessionStorage.setItem('pwa-ios-banner-dismissed', '1');
+    modal.classList.add('pwa-ios-hiding');
+    setTimeout(() => modal.remove(), 350);
+  };
+
+  sheet.querySelector('.pwa-ios-close-btn').addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+  modal.appendChild(sheet);
+  document.body.appendChild(modal);
 }
 
 function createInstallBanner(message, btnText, btnAction) {
