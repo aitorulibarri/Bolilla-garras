@@ -49,6 +49,13 @@
             }
         },
         {
+            "src": "/assets/(.*)",
+            "dest": "/public/assets/$1",
+            "headers": {
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            }
+        },
+        {
             "src": "/api/(.*)",
             "dest": "/server.js"
         },
