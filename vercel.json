@@ -42,6 +42,13 @@
             }
         },
         {
+            "src": "/podium.js",
+            "dest": "/public/podium.js",
+            "headers": {
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            }
+        },
+        {
             "src": "/index.html",
             "dest": "/public/index.html",
             "headers": {
