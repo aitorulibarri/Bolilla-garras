@@ -1024,11 +1024,9 @@ async function loadHistory() {
 
     const teamOrder = ['Athletic Club', 'Athletic Femenino', 'Bilbao Athletic'];
     const presentTeams = teamOrder.filter(t => predictions.some(p => p.team === t));
-    const tabs = ['Todos', ...presentTeams];
-
     container.innerHTML = `
       <div class="history-subtabs" id="history-subtabs">
-        ${tabs.map((t, i) => `
+        ${presentTeams.map((t, i) => `
           <button class="history-subtab${i === 0 ? ' active' : ''}" data-team="${t}">${t === 'Athletic Femenino' ? 'Femenino' : t === 'Bilbao Athletic' ? 'Bilbao Ath.' : t}</button>
         `).join('')}
       </div>
@@ -1086,7 +1084,7 @@ async function loadHistory() {
         </div>`;
     };
 
-    renderList('Todos');
+    renderList(presentTeams[0]);
 
     document.getElementById('history-subtabs').addEventListener('click', (e) => {
       const btn = e.target.closest('.history-subtab');
