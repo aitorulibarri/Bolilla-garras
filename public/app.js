@@ -573,10 +573,19 @@ async function loadMatches() {
     // Get user predictions directly from match object (Backend includes it securely)
     container.innerHTML = matches.map(match => renderMatchCard(match, match.userPrediction)).join('');
 
-    // Add event listeners for save buttons
-    document.querySelectorAll('.save-prediction-btn').forEach(btn => {
-      btn.addEventListener('click', () => savePrediction(btn.dataset.matchId));
-    });
+    // Single save-all button if there are pending predictions
+    const pendingIds = matches
+      .filter(m => new Date() < new Date(m.deadline) && !m.userPrediction)
+      .map(m => m.id);
+
+    if (pendingIds.length > 0) {
+      const saveAllBtn = document.createElement('button');
+      saveAllBtn.className = 'save-btn-gemini';
+      saveAllBtn.style.cssText = 'width:100%; margin-top:16px;';
+      saveAllBtn.textContent = 'GUARDAR PRONÓSTICOS';
+      saveAllBtn.addEventListener('click', () => saveAllPredictions(pendingIds));
+      container.appendChild(saveAllBtn);
+    }
   } catch (err) {
     console.error(err);
     container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error al cargar partidos</h3><p>Inténtalo de nuevo</p></div>';
@@ -805,13 +814,11 @@ function renderMatchCard(match, userPrediction) {
       ? `<button class="save-btn-gemini" style="background: rgba(0, 245, 160, 0.1); border: 1px solid #00F5A0; color: #00F5A0; cursor: default;">
              ✅ PRONÓSTICO GUARDADO
            </button>`
-      : (canPredict
-        ? `<button class="save-btn-gemini save-prediction-btn" data-match-id="${match.id}">
-                 GUARDAR PRONÓSTICO
-               </button>`
-        : `<button class="save-btn-gemini" style="background: #333; cursor: not-allowed; opacity: 0.7;">
+      : (!canPredict
+        ? `<button class="save-btn-gemini" style="background: #333; cursor: not-allowed; opacity: 0.7;">
                  PLAZO CERRADO
-               </button>`)
+               </button>`
+        : '')
     }
     </div>
   `;
@@ -857,50 +864,58 @@ async function loadLeaderboardWidget() {
   }
 }
 
-async function savePrediction(matchId) {
-  const homeGoals = document.getElementById(`home-${matchId}`).value;
-  const awayGoals = document.getElementById(`away-${matchId}`).value;
+async function saveAllPredictions(matchIds) {
+  const predictions = [];
+  for (const matchId of matchIds) {
+    const homeInput = document.getElementById(`home-${matchId}`);
+    const awayInput = document.getElementById(`away-${matchId}`);
+    if (!homeInput || !awayInput) continue;
+    const homeGoals = homeInput.value;
+    const awayGoals = awayInput.value;
+    if (homeGoals !== '' && awayGoals !== '') {
+      predictions.push({ matchId, homeGoals, awayGoals });
+    }
+  }
 
-  if (homeGoals === '' || awayGoals === '') {
-    showToast('Introduce los goles de ambos equipos', 'error');
+  if (predictions.length === 0) {
+    showToast('Introduce al menos un pronóstico', 'error');
     return;
   }
 
-  // Confirmación antes de guardar (no se puede cambiar después)
+  const summary = predictions.map(p => `${p.homeGoals}-${p.awayGoals}`).join(' / ');
   const confirmed = confirm(
-    `⚠️ ¿Confirmas tu pronóstico: ${homeGoals} - ${awayGoals}?\n\nUna vez guardado NO podrás modificarlo.`
+    `⚠️ ¿Confirmas tus pronósticos?\n${summary}\n\nUna vez guardados NO podrás modificarlos.`
   );
+  if (!confirmed) return;
 
-  if (!confirmed) {
-    return; // Usuario canceló
-  }
+  let saved = 0;
+  let errors = 0;
+  const token = localStorage.getItem('bolilla_token') || '';
 
-  try {
-    const token = localStorage.getItem('bolilla_token') || '';
-    const res = await fetch('/api/predictions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-      },
-      body: JSON.stringify({
-        matchId: parseInt(matchId),
-        homeGoals: parseInt(homeGoals),
-        awayGoals: parseInt(awayGoals)
-      })
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
-      showToast('¡Pronóstico guardado!', 'success');
-      loadMatches();
-    } else {
-      showToast(data.error, 'error');
+  for (const { matchId, homeGoals, awayGoals } of predictions) {
+    try {
+      const res = await fetch('/api/predictions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          matchId: parseInt(matchId),
+          homeGoals: parseInt(homeGoals),
+          awayGoals: parseInt(awayGoals)
+        })
+      });
+      if (res.ok) saved++;
+      else errors++;
+    } catch {
+      errors++;
     }
-  } catch (err) {
-    showToast('Error al guardar pronóstico', 'error');
   }
+
+  if (saved > 0) showToast(`${saved} pronóstico${saved > 1 ? 's' : ''} guardado${saved > 1 ? 's' : ''}`, 'success');
+  if (errors > 0) showToast(`Error guardando ${errors} pronóstico${errors > 1 ? 's' : ''}`, 'error');
+  loadMatches();
 }
 
 // ==================== LEADERBOARD ====================
