@@ -1110,18 +1110,23 @@ body::before {
 
   /* Grid de partido: escudos e inputs más compactos */
   .match-content-grid {
-    gap: 6px;
+    gap: 4px;
     margin-bottom: 20px;
   }
 
+  .team-container {
+    min-width: 0;
+    flex: 1 1 0;
+  }
+
   .big-shield {
-    width: 52px;
-    height: 52px;
+    width: 46px;
+    height: 46px;
   }
 
   .team-name-label {
-    font-size: 10px;
-    max-width: 80px;
+    font-size: 9px;
+    width: 100%;
     text-align: center;
     white-space: nowrap;
     overflow: hidden;
@@ -1129,17 +1134,19 @@ body::before {
   }
 
   .score-container {
-    gap: 8px;
+    gap: 6px;
+    flex-shrink: 0;
   }
 
   .score-box {
-    width: 48px;
-    height: 56px;
-    font-size: 28px;
+    width: 44px;
+    height: 52px;
+    font-size: 24px;
+    box-sizing: border-box;
   }
 
   .score-separator {
-    font-size: 18px;
+    font-size: 16px;
   }
 
   /* Forms admin: input y selects al 100% */
