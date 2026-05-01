@@ -2201,3 +2201,47 @@ body::before {
   background: rgba(255, 255, 255, 0.12);
   color: rgba(255, 255, 255, 0.8);
 }
+
+/* ==================== HISTORY SUBTABS ==================== */
+
+.history-subtabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.history-subtab {
+  padding: 7px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: #94A3B8;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.history-subtab.active {
+  background: rgba(204, 0, 0, 0.2);
+  border-color: #CC0000;
+  color: #FF3333;
+}
+
+.history-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #94A3B8;
+}
+
+.history-summary strong {
+  color: #FF3333;
+}

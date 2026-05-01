@@ -1022,41 +1022,75 @@ async function loadHistory() {
       return;
     }
 
-    container.innerHTML = predictions.map(pred => {
-      const matchDate = new Date(pred.match_date);
-      const homeTeam = pred.is_home ? pred.team : pred.opponent;
-      const awayTeam = pred.is_home ? pred.opponent : pred.team;
+    const teamOrder = ['Athletic Club', 'Athletic Femenino', 'Bilbao Athletic'];
+    const presentTeams = teamOrder.filter(t => predictions.some(p => p.team === t));
+    const tabs = ['Todos', ...presentTeams];
 
-      const pointsClass = pred.points !== null ? `points-${pred.points}` : '';
+    container.innerHTML = `
+      <div class="history-subtabs" id="history-subtabs">
+        ${tabs.map((t, i) => `
+          <button class="history-subtab${i === 0 ? ' active' : ''}" data-team="${t}">${t === 'Athletic Femenino' ? 'Femenino' : t === 'Bilbao Athletic' ? 'Bilbao Ath.' : t}</button>
+        `).join('')}
+      </div>
+      <div id="history-list"></div>
+    `;
 
-      return `
-        <div class="history-item">
-          <div class="history-match">
-            <div class="history-match-teams">${homeTeam} vs ${awayTeam}</div>
-            <div class="history-match-date">${matchDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</div>
-          </div>
-          <div class="history-result">
-            <div class="history-result-label">Tu pronóstico</div>
-            <div class="history-result-score">${pred.home_goals} - ${pred.away_goals}</div>
-          </div>
-          ${pred.is_finished ? `
+    const renderList = (team) => {
+      const filtered = team === 'Todos' ? predictions : predictions.filter(p => p.team === team);
+      const totalPts = filtered.filter(p => p.is_finished).reduce((s, p) => s + (p.points || 0), 0);
+      const plenos = filtered.filter(p => p.points === 5).length;
+
+      const summaryHtml = filtered.some(p => p.is_finished) ? `
+        <div class="history-summary">
+          <span>${filtered.filter(p => p.is_finished).length} partidos jugados</span>
+          <span><strong>${totalPts} pts</strong> · ${plenos} plenos 🎯</span>
+        </div>` : '';
+
+      document.getElementById('history-list').innerHTML = summaryHtml + filtered.map(pred => {
+        const matchDate = new Date(pred.match_date);
+        const homeTeam = pred.is_home ? pred.team : pred.opponent;
+        const awayTeam = pred.is_home ? pred.opponent : pred.team;
+        const pointsClass = pred.points !== null ? `points-${pred.points}` : '';
+        return `
+          <div class="history-item">
+            <div class="history-match">
+              <div class="history-match-teams">${homeTeam} vs ${awayTeam}</div>
+              <div class="history-match-date">${matchDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</div>
+            </div>
             <div class="history-result">
-              <div class="history-result-label">Resultado real</div>
-              <div class="history-result-score">${pred.real_home} - ${pred.real_away}</div>
+              <div class="history-result-label">Tu pronóstico</div>
+              <div class="history-result-score">${pred.home_goals} - ${pred.away_goals}</div>
             </div>
-            <div class="history-points ${pointsClass}">
-              <span class="history-points-value">${pred.points}</span>
-              <span class="history-points-label">pts</span>
-            </div>
-          ` : `
-            <div class="history-points">
-              <span class="history-points-value">⏳</span>
-              <span class="history-points-label">pendiente</span>
-            </div>
-          `}
-        </div>
-      `;
-    }).join('');
+            ${pred.is_finished ? `
+              <div class="history-result">
+                <div class="history-result-label">Resultado real</div>
+                <div class="history-result-score">${pred.real_home} - ${pred.real_away}</div>
+              </div>
+              <div class="history-points ${pointsClass}">
+                <span class="history-points-value">${pred.points}</span>
+                <span class="history-points-label">pts</span>
+              </div>
+            ` : `
+              <div class="history-points">
+                <span class="history-points-value">⏳</span>
+                <span class="history-points-label">pendiente</span>
+              </div>
+            `}
+          </div>
+        `;
+      }).join('');
+    };
+
+    renderList('Todos');
+
+    document.getElementById('history-subtabs').addEventListener('click', (e) => {
+      const btn = e.target.closest('.history-subtab');
+      if (!btn) return;
+      document.querySelectorAll('.history-subtab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderList(btn.dataset.team);
+    });
+
   } catch (err) {
     container.innerHTML = '<p>Error al cargar historial</p>';
   }
