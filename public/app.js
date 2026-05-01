@@ -777,8 +777,10 @@ function renderMatchCard(match, userPrediction) {
   return `
     <div class="match-card ${canPredict ? '' : 'expired'}">
       <div class="match-header-gemini">
-        <span class="match-league-badge">⚽ ${leagueName} • ${dateStr} ${timeStr}</span>
-        ${standingsUrl ? `<a href="${standingsUrl}" target="_blank" rel="noopener" style="position:absolute; top:-10px; left:0; font-size:11px; color:#94A3B8; text-decoration:none; background:rgba(255,255,255,0.05); padding:4px 10px; border-radius:20px;">📊 Clasificación</a>` : ''}
+        <div class="badges-row">
+          ${standingsUrl ? `<a href="${standingsUrl}" target="_blank" rel="noopener" style="font-size:11px; color:#94A3B8; text-decoration:none; background:rgba(255,255,255,0.05); padding:4px 10px; border-radius:20px;">📊 Clasificación</a>` : '<span></span>'}
+          <span class="match-league-badge">⚽ ${leagueName} • ${dateStr} ${timeStr}</span>
+        </div>
         <div class="match-title-large">
             ${homeTeam} <span style="color:var(--neon-red); margin:0 5px;">vs</span> ${awayTeam}
         </div>
