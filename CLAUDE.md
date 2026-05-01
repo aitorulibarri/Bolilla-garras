@@ -29,15 +29,15 @@ Auto-deploy al hacer `git push origin main` (integración GitHub → Vercel). No
 
 ```
 server.js             Express: JWT auth, rutas API, lógica de puntos
-public/index.html     SPA entry point (scripts con ?v=5.2 para cache bust)
+public/index.html     SPA entry point (scripts con ?v=6.2 para cache bust)
 public/app.js         Toda la lógica frontend: API calls, render, estado, PWA
 public/podium.js      Componente podio para la clasificación (top 3 con imágenes)
 public/styles.css     Estilos
 public/sw.js          Service Worker pass-through (no cache, respondWith)
 public/manifest.json  PWA manifest (iconos en public/icons/)
 public/icons/         icon-192.png, icon-512.png, icon-maskable-512.png (fondo blanco)
-public/assets/        Logos e imágenes: garras-logo.png, trofeo.png,
-                      garras-lion.png, lion-paw.png, athletic-logo.png
+public/assets/        trofeo-v2.png (sin fondo, transparente), garras-lion.png,
+                      lion-paw.png, garras-logo.png, athletic-logo.png
 vercel.json           Config deploy: rutas, headers, builds
 ```
 
@@ -49,9 +49,9 @@ vercel.json           Config deploy: rutas, headers, builds
 - `/api/(.*)` → `server.js`
 - `(.*)` fallback → `server.js` (Express sirve el SPA)
 
-**Cache busting de scripts**: los scripts se cargan con `?v=5.2` en index.html. Al modificar `app.js` o `podium.js` es suficiente con el header `no-cache`, pero si el navegador tiene caché previa de una versión anterior al no-cache, hay que incrementar la versión (`?v=5.3`, etc.).
+**Cache busting de scripts**: los scripts se cargan con `?v=6.2` en index.html. Incrementar la versión cada vez que se modifique `app.js` o `podium.js`.
 
-**Imágenes en assets**: si se sustituye una imagen, usar siempre un **nombre de archivo nuevo** (ej. `trofeo-v2.png`). Vercel deduplica por hash de contenido — reemplazar el mismo fichero no garantiza invalidación en el CDN.
+**Imágenes en assets**: si se sustituye una imagen, usar siempre un **nombre de archivo nuevo** (ej. `trofeo-v2.png`). Vercel deduplica por hash de contenido — reemplazar el mismo fichero no garantiza invalidación en el CDN. Para quitar fondo blanco de un PNG usar PowerShell + `System.Drawing.Bitmap.MakeTransparent()`.
 
 ## Middleware stack (server.js)
 
@@ -83,22 +83,42 @@ JWT stateless, token en `localStorage` como `bolilla_token`. Duración: 24h. Mid
 - Resultado exacto: **5 puntos**
 - Parcial (máximo 3): signo correcto +1, diferencia de goles +1, goles de un equipo +2
 
-## Clasificación (Leaderboard)
+## Frontend: UI Patterns clave
 
-- **Tabla web**: columnas Rango / Jugador / Puntos / Plenos (sin columna Predicciones).
-- **Iconos de puesto**: 1º `trofeo.png` (Copa del Rey), 2º `garras-lion.png` (león Athletic), 3º `lion-paw.png` (garra). Tamaño: 58px en tabla y podio. CSS en `.podium-crown-img` y `.rank-crown-img`.
-- **PDF export** (solo admins): botón `#leaderboard-print-btn` visible si `currentUser.isAdmin`. Llama a `printLeaderboardReport()` que hace fetch de `/api/leaderboard` + `/api/leaderboard/detail` y genera HTML con `window.open`.
-- **`/api/leaderboard/detail`** (requireAuth): devuelve predicciones de partidos `is_finished=1` con puntos por fila, para el PDF.
+### Match cards (`renderMatchCard`)
+
+La cabecera usa `.match-header-gemini` (flexbox columna) con `.badges-row` dentro:
+- `.badges-row`: fila con enlace de clasificación (izquierda) y badge de liga (derecha)
+- `standingsUrls` en `renderMatchCard` mapea cada `match.team` a su URL de clasificación en athletic-club.eus
+- El grid de partido (`.match-content-grid`) tiene dos `.team-container` con `flex: 1 1 0; min-width: 0` — crítico para que los escudos no se salgan en móvil
+
+### Guardar pronósticos
+
+No hay botón por partido. `loadMatches()` añade un único botón "GUARDAR PRONÓSTICOS" al final del container si hay partidos pendientes. El handler es `saveAllPredictions(matchIds[])` que recorre los inputs, muestra confirmación con todos los resultados juntos y hace un POST por partido.
+
+### Historial (`loadHistory`)
+
+Subpestañas por equipo (Athletic Club / Femenino / Bilbao Ath.) — sin pestaña "Todos". La función interna `renderList(team)` filtra `predictions` por `pred.team` y renderiza una tabla `.hist-table` con columnas: Partido / Fecha / Pronóst. / Result. / Pts. Los puntos usan badges de color: `.hist-pts-5` (verde), `.hist-pts-3` (amarillo), `.hist-pts-1` (gris), `.hist-pts-0` (rojo).
+
+### Clasificación (Leaderboard)
+
+- **Iconos de puesto**: 1º `trofeo-v2.png` (sin fondo), 2º `garras-lion.png`, 3º `lion-paw.png`. Tamaño: 58px. CSS en `.podium-crown-img` y `.rank-crown-img`.
+- **PDF export** (solo admins): `printLeaderboardReport()` → fetch `/api/leaderboard` + `/api/leaderboard/detail` → `window.open`.
+
+### Mobile CSS (`@media max-width: 768px`)
+
+Overrides críticos para que el layout de las tarjetas entre en pantallas pequeñas:
+- `.team-container`: `min-width: 0; flex: 1 1 0` — sin esto los escudos se salen del recuadro
+- `.big-shield`: 46px, `.score-box`: 44×52px, `.score-container`: `flex-shrink: 0`
+- `.match-header-gemini`: gap reducido, `.match-title-large`: 15px
 
 ## PWA
 
-La app es instalable como PWA:
-
-- **manifest.json**: `display: standalone`, `theme_color: #E41E26`, `background_color: #ffffff`. Iconos PNG en `public/icons/` con fondo blanco (regenerar desde `assets/garras-logo.png` con `System.Drawing` en PowerShell si hacen falta).
-- **sw.js**: pass-through. Tiene `install` (skipWaiting), `activate` (borra cachés antiguas), `fetch` con `event.respondWith(fetch(event.request))`. No cachea nada.
-- **Install prompt (app.js)**:
-  - Android: captura `beforeinstallprompt` → banner rojo con botón "Instalar". Guard: `display-mode: standalone`.
-  - iOS: detecta `/iPhone|iPad|iPod/i` + `!navigator.standalone` → modal bottom sheet con pasos animados. Guard: `sessionStorage` para no repetir.
+- **manifest.json**: `display: standalone`, `theme_color: #E41E26`.
+- **sw.js**: pass-through total. No cachea nada.
+- **Install prompt**:
+  - Android: captura `beforeinstallprompt` → banner rojo. Guard: `display-mode: standalone`.
+  - iOS: detecta `/iPhone|iPad|iPod/i` + `!navigator.standalone` → modal bottom sheet con pasos. Guard: `sessionStorage`. iOS no soporta `beforeinstallprompt` — no hay one-tap nativo, el modal es la única opción.
 
 ## Key Patterns
 
