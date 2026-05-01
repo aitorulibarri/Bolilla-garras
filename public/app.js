@@ -1035,50 +1035,55 @@ async function loadHistory() {
       <div id="history-list"></div>
     `;
 
+    const pointsBadge = (pred) => {
+      if (!pred.is_finished) return `<span class="hist-pts hist-pts-pending">⏳</span>`;
+      const p = pred.points;
+      const cls = p === 5 ? 'hist-pts-5' : p >= 3 ? 'hist-pts-3' : p >= 1 ? 'hist-pts-1' : 'hist-pts-0';
+      return `<span class="hist-pts ${cls}">${p} pts</span>`;
+    };
+
     const renderList = (team) => {
       const filtered = team === 'Todos' ? predictions : predictions.filter(p => p.team === team);
-      const totalPts = filtered.filter(p => p.is_finished).reduce((s, p) => s + (p.points || 0), 0);
-      const plenos = filtered.filter(p => p.points === 5).length;
+      const finished = filtered.filter(p => p.is_finished);
+      const totalPts = finished.reduce((s, p) => s + (p.points || 0), 0);
+      const plenos = finished.filter(p => p.points === 5).length;
 
-      const summaryHtml = filtered.some(p => p.is_finished) ? `
+      const summaryHtml = finished.length ? `
         <div class="history-summary">
-          <span>${filtered.filter(p => p.is_finished).length} partidos jugados</span>
+          <span>${finished.length} jugados · ${filtered.length - finished.length} pendientes</span>
           <span><strong>${totalPts} pts</strong> · ${plenos} plenos 🎯</span>
         </div>` : '';
 
-      document.getElementById('history-list').innerHTML = summaryHtml + filtered.map(pred => {
+      const rows = filtered.map(pred => {
         const matchDate = new Date(pred.match_date);
         const homeTeam = pred.is_home ? pred.team : pred.opponent;
         const awayTeam = pred.is_home ? pred.opponent : pred.team;
-        const pointsClass = pred.points !== null ? `points-${pred.points}` : '';
+        const resultado = pred.is_finished ? `${pred.real_home}-${pred.real_away}` : `<span style="color:#64748b">—</span>`;
         return `
-          <div class="history-item">
-            <div class="history-match">
-              <div class="history-match-teams">${homeTeam} vs ${awayTeam}</div>
-              <div class="history-match-date">${matchDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</div>
-            </div>
-            <div class="history-result">
-              <div class="history-result-label">Tu pronóstico</div>
-              <div class="history-result-score">${pred.home_goals} - ${pred.away_goals}</div>
-            </div>
-            ${pred.is_finished ? `
-              <div class="history-result">
-                <div class="history-result-label">Resultado real</div>
-                <div class="history-result-score">${pred.real_home} - ${pred.real_away}</div>
-              </div>
-              <div class="history-points ${pointsClass}">
-                <span class="history-points-value">${pred.points}</span>
-                <span class="history-points-label">pts</span>
-              </div>
-            ` : `
-              <div class="history-points">
-                <span class="history-points-value">⏳</span>
-                <span class="history-points-label">pendiente</span>
-              </div>
-            `}
-          </div>
-        `;
+          <tr>
+            <td class="hist-td-match">${homeTeam}<br><span class="hist-vs">vs ${awayTeam}</span></td>
+            <td class="hist-td-date">${matchDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</td>
+            <td class="hist-td-score">${pred.home_goals}-${pred.away_goals}</td>
+            <td class="hist-td-score">${resultado}</td>
+            <td class="hist-td-pts">${pointsBadge(pred)}</td>
+          </tr>`;
       }).join('');
+
+      document.getElementById('history-list').innerHTML = summaryHtml + `
+        <div class="hist-table-wrap">
+          <table class="hist-table">
+            <thead>
+              <tr>
+                <th>Partido</th>
+                <th>Fecha</th>
+                <th>Pronóst.</th>
+                <th>Result.</th>
+                <th>Pts</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
     };
 
     renderList('Todos');
