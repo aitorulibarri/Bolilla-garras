@@ -762,7 +762,7 @@ function renderMatchCard(match, userPrediction) {
 
   const standingsUrls = {
     'Athletic Club':     'https://www.athletic-club.eus/equipos/athletic-club/2025-26/clasificacion/',
-    'Athletic Femenino': 'https://www.athletic-club.eus/equipos/athletic-femenino/2025-26/clasificacion/',
+    'Athletic Femenino': 'https://www.athletic-club.eus/equipos/athletic-club-femenino/2025-26/clasificacion/',
     'Bilbao Athletic':   'https://www.athletic-club.eus/equipos/bilbao-athletic/2025-26/clasificacion/',
   };
   const standingsUrl = standingsUrls[contextTeam] || null;
