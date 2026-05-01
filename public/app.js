@@ -760,6 +760,13 @@ function renderMatchCard(match, userPrediction) {
   if (contextTeam === 'Athletic Femenino' || contextTeam.includes('Femenino')) leagueName = 'Liga F';
   if (contextTeam === 'Bilbao Athletic') leagueName = '1ª RFEF';
 
+  const standingsUrls = {
+    'Athletic Club':     'https://www.athletic-club.eus/equipos/athletic-club/2025-26/clasificacion/',
+    'Athletic Femenino': 'https://www.athletic-club.eus/equipos/athletic-femenino/2025-26/clasificacion/',
+    'Bilbao Athletic':   'https://www.athletic-club.eus/equipos/bilbao-athletic/2025-26/clasificacion/',
+  };
+  const standingsUrl = standingsUrls[contextTeam] || null;
+
   const homeShieldHtml = homeShield
     ? `<img src="${homeShield}" class="big-shield" alt="${homeTeam}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'shield-fallback',textContent:'⚽'}));">`
     : `<span class="shield-fallback">⚽</span>`;
@@ -771,6 +778,7 @@ function renderMatchCard(match, userPrediction) {
     <div class="match-card ${canPredict ? '' : 'expired'}">
       <div class="match-header-gemini">
         <span class="match-league-badge">⚽ ${leagueName} • ${dateStr} ${timeStr}</span>
+        ${standingsUrl ? `<a href="${standingsUrl}" target="_blank" rel="noopener" style="font-size:12px; color:var(--neon-red); text-decoration:none; opacity:0.8;">📊 Clasificación</a>` : ''}
         <div class="match-title-large">
             ${homeTeam} <span style="color:var(--neon-red); margin:0 5px;">vs</span> ${awayTeam}
         </div>
