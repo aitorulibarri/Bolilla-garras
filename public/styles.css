@@ -2337,3 +2337,59 @@ body::before {
 .hist-pts-1  { background: rgba(148,163,184,0.15); color: #94A3B8; }
 .hist-pts-0  { background: rgba(239,68,68,0.12);  color: #EF4444; }
 .hist-pts-pending { background: transparent; color: #64748b; font-size: 16px; }
+
+/* ==================== JORNADA BLOCKS ==================== */
+
+.hist-jornada-block {
+  margin-bottom: 14px;
+}
+
+.hist-jornada-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px 10px 0 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: none;
+}
+
+.hist-jornada-label {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  color: #CBD5E1;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.hist-jornada-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hist-jornada-pending {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.hist-jornada-pts {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Rajdhani', sans-serif;
+  white-space: nowrap;
+}
+
+.jornada-pts-high    { background: rgba(0,245,160,0.15);  color: #00F5A0; }
+.jornada-pts-mid     { background: rgba(250,204,21,0.15);  color: #FACC15; }
+.jornada-pts-low     { background: rgba(148,163,184,0.15); color: #94A3B8; }
+.jornada-pts-pending { background: transparent; color: #64748b; font-size: 13px; }
+
+.hist-jornada-table {
+  border-radius: 0 0 12px 12px;
+}

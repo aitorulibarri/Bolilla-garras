@@ -1026,8 +1026,9 @@ async function loadHistory() {
     const presentTeams = teamOrder.filter(t => predictions.some(p => p.team === t));
     container.innerHTML = `
       <div class="history-subtabs" id="history-subtabs">
-        ${presentTeams.map((t, i) => `
-          <button class="history-subtab${i === 0 ? ' active' : ''}" data-team="${t}">${t === 'Athletic Femenino' ? 'Femenino' : t === 'Bilbao Athletic' ? 'Bilbao Ath.' : t}</button>
+        <button class="history-subtab active" data-team="__jornada__">Por jornada</button>
+        ${presentTeams.map(t => `
+          <button class="history-subtab" data-team="${t}">${t === 'Athletic Femenino' ? 'Femenino' : t === 'Bilbao Athletic' ? 'Bilbao Ath.' : t}</button>
         `).join('')}
       </div>
       <div id="history-list"></div>
@@ -1040,8 +1041,93 @@ async function loadHistory() {
       return `<span class="hist-pts ${cls}">${p} pts</span>`;
     };
 
+    const renderByWeek = () => {
+      const getMonday = (raw) => {
+        const d = parseMatchDate(raw);
+        const day = d.getDay();
+        const diff = day === 0 ? -6 : 1 - day;
+        d.setDate(d.getDate() + diff);
+        d.setHours(0, 0, 0, 0);
+        return d.toISOString().split('T')[0];
+      };
+
+      const weeks = {};
+      predictions.forEach(pred => {
+        const key = getMonday(pred.match_date);
+        if (!weeks[key]) weeks[key] = [];
+        weeks[key].push(pred);
+      });
+
+      const sortedKeys = Object.keys(weeks).sort((a, b) => b.localeCompare(a));
+
+      const allFinished = predictions.filter(p => p.is_finished);
+      const grandTotal = allFinished.reduce((s, p) => s + (p.points || 0), 0);
+      const grandPlenos = allFinished.filter(p => p.points === 5).length;
+
+      const summaryHtml = allFinished.length ? `
+        <div class="history-summary">
+          <span>${allFinished.length} jugados · ${predictions.length - allFinished.length} pendientes</span>
+          <span><strong>${grandTotal} pts total</strong> · ${grandPlenos} plenos 🎯</span>
+        </div>` : '';
+
+      const fmtShort = (d) => d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+
+      const weeksHtml = sortedKeys.map(key => {
+        const preds = weeks[key].slice().sort((a, b) => parseMatchDate(a.match_date) - parseMatchDate(b.match_date));
+        const finished = preds.filter(p => p.is_finished);
+        const weekPts = finished.reduce((s, p) => s + (p.points || 0), 0);
+        const pending = preds.length - finished.length;
+
+        const monday = new Date(key + 'T00:00:00');
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        const weekLabel = `${fmtShort(monday)} – ${fmtShort(sunday)}`;
+
+        const ptsCls = weekPts >= 10 ? 'jornada-pts-high' : weekPts >= 5 ? 'jornada-pts-mid' : 'jornada-pts-low';
+        const ptsHtml = finished.length
+          ? `<span class="hist-jornada-pts ${ptsCls}">${weekPts} pts</span>`
+          : `<span class="hist-jornada-pts jornada-pts-pending">⏳ pendiente</span>`;
+
+        const rows = preds.map(pred => {
+          const matchDate = parseMatchDate(pred.match_date);
+          const homeTeam = pred.is_home ? pred.team : pred.opponent;
+          const awayTeam = pred.is_home ? pred.opponent : pred.team;
+          const resultado = pred.is_finished ? `${pred.real_home}-${pred.real_away}` : `<span style="color:#64748b">—</span>`;
+          return `
+            <tr>
+              <td class="hist-td-match">${homeTeam}<br><span class="hist-vs">vs ${awayTeam}</span></td>
+              <td class="hist-td-date">${matchDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</td>
+              <td class="hist-td-score">${pred.home_goals}-${pred.away_goals}</td>
+              <td class="hist-td-score">${resultado}</td>
+              <td class="hist-td-pts">${pointsBadge(pred)}</td>
+            </tr>`;
+        }).join('');
+
+        return `
+          <div class="hist-jornada-block">
+            <div class="hist-jornada-header">
+              <span class="hist-jornada-label">${weekLabel}</span>
+              <div class="hist-jornada-meta">
+                ${pending ? `<span class="hist-jornada-pending">${pending} pend.</span>` : ''}
+                ${ptsHtml}
+              </div>
+            </div>
+            <div class="hist-table-wrap hist-jornada-table">
+              <table class="hist-table">
+                <thead><tr>
+                  <th>Partido</th><th>Fecha</th><th>Pronóst.</th><th>Result.</th><th>Pts</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+              </table>
+            </div>
+          </div>`;
+      }).join('');
+
+      document.getElementById('history-list').innerHTML = summaryHtml + weeksHtml;
+    };
+
     const renderList = (team) => {
-      const filtered = team === 'Todos' ? predictions : predictions.filter(p => p.team === team);
+      const filtered = predictions.filter(p => p.team === team);
       const finished = filtered.filter(p => p.is_finished);
       const totalPts = finished.reduce((s, p) => s + (p.points || 0), 0);
       const plenos = finished.filter(p => p.points === 5).length;
@@ -1053,7 +1139,7 @@ async function loadHistory() {
         </div>` : '';
 
       const rows = filtered.map(pred => {
-        const matchDate = new Date(pred.match_date);
+        const matchDate = parseMatchDate(pred.match_date);
         const homeTeam = pred.is_home ? pred.team : pred.opponent;
         const awayTeam = pred.is_home ? pred.opponent : pred.team;
         const resultado = pred.is_finished ? `${pred.real_home}-${pred.real_away}` : `<span style="color:#64748b">—</span>`;
@@ -1084,14 +1170,15 @@ async function loadHistory() {
         </div>`;
     };
 
-    renderList(presentTeams[0]);
+    renderByWeek();
 
     document.getElementById('history-subtabs').addEventListener('click', (e) => {
       const btn = e.target.closest('.history-subtab');
       if (!btn) return;
       document.querySelectorAll('.history-subtab').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      renderList(btn.dataset.team);
+      if (btn.dataset.team === '__jornada__') renderByWeek();
+      else renderList(btn.dataset.team);
     });
 
   } catch (err) {
