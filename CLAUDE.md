@@ -49,7 +49,7 @@ vercel.json           Config deploy: rutas, headers, builds
 - `/api/(.*)` → `server.js`
 - `(.*)` fallback → `server.js` (Express sirve el SPA)
 
-**Cache busting de scripts**: los scripts se cargan con `?v=6.2` en index.html. Incrementar la versión cada vez que se modifique `app.js` o `podium.js`.
+**Cache busting de scripts**: los scripts se cargan con `?v=6.3` en index.html. Incrementar la versión cada vez que se modifique `app.js` o `podium.js`.
 
 **Imágenes en assets**: si se sustituye una imagen, usar siempre un **nombre de archivo nuevo** (ej. `trofeo-v2.png`). Vercel deduplica por hash de contenido — reemplazar el mismo fichero no garantiza invalidación en el CDN. Para quitar fondo blanco de un PNG usar PowerShell + `System.Drawing.Bitmap.MakeTransparent()`.
 
@@ -98,7 +98,11 @@ No hay botón por partido. `loadMatches()` añade un único botón "GUARDAR PRON
 
 ### Historial (`loadHistory`)
 
-Subpestañas por equipo (Athletic Club / Femenino / Bilbao Ath.) — sin pestaña "Todos". La función interna `renderList(team)` filtra `predictions` por `pred.team` y renderiza una tabla `.hist-table` con columnas: Partido / Fecha / Pronóst. / Result. / Pts. Los puntos usan badges de color: `.hist-pts-5` (verde), `.hist-pts-3` (amarillo), `.hist-pts-1` (gris), `.hist-pts-0` (rojo).
+Primera subpestaña: **"Por jornada"** (activa por defecto) — función `renderByWeek()` agrupa todas las predicciones por semana (lunes-domingo) usando `getMonday(raw)` que llama a `parseMatchDate`. Muestra bloques `.hist-jornada-block` con encabezado de rango de fechas y total de puntos de la semana. Orden dentro de cada semana: Athletic Club → Athletic Femenino → Bilbao Athletic (no por fecha). Nota: la agrupación es por semana de calendario, no por número de jornada real (los tres equipos tienen ligas distintas).
+
+Resto de subpestañas por equipo (Athletic Club / Femenino / Bilbao Ath.): función `renderList(team)` filtra `predictions` por `pred.team`. Tabla `.hist-table` con columnas: Partido / Fecha / Pronóst. / Result. / Pts. Celda de partido: `${homeTeam} <span class="hist-vs">vs</span> ${awayTeam}` — todo en la misma línea. Los puntos usan badges: `.hist-pts-5` (verde), `.hist-pts-3` (amarillo), `.hist-pts-1` (gris), `.hist-pts-0` (rojo).
+
+Las tablas de jornada usan `.hist-jornada-table` (clase adicional) con `table-layout: fixed` y anchos en porcentaje (40% / 14% / 16% / 16% / 14%).
 
 ### Clasificación (Leaderboard)
 
