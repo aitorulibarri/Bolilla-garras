@@ -2393,3 +2393,22 @@ body::before {
 .hist-jornada-table {
   border-radius: 0 0 12px 12px;
 }
+
+.hist-jornada-table .hist-table {
+  table-layout: fixed;
+}
+
+.hist-jornada-table .hist-table th:nth-child(1),
+.hist-jornada-table .hist-table td:nth-child(1) { width: auto; }
+
+.hist-jornada-table .hist-table th:nth-child(2),
+.hist-jornada-table .hist-table td:nth-child(2) { width: 62px; text-align: center; }
+
+.hist-jornada-table .hist-table th:nth-child(3),
+.hist-jornada-table .hist-table td:nth-child(3) { width: 66px; text-align: center; }
+
+.hist-jornada-table .hist-table th:nth-child(4),
+.hist-jornada-table .hist-table td:nth-child(4) { width: 66px; text-align: center; }
+
+.hist-jornada-table .hist-table th:nth-child(5),
+.hist-jornada-table .hist-table td:nth-child(5) { width: 62px; text-align: center; }
