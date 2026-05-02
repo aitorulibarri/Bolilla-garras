@@ -1096,7 +1096,7 @@ async function loadHistory() {
           const resultado = pred.is_finished ? `${pred.real_home}-${pred.real_away}` : `<span style="color:#64748b">—</span>`;
           return `
             <tr>
-              <td class="hist-td-match">${homeTeam}<span class="hist-vs">${awayTeam}</span></td>
+              <td class="hist-td-match">${homeTeam} <span class="hist-vs">vs</span> ${awayTeam}</td>
               <td class="hist-td-date">${matchDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</td>
               <td class="hist-td-score">${pred.home_goals}-${pred.away_goals}</td>
               <td class="hist-td-score">${resultado}</td>
@@ -1146,7 +1146,7 @@ async function loadHistory() {
         const resultado = pred.is_finished ? `${pred.real_home}-${pred.real_away}` : `<span style="color:#64748b">—</span>`;
         return `
           <tr>
-            <td class="hist-td-match">${homeTeam}<span class="hist-vs">${awayTeam}</span></td>
+            <td class="hist-td-match">${homeTeam} <span class="hist-vs">vs</span> ${awayTeam}</td>
             <td class="hist-td-date">${matchDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</td>
             <td class="hist-td-score">${pred.home_goals}-${pred.away_goals}</td>
             <td class="hist-td-score">${resultado}</td>
