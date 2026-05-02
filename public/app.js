@@ -1073,7 +1073,8 @@ async function loadHistory() {
       const fmtShort = (d) => d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 
       const weeksHtml = sortedKeys.map(key => {
-        const preds = weeks[key].slice().sort((a, b) => parseMatchDate(a.match_date) - parseMatchDate(b.match_date));
+        const teamRank = { 'Athletic Club': 0, 'Athletic Femenino': 1, 'Bilbao Athletic': 2 };
+        const preds = weeks[key].slice().sort((a, b) => (teamRank[a.team] ?? 3) - (teamRank[b.team] ?? 3));
         const finished = preds.filter(p => p.is_finished);
         const weekPts = finished.reduce((s, p) => s + (p.points || 0), 0);
         const pending = preds.length - finished.length;
