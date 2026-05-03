@@ -1,5 +1,5 @@
-// Bolilla Garras App v6.4 — GARRAS SARIA module added
-console.log('📱 Bolilla Garras App v6.4 loaded');
+// Bolilla Garras App v6.5 — GARRAS SARIA fixes
+console.log('📱 Bolilla Garras App v6.5 loaded');
 // ==================== STATE ====================
 let currentUser = null;
 
@@ -2454,9 +2454,10 @@ async function loadGarrasVoteSection() {
 
   try {
     const res = await fetchWithRetry('/api/garras/jornadas/active');
+    if (!res.ok) throw new Error(`API ${res.status}`);
     const jornada = await res.json();
 
-    if (!jornada) {
+    if (!jornada || jornada.error) {
       section.innerHTML = `
         <div class="garras-no-vote card">
           <div class="garras-no-vote-icon">🔒</div>
@@ -2471,8 +2472,10 @@ async function loadGarrasVoteSection() {
       fetchWithRetry('/api/garras/players?category=masculino'),
       fetchWithRetry('/api/garras/players?category=femenino')
     ]);
+    if (!mascRes.ok || !femRes.ok) throw new Error('Error al cargar jugadores');
     const mascPlayers = await mascRes.json();
     const femPlayers = await femRes.json();
+    if (!Array.isArray(mascPlayers) || !Array.isArray(femPlayers)) throw new Error('Respuesta inesperada de jugadores');
 
     const votedMasc = jornada.userVotes?.masculino;
     const votedFem = jornada.userVotes?.femenino;
@@ -2703,10 +2706,47 @@ async function loadGarrasAdminJornadas() {
 }
 
 function showGarrasCreateModal() {
-  const numero = prompt('Número de jornada (ej: 28):');
-  if (!numero || isNaN(parseInt(numero))) return;
-  const label = prompt('Etiqueta opcional (ej: J28 - Athletic vs Barça):') || '';
-  garrasCreateJornada(parseInt(numero), label);
+  const container = document.getElementById('garras-admin-container');
+  if (!container) return;
+
+  // Toggle: if the form is already visible, hide it
+  if (container.querySelector('.garras-create-form')) {
+    loadGarrasAdminJornadas();
+    return;
+  }
+
+  const formHtml = `
+    <div class="garras-create-form">
+      <div class="garras-create-row">
+        <div class="form-group" style="flex:1;">
+          <label style="font-size:13px;color:var(--text-secondary);">Número de jornada</label>
+          <input type="number" id="garras-new-numero" min="1" max="99" placeholder="Ej: 28" class="garras-input" style="width:100%;">
+        </div>
+        <div class="form-group" style="flex:2;">
+          <label style="font-size:13px;color:var(--text-secondary);">Etiqueta (opcional)</label>
+          <input type="text" id="garras-new-label" placeholder="Ej: J28 — Athletic vs Barça" class="garras-input" style="width:100%;">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button class="btn btn-primary btn-sm" onclick="garrasSubmitCreate()">✅ Crear</button>
+        <button class="btn btn-secondary btn-sm" onclick="loadGarrasAdminJornadas()">Cancelar</button>
+      </div>
+    </div>`;
+
+  container.innerHTML = formHtml;
+  document.getElementById('garras-new-numero')?.focus();
+}
+
+async function garrasSubmitCreate() {
+  const numeroEl = document.getElementById('garras-new-numero');
+  const labelEl = document.getElementById('garras-new-label');
+  const numero = parseInt(numeroEl?.value);
+  if (!numero || numero < 1) {
+    showToast('Introduce un número de jornada válido', 'error');
+    return;
+  }
+  const label = labelEl?.value?.trim() || '';
+  await garrasCreateJornada(numero, label);
 }
 
 async function garrasCreateJornada(numero, label) {

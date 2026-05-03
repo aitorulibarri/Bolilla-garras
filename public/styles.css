@@ -2624,6 +2624,20 @@ body::before {
 .garras-badge.pending { background: rgba(251,146,60,0.12); color: #fb923c; border: 1px solid rgba(251,146,60,0.3); }
 
 .garras-empty, .garras-error { font-size: 13px; color: var(--text-secondary); padding: 16px; text-align: center; }
+
+/* Inline create form */
+.garras-create-form { padding: 12px 0 4px; }
+.garras-create-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.garras-input {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  color: var(--text-primary);
+  padding: 8px 12px;
+  font-size: 14px;
+  outline: none;
+}
+.garras-input:focus { border-color: var(--neon-red); }
 .garras-error { color: var(--error, #f87171); }
 
 /* btn-danger */
