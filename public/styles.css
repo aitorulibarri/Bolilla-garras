@@ -2409,3 +2409,234 @@ body::before {
 
 .hist-jornada-table .hist-table th:nth-child(5),
 .hist-jornada-table .hist-table td:nth-child(5) { width: 14%; text-align: center; }
+
+/* ==================== GARRAS SARIA ==================== */
+
+.section-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 4px 0 0;
+}
+
+/* --- No active vote state --- */
+.garras-no-vote {
+  text-align: center;
+  padding: 40px 20px;
+}
+.garras-no-vote-icon { font-size: 48px; margin-bottom: 12px; }
+.garras-no-vote h3 { font-size: 18px; color: var(--text-primary); margin-bottom: 8px; }
+.garras-no-vote p { color: var(--text-secondary); font-size: 14px; }
+
+/* --- Vote section header --- */
+.garras-vote-header {
+  text-align: center;
+  padding: 20px 16px 8px;
+}
+.garras-vote-header h3 { font-size: 20px; color: var(--text-primary); margin-bottom: 4px; }
+.garras-vote-subtitle { font-size: 13px; color: var(--text-secondary); }
+
+/* --- Vote grid: two category columns --- */
+.garras-vote-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 12px 8px 20px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* --- Category block --- */
+.garras-category-block {
+  background: var(--bg-card);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.garras-category-title {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--neon-red);
+  margin-bottom: 4px;
+}
+
+/* --- Player cards grid --- */
+.garras-players-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.garras-player-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  text-align: center;
+}
+.garras-player-card:hover:not(.voted-lock) {
+  background: rgba(228,30,38,0.15);
+  border-color: var(--neon-red);
+  transform: translateY(-1px);
+}
+.garras-player-card.selected {
+  background: rgba(228,30,38,0.25);
+  border-color: var(--neon-red);
+  box-shadow: 0 0 8px rgba(228,30,38,0.35);
+}
+.garras-player-card.voted-choice {
+  background: rgba(34,197,94,0.15);
+  border-color: #22c55e;
+}
+.garras-player-card.voted-lock {
+  cursor: default;
+  opacity: 0.75;
+}
+.garras-player-name {
+  font-size: 12px;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+/* --- Voted message --- */
+.garras-voted-msg {
+  background: rgba(34,197,94,0.12);
+  border: 1px solid rgba(34,197,94,0.35);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #4ade80;
+  text-align: center;
+}
+
+/* --- Vote button --- */
+.garras-vote-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  background: var(--gradient-red-neon);
+  color: #fff;
+  transition: opacity 0.2s;
+  margin-top: 4px;
+}
+.garras-vote-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.garras-vote-btn.garras-voted-btn {
+  background: rgba(34,197,94,0.2);
+  border: 1px solid rgba(34,197,94,0.4);
+  color: #4ade80;
+}
+
+/* --- History --- */
+.garras-history-list { display: flex; flex-direction: column; gap: 8px; padding: 8px 0; }
+.garras-history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 8px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.garras-history-label { font-size: 14px; font-weight: 600; color: var(--text-primary); min-width: 80px; }
+.garras-history-winners { display: flex; gap: 8px; flex-wrap: wrap; }
+.garras-winner-pill {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+.garras-winner-pill.masc { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+.garras-winner-pill.fem { background: rgba(236,72,153,0.15); color: #f472b6; border: 1px solid rgba(236,72,153,0.3); }
+.garras-votes-count { font-weight: 400; opacity: 0.8; }
+
+/* --- Season ranking --- */
+.garras-ranking-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 8px 0;
+}
+.garras-ranking-block { display: flex; flex-direction: column; gap: 8px; }
+.garras-rank-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.garras-rank-table th {
+  text-align: left;
+  color: var(--text-secondary);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.garras-rank-table td { padding: 7px 6px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.garras-rank-pos { font-size: 16px; text-align: center; width: 32px; }
+.garras-rank-name { color: var(--text-primary); font-weight: 500; }
+.garras-rank-wins { text-align: center; font-weight: 700; color: var(--gold); }
+.garras-rank-votes { text-align: center; color: var(--text-secondary); }
+
+/* --- Admin section --- */
+.garras-admin-card { border-top: 2px solid var(--neon-red); }
+.garras-admin-list { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
+.garras-admin-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 8px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.garras-admin-item-info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.garras-admin-label { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.garras-admin-votes { font-size: 12px; color: var(--text-secondary); }
+.garras-admin-item-actions { display: flex; gap: 6px; }
+
+/* Status badges */
+.garras-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.garras-badge.open { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+.garras-badge.closed { background: rgba(148,163,184,0.1); color: var(--text-secondary); border: 1px solid rgba(148,163,184,0.2); }
+.garras-badge.pending { background: rgba(251,146,60,0.12); color: #fb923c; border: 1px solid rgba(251,146,60,0.3); }
+
+.garras-empty, .garras-error { font-size: 13px; color: var(--text-secondary); padding: 16px; text-align: center; }
+.garras-error { color: var(--error, #f87171); }
+
+/* btn-danger */
+.btn-danger {
+  background: rgba(239,68,68,0.15);
+  color: #f87171;
+  border: 1px solid rgba(239,68,68,0.3);
+}
+.btn-danger:hover { background: rgba(239,68,68,0.25); }
+
+/* --- Responsive: stack columns on mobile --- */
+@media (max-width: 768px) {
+  .garras-vote-grid { grid-template-columns: 1fr; }
+  .garras-ranking-grid { grid-template-columns: 1fr; }
+  .garras-players-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); max-height: 260px; }
+}

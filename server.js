@@ -250,6 +250,92 @@ async function dbInit() {
                 await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS predictions_player_match_unique ON predictions(player_name, match_id)`);
             } catch (e) { /* ignore if exists */ }
 
+            // ==================== GARRAS SARIA TABLES ====================
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS garras_players (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    category TEXT NOT NULL CHECK (category IN ('masculino','femenino')),
+                    dorsal INTEGER,
+                    active INTEGER DEFAULT 1
+                );
+            `);
+
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS garras_jornadas (
+                    id SERIAL PRIMARY KEY,
+                    numero INTEGER NOT NULL,
+                    label TEXT,
+                    is_open INTEGER DEFAULT 0,
+                    is_finished INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            `);
+
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS garras_votes (
+                    id SERIAL PRIMARY KEY,
+                    username TEXT NOT NULL,
+                    jornada_id INTEGER NOT NULL REFERENCES garras_jornadas(id) ON DELETE CASCADE,
+                    player_id INTEGER NOT NULL REFERENCES garras_players(id),
+                    category TEXT NOT NULL CHECK (category IN ('masculino','femenino')),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(username, jornada_id, category)
+                );
+            `);
+
+            // Seed players if table is empty (use pool.query directly — queryOne calls dbInit which would deadlock)
+            const playerCountResult = await pool.query('SELECT COUNT(*) as count FROM garras_players');
+            if (parseInt(playerCountResult.rows[0].count) === 0) {
+                const masculinoPlayers = [
+                    'Unai Simón', 'Andoni Gorosabel', 'Dani Vivian', 'Aitor Paredes',
+                    'Yeray Álvarez', 'Mikel Vesga', 'Alex Berenguer', 'Oihan Sancet',
+                    'Iñaki Williams', 'Nico Williams', 'Gorka Guruzeta', 'Jesús Areso',
+                    'Unai Vencedor', 'Aymeric Laporte', 'Iñigo Lekue', 'Iñigo R. De Galarreta',
+                    'Yuri Berchiche', 'Mikel Jauregizar', 'Adama Boiro', 'Unai Gómez',
+                    'Maroan Sannadi', 'Nico Serrano', 'Robert Navarro', 'Beñat Prados',
+                    'Urko Izeta', 'Mikel Santos', 'Alex Padilla', 'Alejandro Rego',
+                    'Asier Hierro', 'Selton Sánchez', 'Iker Monreal', 'Eder García'
+                ];
+                for (const name of masculinoPlayers) {
+                    await pool.query('INSERT INTO garras_players (name, category) VALUES ($1, $2)', [name, 'masculino']);
+                }
+                const femeninoPlayers = [
+                    { name: 'Olatz Santana Amado', dorsal: 1 },
+                    { name: 'Adriana Nanclares Romero', dorsal: 13 },
+                    { name: 'Ziara Vega Uribarri', dorsal: 26 },
+                    { name: 'Maddi Torre Larrañaga', dorsal: 2 },
+                    { name: 'Naia Landaluze Marquínez', dorsal: 3 },
+                    { name: 'Bibiane Schulze Solano', dorsal: 4 },
+                    { name: 'Nerea Nevado Gómez', dorsal: 17 },
+                    { name: 'Ane Elexpuru Añorga', dorsal: 20 },
+                    { name: 'Eider Arana Mugueta', dorsal: 23 },
+                    { name: 'Nerea Benito Zaldibar', dorsal: 27 },
+                    { name: 'Laida Balerdi Beloki', dorsal: 28 },
+                    { name: 'Irati Alfaro Nagore', dorsal: 32 },
+                    { name: 'Maite Valero Elía', dorsal: 5 },
+                    { name: 'Irene Oguiza Martínez', dorsal: 6 },
+                    { name: 'Maite Zubieta Aranbarri', dorsal: 8 },
+                    { name: 'Leire Baños Indakoetxea', dorsal: 14 },
+                    { name: 'Clara Pinedo Castresana', dorsal: 15 },
+                    { name: 'Alejandra Estefanía Díaz', dorsal: 16 },
+                    { name: 'Ane Bordagaray Casado', dorsal: 34 },
+                    { name: 'Jone Amezaga Martínez', dorsal: 7 },
+                    { name: 'Patricia Zugasti Oses', dorsal: 10 },
+                    { name: 'Ane Azkona Fuente', dorsal: 11 },
+                    { name: 'Sara Ortega Ruiz', dorsal: 18 },
+                    { name: 'Maitane Vilariño Mendinueta', dorsal: 19 },
+                    { name: 'Ane Campos Andueza', dorsal: 21 },
+                    { name: 'Daniela Agote Helguera', dorsal: 22 },
+                    { name: 'Oihana Agirregomezkorta García', dorsal: 29 },
+                    { name: 'Elene Gurtubay Loyo', dorsal: 33 }
+                ];
+                for (const p of femeninoPlayers) {
+                    await pool.query('INSERT INTO garras_players (name, category, dorsal) VALUES ($1, $2, $3)', [p.name, 'femenino', p.dorsal]);
+                }
+                console.log('✅ Garras players seeded');
+            }
+
             dbReady = true;
             console.log('✅ Tables initialized');
         } catch (err) {
@@ -1183,6 +1269,246 @@ app.delete('/api/admin/predictions/:id', requireAdmin, async (req, res) => {
         }
 
         res.json({ success: true, deleted: deleted.rows[0] });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ==================== GARRAS SARIA API ====================
+
+// GET /api/garras/players — list active players, optionally filtered by category
+app.get('/api/garras/players', requireAuth, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.json([]);
+        const { category } = req.query;
+        let rows;
+        if (category && ['masculino', 'femenino'].includes(category)) {
+            rows = await query('SELECT * FROM garras_players WHERE active = 1 AND category = $1 ORDER BY name ASC', [category]);
+        } else {
+            rows = await query('SELECT * FROM garras_players WHERE active = 1 ORDER BY category ASC, name ASC');
+        }
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/garras/jornadas — list all jornadas
+app.get('/api/garras/jornadas', requireAuth, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.json([]);
+        const rows = await query('SELECT * FROM garras_jornadas ORDER BY numero DESC');
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/garras/jornadas/active — currently open jornada + user vote status
+app.get('/api/garras/jornadas/active', requireAuth, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.json(null);
+        const jornada = await queryOne('SELECT * FROM garras_jornadas WHERE is_open = 1 LIMIT 1');
+        if (!jornada) return res.json(null);
+
+        const username = req.user.username;
+        const votes = await query(
+            'SELECT gv.category, gv.player_id, gp.name as player_name FROM garras_votes gv JOIN garras_players gp ON gv.player_id = gp.id WHERE gv.username = $1 AND gv.jornada_id = $2',
+            [username, jornada.id]
+        );
+        const userVotes = {};
+        for (const v of votes) {
+            userVotes[v.category] = { player_id: v.player_id, player_name: v.player_name };
+        }
+        res.json({ ...jornada, userVotes });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/garras/jornadas/:id/results — vote counts for a finished or open jornada
+app.get('/api/garras/jornadas/:id/results', requireAuth, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.json([]);
+        const jornadaId = parseInt(req.params.id);
+        const jornada = await queryOne('SELECT * FROM garras_jornadas WHERE id = $1', [jornadaId]);
+        if (!jornada) return res.status(404).json({ error: 'Jornada no encontrada' });
+
+        const results = await query(`
+            SELECT gp.id, gp.name, gp.category, COUNT(gv.id) as votes
+            FROM garras_players gp
+            LEFT JOIN garras_votes gv ON gp.id = gv.player_id AND gv.jornada_id = $1
+            WHERE gp.active = 1
+            GROUP BY gp.id, gp.name, gp.category
+            ORDER BY gp.category ASC, votes DESC, gp.name ASC
+        `, [jornadaId]);
+
+        res.json({ jornada, results });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/garras/ranking — season ranking: jornadas won per player
+app.get('/api/garras/ranking', requireAuth, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.json({ masculino: [], femenino: [] });
+
+        // For each finished jornada, the player with the most votes in each category scores 1 point
+        const rows = await query(`
+            WITH vote_counts AS (
+                SELECT gv.jornada_id, gv.player_id, gv.category, COUNT(*) as votes
+                FROM garras_votes gv
+                JOIN garras_jornadas gj ON gv.jornada_id = gj.id
+                WHERE gj.is_finished = 1
+                GROUP BY gv.jornada_id, gv.player_id, gv.category
+            ),
+            max_per_jornada AS (
+                SELECT jornada_id, category, MAX(votes) as max_votes
+                FROM vote_counts
+                GROUP BY jornada_id, category
+            ),
+            winners AS (
+                SELECT vc.player_id, vc.category, COUNT(*) as jornadas_won, SUM(vc.votes) as total_votes
+                FROM vote_counts vc
+                JOIN max_per_jornada mpj ON vc.jornada_id = mpj.jornada_id AND vc.category = mpj.category AND vc.votes = mpj.max_votes
+                GROUP BY vc.player_id, vc.category
+            )
+            SELECT gp.name, gp.category, COALESCE(w.jornadas_won, 0) as jornadas_won, COALESCE(w.total_votes, 0) as total_votes
+            FROM garras_players gp
+            LEFT JOIN winners w ON gp.id = w.player_id AND gp.category = w.category
+            WHERE gp.active = 1 AND (w.jornadas_won > 0)
+            ORDER BY gp.category ASC, jornadas_won DESC, total_votes DESC
+        `);
+
+        const masculino = rows.filter(r => r.category === 'masculino');
+        const femenino = rows.filter(r => r.category === 'femenino');
+        res.json({ masculino, femenino });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/garras/vote — submit a vote
+app.post('/api/garras/vote', requireAuth, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
+        const { jornada_id, player_id, category } = req.body;
+        const username = req.user.username;
+
+        if (!jornada_id || !player_id || !['masculino', 'femenino'].includes(category)) {
+            return res.status(400).json({ error: 'Datos incompletos o categoría inválida' });
+        }
+
+        const jornada = await queryOne('SELECT is_open FROM garras_jornadas WHERE id = $1', [jornada_id]);
+        if (!jornada) return res.status(404).json({ error: 'Jornada no encontrada' });
+        if (!jornada.is_open) return res.status(400).json({ error: 'La votación no está abierta' });
+
+        const player = await queryOne('SELECT id, category FROM garras_players WHERE id = $1 AND active = 1', [player_id]);
+        if (!player) return res.status(404).json({ error: 'Jugador no encontrado' });
+        if (player.category !== category) return res.status(400).json({ error: 'El jugador no pertenece a la categoría indicada' });
+
+        // Upsert vote
+        const existing = await queryOne(
+            'SELECT id FROM garras_votes WHERE username = $1 AND jornada_id = $2 AND category = $3',
+            [username, jornada_id, category]
+        );
+        if (existing) {
+            await pool.query('UPDATE garras_votes SET player_id = $1 WHERE id = $2', [player_id, existing.id]);
+        } else {
+            await pool.query(
+                'INSERT INTO garras_votes (username, jornada_id, player_id, category) VALUES ($1, $2, $3, $4)',
+                [username, jornada_id, player_id, category]
+            );
+        }
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Garras vote error:', err);
+        res.status(500).json({ error: 'Error al guardar voto' });
+    }
+});
+
+// POST /api/garras/jornadas — create jornada (admin)
+app.post('/api/garras/jornadas', requireAdmin, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
+        const { numero, label } = req.body;
+        if (!numero) return res.status(400).json({ error: 'El número de jornada es obligatorio' });
+
+        const result = await pool.query(
+            'INSERT INTO garras_jornadas (numero, label) VALUES ($1, $2) RETURNING *',
+            [parseInt(numero), label || null]
+        );
+        res.json({ success: true, jornada: result.rows[0] });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// PUT /api/garras/jornadas/:id/open — open a jornada (admin)
+app.put('/api/garras/jornadas/:id/open', requireAdmin, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
+        const jornadaId = parseInt(req.params.id);
+
+        // Only one jornada can be open at a time
+        const alreadyOpen = await queryOne('SELECT id, numero FROM garras_jornadas WHERE is_open = 1');
+        if (alreadyOpen && alreadyOpen.id !== jornadaId) {
+            return res.status(400).json({ error: `La jornada ${alreadyOpen.numero} ya está abierta. Ciérrala primero.` });
+        }
+
+        await pool.query('UPDATE garras_jornadas SET is_open = 1, is_finished = 0 WHERE id = $1', [jornadaId]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// PUT /api/garras/jornadas/:id/close — close a jornada (admin)
+app.put('/api/garras/jornadas/:id/close', requireAdmin, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
+        const jornadaId = parseInt(req.params.id);
+        await pool.query('UPDATE garras_jornadas SET is_open = 0, is_finished = 1 WHERE id = $1', [jornadaId]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE /api/garras/jornadas/:id — delete jornada (admin, only if no votes)
+app.delete('/api/garras/jornadas/:id', requireAdmin, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
+        const jornadaId = parseInt(req.params.id);
+
+        const voteCount = await queryOne('SELECT COUNT(*) as count FROM garras_votes WHERE jornada_id = $1', [jornadaId]);
+        if (parseInt(voteCount.count) > 0) {
+            return res.status(400).json({ error: 'No se puede eliminar una jornada con votos registrados' });
+        }
+
+        await pool.query('DELETE FROM garras_jornadas WHERE id = $1', [jornadaId]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/garras/admin/jornadas — list all jornadas with vote counts (admin)
+app.get('/api/garras/admin/jornadas', requireAdmin, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.json([]);
+        const rows = await query(`
+            SELECT gj.*,
+                COUNT(CASE WHEN gv.category = 'masculino' THEN 1 END) as votes_masc,
+                COUNT(CASE WHEN gv.category = 'femenino' THEN 1 END) as votes_fem
+            FROM garras_jornadas gj
+            LEFT JOIN garras_votes gv ON gj.id = gv.jornada_id
+            GROUP BY gj.id
+            ORDER BY gj.numero DESC
+        `);
+        res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

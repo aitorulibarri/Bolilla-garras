@@ -23,7 +23,7 @@
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
 
-    <link rel="stylesheet" href="styles.css?v=5.2">
+    <link rel="stylesheet" href="styles.css?v=6.4">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 
@@ -182,6 +182,9 @@
             <button class="nav-tab" data-tab="tracker" id="tracker-tab" style="display: none;" role="tab"
                 aria-selected="false">
                 👀 Seguimiento
+            </button>
+            <button class="nav-tab" data-tab="garras" id="garras-tab" role="tab" aria-selected="false">
+                🏅 Garras Saria
             </button>
         </nav>
 
@@ -349,6 +352,36 @@
                     </div>
                 </div>
             </section>
+
+            <!-- GARRAS SARIA TAB -->
+            <section id="tab-garras" class="tab-content" role="tabpanel">
+                <div class="section-header">
+                    <h2 class="section-title">🏅 GARRAS SARIA</h2>
+                    <p class="section-subtitle">Vota al jugador/a con más garra de la jornada</p>
+                </div>
+
+                <!-- Admin: Gestión de jornadas (solo visible para admins) -->
+                <div class="card garras-admin-card" id="garras-admin-section" style="display:none;">
+                    <div class="card-header">
+                        <h3 class="card-title">⚙️ Gestionar Jornadas</h3>
+                        <button class="btn btn-primary btn-sm" onclick="showGarrasCreateModal()">➕ Nueva Jornada</button>
+                    </div>
+                    <div id="garras-admin-container">
+                        <div class="loading"><div class="spinner"></div></div>
+                    </div>
+                </div>
+
+                <!-- Votación activa -->
+                <div id="garras-vote-section">
+                    <div class="loading"><div class="spinner"></div></div>
+                </div>
+
+                <!-- Historial de jornadas cerradas -->
+                <div id="garras-history-section"></div>
+
+                <!-- Ranking de temporada -->
+                <div id="garras-ranking-section"></div>
+            </section>
         </main>
 
         <!-- Footer -->
@@ -397,8 +430,8 @@
     <!-- Toast Notifications -->
     <div class="toast-container" id="toast-container" aria-live="polite"></div>
 
-    <script src="podium.js?v=5.2"></script>
-    <script src="app.js?v=6.3"></script>
+    <script src="podium.js?v=6.4"></script>
+    <script src="app.js?v=6.4"></script>
 </body>
 
 </html>

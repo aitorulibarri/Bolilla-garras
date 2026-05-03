@@ -1,5 +1,5 @@
-// Bolilla Garras App v4.0 (FORCED REFRESH)
-console.log('📱 Bolilla Garras App v4.0 loaded - CACHE BUSTED');
+// Bolilla Garras App v6.4 — GARRAS SARIA module added
+console.log('📱 Bolilla Garras App v6.4 loaded');
 // ==================== STATE ====================
 let currentUser = null;
 
@@ -130,6 +130,7 @@ const userName = document.getElementById('user-name');
 const adminTab = document.getElementById('admin-tab');
 const usersTab = document.getElementById('users-tab');
 const trackerTab = document.getElementById('tracker-tab');
+const garrasTab = document.getElementById('garras-tab');
 const navTabs = document.querySelectorAll('.nav-tab');
 const tabContents = document.querySelectorAll('.tab-content');
 const authTabs = document.querySelectorAll('.auth-tab');
@@ -528,6 +529,9 @@ function loadTabContent(tabId) {
       break;
     case 'tracker':
       loadOpenPredictions();
+      break;
+    case 'garras':
+      loadGarrasSaria();
       break;
   }
 }
@@ -2425,4 +2429,353 @@ async function deletePrediction(predId, playerName, matchId) {
     showToast('Error de conexión', 'error');
     console.error(err);
   }
+}
+
+// ==================== GARRAS SARIA ====================
+
+async function loadGarrasSaria() {
+  // Show admin section only for admins
+  const adminSection = document.getElementById('garras-admin-section');
+  if (adminSection) adminSection.style.display = currentUser?.isAdmin ? 'block' : 'none';
+
+  if (currentUser?.isAdmin) await loadGarrasAdminJornadas();
+
+  await Promise.all([
+    loadGarrasVoteSection(),
+    loadGarrasHistory(),
+    loadGarrasRanking()
+  ]);
+}
+
+async function loadGarrasVoteSection() {
+  const section = document.getElementById('garras-vote-section');
+  if (!section) return;
+  section.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  try {
+    const res = await fetchWithRetry('/api/garras/jornadas/active');
+    const jornada = await res.json();
+
+    if (!jornada) {
+      section.innerHTML = `
+        <div class="garras-no-vote card">
+          <div class="garras-no-vote-icon">🔒</div>
+          <h3>No hay votación activa</h3>
+          <p>El admin abrirá la votación al finalizar cada jornada.</p>
+        </div>`;
+      return;
+    }
+
+    const label = jornada.label || `Jornada ${jornada.numero}`;
+    const [mascRes, femRes] = await Promise.all([
+      fetchWithRetry('/api/garras/players?category=masculino'),
+      fetchWithRetry('/api/garras/players?category=femenino')
+    ]);
+    const mascPlayers = await mascRes.json();
+    const femPlayers = await femRes.json();
+
+    const votedMasc = jornada.userVotes?.masculino;
+    const votedFem = jornada.userVotes?.femenino;
+
+    section.innerHTML = `
+      <div class="garras-vote-header">
+        <h3>🗳️ ${escapeHtml(label)}</h3>
+        <p class="garras-vote-subtitle">Elige al jugador/a con más GARRA de esta jornada</p>
+      </div>
+      <div class="garras-vote-grid">
+        ${renderVoteCategory('masculino', '⚽ Masculino', mascPlayers, votedMasc, jornada.id)}
+        ${renderVoteCategory('femenino', '⚽ Femenino', femPlayers, votedFem, jornada.id)}
+      </div>`;
+
+    // Attach click handlers
+    section.querySelectorAll('.garras-player-card:not(.voted-lock)').forEach(card => {
+      card.addEventListener('click', () => {
+        const category = card.dataset.category;
+        const playerId = card.dataset.playerId;
+        section.querySelectorAll(`.garras-player-card[data-category="${category}"]`).forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        section.querySelector(`#garras-vote-btn-${category}`).disabled = false;
+      });
+    });
+
+    section.querySelectorAll('.garras-vote-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const category = btn.dataset.category;
+        const selected = section.querySelector(`.garras-player-card.selected[data-category="${category}"]`);
+        if (!selected) return;
+        await submitGarrasVote(jornada.id, parseInt(selected.dataset.playerId), category);
+        await loadGarrasVoteSection();
+      });
+    });
+
+  } catch (err) {
+    section.innerHTML = '<p class="garras-error">Error al cargar la votación</p>';
+    console.error(err);
+  }
+}
+
+function renderVoteCategory(category, title, players, votedPlayer, jornadaId) {
+  const isLocked = !!votedPlayer;
+  const lockedMsg = isLocked
+    ? `<div class="garras-voted-msg">✅ Has votado a <strong>${escapeHtml(votedPlayer.player_name)}</strong></div>`
+    : '';
+
+  const cards = players.map(p => {
+    const isSelected = votedPlayer?.player_id === p.id;
+    const lockClass = isLocked ? 'voted-lock' : '';
+    const selectedClass = isSelected ? 'selected voted-choice' : '';
+    return `<div class="garras-player-card ${lockClass} ${selectedClass}" data-player-id="${p.id}" data-category="${category}">
+      <span class="garras-player-name">${escapeHtml(p.name)}</span>
+    </div>`;
+  }).join('');
+
+  const btnDisabled = 'disabled';
+  const btnLabel = isLocked ? '✅ Votado' : 'Votar';
+  const btnClass = isLocked ? 'garras-vote-btn garras-voted-btn' : 'garras-vote-btn';
+
+  return `
+    <div class="garras-category-block">
+      <div class="garras-category-title">${title}</div>
+      ${lockedMsg}
+      <div class="garras-players-grid">${cards}</div>
+      <button class="${btnClass}" id="garras-vote-btn-${category}" data-category="${category}" ${btnDisabled}>${btnLabel}</button>
+    </div>`;
+}
+
+async function submitGarrasVote(jornadaId, playerId, category) {
+  try {
+    const res = await fetchWithRetry('/api/garras/vote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jornada_id: jornadaId, player_id: playerId, category })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('¡Voto registrado!', 'success');
+    } else {
+      showToast(data.error || 'Error al votar', 'error');
+    }
+  } catch (err) {
+    showToast('Error de conexión', 'error');
+  }
+}
+
+async function loadGarrasHistory() {
+  const section = document.getElementById('garras-history-section');
+  if (!section) return;
+
+  try {
+    const res = await fetchWithRetry('/api/garras/jornadas');
+    const jornadas = await res.json();
+    const finished = jornadas.filter(j => j.is_finished);
+
+    if (finished.length === 0) {
+      section.innerHTML = '';
+      return;
+    }
+
+    // Fetch results for all finished jornadas
+    const results = await Promise.all(
+      finished.map(j => fetchWithRetry(`/api/garras/jornadas/${j.id}/results`).then(r => r.json()))
+    );
+
+    let html = `<div class="card"><div class="card-header"><h3 class="card-title">📋 Jornadas Anteriores</h3></div><div class="garras-history-list">`;
+
+    for (let i = 0; i < finished.length; i++) {
+      const j = finished[i];
+      const { results: votes } = results[i];
+      const label = j.label || `Jornada ${j.numero}`;
+
+      const winnerMasc = votes.filter(v => v.category === 'masculino').sort((a, b) => b.votes - a.votes)[0];
+      const winnerFem = votes.filter(v => v.category === 'femenino').sort((a, b) => b.votes - a.votes)[0];
+
+      html += `
+        <div class="garras-history-item">
+          <div class="garras-history-label">${escapeHtml(label)}</div>
+          <div class="garras-history-winners">
+            <div class="garras-winner-pill masc">⚽ ${winnerMasc ? escapeHtml(winnerMasc.name) + ` <span class="garras-votes-count">(${winnerMasc.votes} votos)</span>` : '—'}</div>
+            <div class="garras-winner-pill fem">⚽ ${winnerFem ? escapeHtml(winnerFem.name) + ` <span class="garras-votes-count">(${winnerFem.votes} votos)</span>` : '—'}</div>
+          </div>
+        </div>`;
+    }
+
+    html += '</div></div>';
+    section.innerHTML = html;
+  } catch (err) {
+    section.innerHTML = '';
+    console.error(err);
+  }
+}
+
+async function loadGarrasRanking() {
+  const section = document.getElementById('garras-ranking-section');
+  if (!section) return;
+
+  try {
+    const res = await fetchWithRetry('/api/garras/ranking');
+    const { masculino, femenino } = await res.json();
+
+    if (masculino.length === 0 && femenino.length === 0) {
+      section.innerHTML = '';
+      return;
+    }
+
+    const renderTable = (players, title) => {
+      if (players.length === 0) return '';
+      const rows = players.map((p, i) => {
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
+        return `<tr>
+          <td class="garras-rank-pos">${medal}</td>
+          <td class="garras-rank-name">${escapeHtml(p.name)}</td>
+          <td class="garras-rank-wins">${p.jornadas_won}</td>
+          <td class="garras-rank-votes">${p.total_votes}</td>
+        </tr>`;
+      }).join('');
+      return `
+        <div class="garras-ranking-block">
+          <div class="garras-category-title">${title}</div>
+          <table class="garras-rank-table">
+            <thead><tr><th>#</th><th>Jugador/a</th><th>🏅 Jornadas</th><th>Votos</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    };
+
+    section.innerHTML = `
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">🏆 Ranking Temporada 25/26</h3></div>
+        <div class="garras-ranking-grid">
+          ${renderTable(masculino, '⚽ Masculino')}
+          ${renderTable(femenino, '⚽ Femenino')}
+        </div>
+      </div>`;
+  } catch (err) {
+    section.innerHTML = '';
+    console.error(err);
+  }
+}
+
+// ---- Admin: manage jornadas ----
+
+async function loadGarrasAdminJornadas() {
+  const container = document.getElementById('garras-admin-container');
+  if (!container) return;
+  container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  try {
+    const res = await fetchWithRetry('/api/garras/admin/jornadas');
+    const jornadas = await res.json();
+
+    if (jornadas.length === 0) {
+      container.innerHTML = '<p class="garras-empty">No hay jornadas creadas. Crea la primera con ➕ Nueva Jornada.</p>';
+      return;
+    }
+
+    container.innerHTML = `<div class="garras-admin-list">
+      ${jornadas.map(j => {
+        const label = j.label || `Jornada ${j.numero}`;
+        const statusBadge = j.is_open
+          ? '<span class="garras-badge open">Abierta</span>'
+          : j.is_finished
+            ? '<span class="garras-badge closed">Cerrada</span>'
+            : '<span class="garras-badge pending">Pendiente</span>';
+        const votes = `${j.votes_masc || 0}M / ${j.votes_fem || 0}F`;
+        const openBtn = (!j.is_open && !j.is_finished)
+          ? `<button class="btn btn-primary btn-sm" onclick="garrasOpenJornada(${j.id})">▶ Abrir</button>` : '';
+        const closeBtn = j.is_open
+          ? `<button class="btn btn-danger btn-sm" onclick="garrasCloseJornada(${j.id})">■ Cerrar</button>` : '';
+        const delBtn = (!j.is_open && !j.is_finished && (j.votes_masc + j.votes_fem) === 0)
+          ? `<button class="btn btn-secondary btn-sm" onclick="garrasDeleteJornada(${j.id})">🗑</button>` : '';
+        return `
+          <div class="garras-admin-item">
+            <div class="garras-admin-item-info">
+              <span class="garras-admin-label">${escapeHtml(label)}</span>
+              ${statusBadge}
+              <span class="garras-admin-votes">${votes} votos</span>
+            </div>
+            <div class="garras-admin-item-actions">${openBtn}${closeBtn}${delBtn}</div>
+          </div>`;
+      }).join('')}
+    </div>`;
+  } catch (err) {
+    container.innerHTML = '<p class="garras-error">Error al cargar jornadas</p>';
+  }
+}
+
+function showGarrasCreateModal() {
+  const numero = prompt('Número de jornada (ej: 28):');
+  if (!numero || isNaN(parseInt(numero))) return;
+  const label = prompt('Etiqueta opcional (ej: J28 - Athletic vs Barça):') || '';
+  garrasCreateJornada(parseInt(numero), label);
+}
+
+async function garrasCreateJornada(numero, label) {
+  try {
+    const res = await fetchWithRetry('/api/garras/jornadas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ numero, label })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Jornada creada', 'success');
+      await loadGarrasAdminJornadas();
+    } else {
+      showToast(data.error || 'Error al crear jornada', 'error');
+    }
+  } catch (err) {
+    showToast('Error de conexión', 'error');
+  }
+}
+
+async function garrasOpenJornada(id) {
+  try {
+    const res = await fetchWithRetry(`/api/garras/jornadas/${id}/open`, { method: 'PUT' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Votación abierta', 'success');
+      await loadGarrasSaria();
+    } else {
+      showToast(data.error || 'Error al abrir jornada', 'error');
+    }
+  } catch (err) {
+    showToast('Error de conexión', 'error');
+  }
+}
+
+async function garrasCloseJornada(id) {
+  if (!confirm('¿Cerrar la votación de esta jornada? No se podrán añadir más votos.')) return;
+  try {
+    const res = await fetchWithRetry(`/api/garras/jornadas/${id}/close`, { method: 'PUT' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Votación cerrada', 'success');
+      await loadGarrasSaria();
+    } else {
+      showToast(data.error || 'Error al cerrar jornada', 'error');
+    }
+  } catch (err) {
+    showToast('Error de conexión', 'error');
+  }
+}
+
+async function garrasDeleteJornada(id) {
+  if (!confirm('¿Eliminar esta jornada?')) return;
+  try {
+    const res = await fetchWithRetry(`/api/garras/jornadas/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Jornada eliminada', 'success');
+      await loadGarrasAdminJornadas();
+    } else {
+      showToast(data.error || 'Error al eliminar', 'error');
+    }
+  } catch (err) {
+    showToast('Error de conexión', 'error');
+  }
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
