@@ -1,5 +1,5 @@
-// Bolilla Garras App v6.5 — GARRAS SARIA fixes
-console.log('📱 Bolilla Garras App v6.5 loaded');
+// Bolilla Garras App v6.6 — GARRAS SARIA error handling
+console.log('📱 Bolilla Garras App v6.6 loaded');
 // ==================== STATE ====================
 let currentUser = null;
 
@@ -2512,8 +2512,8 @@ async function loadGarrasVoteSection() {
     });
 
   } catch (err) {
-    section.innerHTML = '<p class="garras-error">Error al cargar la votación</p>';
-    console.error(err);
+    section.innerHTML = `<p class="garras-error">Error al cargar la votación: ${escapeHtml(err.message)}</p>`;
+    console.error('loadGarrasVoteSection error:', err);
   }
 }
 
@@ -2667,7 +2667,9 @@ async function loadGarrasAdminJornadas() {
 
   try {
     const res = await fetchWithRetry('/api/garras/admin/jornadas');
+    if (!res.ok) throw new Error(`Error ${res.status} al cargar jornadas`);
     const jornadas = await res.json();
+    if (!Array.isArray(jornadas)) throw new Error(jornadas?.error || 'Respuesta inesperada');
 
     if (jornadas.length === 0) {
       container.innerHTML = '<p class="garras-empty">No hay jornadas creadas. Crea la primera con ➕ Nueva Jornada.</p>';
@@ -2701,7 +2703,8 @@ async function loadGarrasAdminJornadas() {
       }).join('')}
     </div>`;
   } catch (err) {
-    container.innerHTML = '<p class="garras-error">Error al cargar jornadas</p>';
+    container.innerHTML = `<p class="garras-error">Error al cargar jornadas: ${escapeHtml(err.message)}</p>`;
+    console.error('loadGarrasAdminJornadas error:', err);
   }
 }
 
