@@ -458,7 +458,6 @@ function setupEventListeners() {
       const isHome = document.getElementById('match-home').value === '1';
       const matchDate = document.getElementById('match-date').value;
       const deadline = document.getElementById('match-deadline').value;
-
       try {
         const token = localStorage.getItem('bolilla_token') || '';
         const res = await fetch('/api/matches', {
@@ -1609,7 +1608,7 @@ async function printLeaderboardReport() {
   try {
     const [r1, r2] = await Promise.all([
       fetchWithRetry('/api/leaderboard'),
-      fetchWithRetry('/api/leaderboard/detail')
+      fetchWithRetry('/api/leaderboard/detail?last_jornada=1')
     ]);
     leaderboard = await r1.json();
     detail = await r2.json();

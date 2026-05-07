@@ -240,6 +240,7 @@ async function dbInit() {
                 await pool.query(`ALTER TABLE predictions ADD COLUMN IF NOT EXISTS player_name TEXT`);
             } catch (e) { /* ignore if exists */ }
 
+
             // Add password_encrypted column (para que el admin pueda ver contraseñas)
             try {
                 await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_encrypted TEXT`);
@@ -954,6 +955,10 @@ app.get('/api/predictions', requireAuth, async (req, res) => {
 app.get('/api/leaderboard/detail', requireAuth, async (req, res) => {
     try {
         if (!IS_POSTGRES) return res.json([]);
+        const lastJornada = req.query.last_jornada === '1';
+        const weekFilter = lastJornada
+            ? `AND m.match_date = (SELECT MAX(m2.match_date) FROM matches m2 WHERE m2.is_finished = 1 AND m2.team = m.team)`
+            : '';
         const rows = await query(`
             SELECT
                 pr.player_name,
@@ -965,7 +970,7 @@ app.get('/api/leaderboard/detail', requireAuth, async (req, res) => {
             FROM predictions pr
             JOIN matches m ON pr.match_id = m.id
             LEFT JOIN users u ON LOWER(pr.player_name) = LOWER(u.username)
-            WHERE m.is_finished = 1
+            WHERE m.is_finished = 1 ${weekFilter}
             ORDER BY COALESCE(u.display_name, pr.player_name), m.match_date ASC
         `);
         res.json(rows);
