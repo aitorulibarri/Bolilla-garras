@@ -902,10 +902,7 @@ app.post('/api/predictions', requireAuth, async (req, res) => {
         );
 
         if (existing) {
-            await pool.query(
-                'UPDATE predictions SET home_goals = $1, away_goals = $2 WHERE id = $3',
-                [homeGoalsNum, awayGoalsNum, existing.id]
-            );
+            return res.status(400).json({ error: 'Ya has enviado tu pronóstico para este partido y no puede modificarse' });
         } else {
             // Include user_id for legacy DB schemas that have this column
             try {
