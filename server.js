@@ -968,7 +968,14 @@ app.get('/api/leaderboard/detail', requireAuth, async (req, res) => {
             JOIN matches m ON pr.match_id = m.id
             LEFT JOIN users u ON LOWER(pr.player_name) = LOWER(u.username)
             WHERE m.is_finished = 1 ${weekFilter}
-            ORDER BY COALESCE(u.display_name, pr.player_name), m.match_date ASC
+            ORDER BY COALESCE(u.display_name, pr.player_name),
+                     CASE m.team
+                         WHEN 'Athletic Club' THEN 1
+                         WHEN 'Athletic Femenino' THEN 2
+                         WHEN 'Bilbao Athletic' THEN 3
+                         ELSE 4
+                     END,
+                     m.match_date ASC
         `);
         res.json(rows);
     } catch (err) {

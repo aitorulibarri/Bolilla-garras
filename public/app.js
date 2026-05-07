@@ -1598,7 +1598,10 @@ async function printLeaderboardReport() {
     const rank = index + 1;
     const rankLabel = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
     const key = user.name.toLowerCase();
-    const preds = byPlayer[key] || [];
+    const teamRank = { 'Athletic Club': 1, 'Athletic Femenino': 2, 'Bilbao Athletic': 3 };
+    const preds = (byPlayer[key] || []).slice().sort((a, b) =>
+      (teamRank[a.team] || 9) - (teamRank[b.team] || 9) || a.match_date.localeCompare(b.match_date)
+    );
 
     const rows = preds.map(p => {
       const homeTeam = p.is_home ? p.team : p.opponent;
