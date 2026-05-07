@@ -1411,16 +1411,26 @@ async function loadOpenPredictions() {
 async function printTrackerReport() {
   const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+  // Abrir ventana antes del await para no perder el gesto del usuario (iOS/Android)
+  const win = window.open('', '_blank');
+  if (!win) {
+    showToast('Permite ventanas emergentes para exportar el PDF', 'error');
+    return;
+  }
+  win.document.write('<p style="font-family:sans-serif;padding:20px">Cargando pronósticos...</p>');
+
   let detail;
   try {
     const res = await fetchWithRetry('/api/leaderboard/detail?last_jornada=1');
     detail = await res.json();
   } catch (err) {
+    win.close();
     showToast('Error al cargar datos para el PDF', 'error');
     return;
   }
 
   if (!Array.isArray(detail) || detail.length === 0) {
+    win.close();
     showToast('No hay pronósticos cerrados aún', 'error');
     return;
   }
@@ -1548,11 +1558,6 @@ async function printTrackerReport() {
 </body>
 </html>`;
 
-  const win = window.open('', '_blank');
-  if (!win) {
-    showToast('Permite ventanas emergentes para imprimir', 'error');
-    return;
-  }
   win.document.open();
   win.document.write(html);
   win.document.close();
@@ -1563,6 +1568,14 @@ async function printTrackerReport() {
 async function printLeaderboardReport() {
   const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+  // Abrir ventana antes del await para no perder el gesto del usuario (iOS/Android)
+  const win = window.open('', '_blank');
+  if (!win) {
+    showToast('Permite ventanas emergentes para exportar el PDF', 'error');
+    return;
+  }
+  win.document.write('<p style="font-family:sans-serif;padding:20px">Cargando clasificación...</p>');
+
   let leaderboard, detail;
   try {
     const [r1, r2] = await Promise.all([
@@ -1572,11 +1585,13 @@ async function printLeaderboardReport() {
     leaderboard = await r1.json();
     detail = await r2.json();
   } catch (err) {
+    win.close();
     showToast('Error al cargar datos para el PDF', 'error');
     return;
   }
 
   if (!leaderboard.length) {
+    win.close();
     showToast('No hay datos de clasificación aún', 'error');
     return;
   }
@@ -1808,11 +1823,6 @@ async function printLeaderboardReport() {
 </body>
 </html>`;
 
-  const win = window.open('', '_blank');
-  if (!win) {
-    showToast('Permite ventanas emergentes para exportar el PDF', 'error');
-    return;
-  }
   win.document.open();
   win.document.write(html);
   win.document.close();
