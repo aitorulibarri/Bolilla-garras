@@ -1604,12 +1604,8 @@ async function printLeaderboardReport() {
     const rows = preds.map(p => {
       const homeTeam = p.is_home ? p.team : p.opponent;
       const awayTeam = p.is_home ? p.opponent : p.team;
-      const predScore = p.is_home
-        ? `${p.pred_home} - ${p.pred_away}`
-        : `${p.pred_away} - ${p.pred_home}`;
-      const realScore = p.is_home
-        ? `${p.real_home} - ${p.real_away}`
-        : `${p.real_away} - ${p.real_home}`;
+      const predScore = `${p.pred_home} - ${p.pred_away}`;
+      const realScore = `${p.real_home} - ${p.real_away}`;
       const pts = Number(p.points);
       const ptsClass = pts === 5 ? 'pts-exact' : pts > 0 ? 'pts-partial' : 'pts-zero';
       const ptsLabel = pts === 5 ? `5 🎯` : String(pts);
