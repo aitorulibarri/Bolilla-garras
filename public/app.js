@@ -1325,6 +1325,16 @@ function parseMatchDate(raw) {
   return new Date(s);
 }
 
+// Formato de fecha para PDFs: evita conversión de zona horaria parseando el string directamente
+function formatMatchDateForPDF(raw) {
+  if (!raw) return '—';
+  const s = String(raw).replace(/Z$/, '').replace(/\.\d+$/, '').replace('T', ' ');
+  const [datePart = '', timePart = ''] = s.split(' ');
+  const [, month = '', day = ''] = datePart.split('-');
+  const [hour = '', min = ''] = timePart.split(':');
+  return `${day}/${month} ${hour}:${min}`;
+}
+
 let _trackerData = null; // cache para el botón de imprimir
 
 async function loadOpenPredictions() {
@@ -1451,9 +1461,7 @@ async function printTrackerReport() {
     const predScore = row.is_home
       ? `${row.pred_home} - ${row.pred_away}`
       : `${row.pred_away} - ${row.pred_home}`;
-    const dateShort = parseMatchDate(row.match_date).toLocaleString('es-ES', {
-      day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
-    });
+    const dateShort = formatMatchDateForPDF(row.match_date);
     byUser[key].rows.push({
       matchLabel: `${homeTeam} vs ${awayTeam}`,
       dateShort,
@@ -1630,9 +1638,7 @@ async function printLeaderboardReport() {
       const pts = Number(p.points);
       const ptsClass = pts === 5 ? 'pts-exact' : pts > 0 ? 'pts-partial' : 'pts-zero';
       const ptsLabel = pts === 5 ? `5 🎯` : String(pts);
-      const dateShort = parseMatchDate(p.match_date).toLocaleString('es-ES', {
-        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
-      });
+      const dateShort = formatMatchDateForPDF(p.match_date);
       return `
         <tr>
           <td>${esc(homeTeam)} vs ${esc(awayTeam)}</td>
