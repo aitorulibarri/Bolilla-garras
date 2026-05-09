@@ -229,6 +229,12 @@ function setupEventListeners() {
     leaderboardPrintBtn.addEventListener('click', printLeaderboardReport);
   }
 
+  // Botón de exportar solo la clasificación
+  const leaderboardRankingBtn = document.getElementById('leaderboard-ranking-btn');
+  if (leaderboardRankingBtn) {
+    leaderboardRankingBtn.addEventListener('click', printRankingOnly);
+  }
+
   // Password visibility toggle (delegado, cubre login y registro).
   // mousedown + preventDefault para no robar el foco del input entre el press y el release;
   // así el toggle funciona igual tenga o no el foco en el campo.
@@ -992,9 +998,11 @@ async function loadLeaderboard() {
       </div>
     `;
 
-    // Mostrar botón PDF
+    // Mostrar botones PDF
     const printBtn = document.getElementById('leaderboard-print-btn');
     if (printBtn) printBtn.style.display = (leaderboard.length > 0 && currentUser?.isAdmin) ? 'inline-flex' : 'none';
+    const rankingBtn = document.getElementById('leaderboard-ranking-btn');
+    if (rankingBtn) rankingBtn.style.display = leaderboard.length > 0 ? 'inline-flex' : 'none';
 
     container.innerHTML = podiumHtml + tableHtml;
 
@@ -1550,6 +1558,94 @@ async function printTrackerReport() {
 }
 
 // ==================== LEADERBOARD PDF ====================
+
+async function printRankingOnly() {
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  const win = window.open('', '_blank');
+  if (!win) { showToast('Permite ventanas emergentes para exportar el PDF', 'error'); return; }
+  win.document.write('<p style="font-family:sans-serif;padding:20px">Cargando clasificación...</p>');
+
+  let leaderboard;
+  try {
+    const res = await fetchWithRetry('/api/leaderboard');
+    leaderboard = await res.json();
+  } catch (err) {
+    win.close();
+    showToast('Error al cargar clasificación', 'error');
+    return;
+  }
+
+  if (!leaderboard.length) {
+    win.close();
+    showToast('No hay datos de clasificación aún', 'error');
+    return;
+  }
+
+  const reportDate = new Date().toLocaleString('es-ES', {
+    day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+
+  const rows = leaderboard.map((user, i) => {
+    const rank = i + 1;
+    const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}`;
+    const cls = rank <= 3 ? `top${rank}` : '';
+    return `<tr class="${cls}">
+      <td class="center">${medal}</td>
+      <td>${esc(user.display_name || user.name)}</td>
+      <td class="center pts">${user.total_points}</td>
+      <td class="center">${user.exact_predictions} 🎯</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Clasificación Bolilla Garras — ${esc(reportDate)}</title>
+<style>
+  @page { size: A4; margin: 20mm; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Helvetica','Arial',sans-serif; color: #111; background: #fff; margin: 0; padding: 20px; font-size: 13px; }
+  header { text-align: center; border-bottom: 3px solid #c00; padding-bottom: 14px; margin-bottom: 24px; }
+  header h1 { margin: 0 0 4px 0; font-size: 24px; color: #c00; letter-spacing: 1px; }
+  header .sub { font-size: 11px; color: #555; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { background: #c00; color: #fff; padding: 10px 12px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  th.center, td.center { text-align: center; }
+  tbody td { padding: 9px 12px; border-bottom: 1px solid #eee; font-size: 13px; }
+  tbody tr:nth-child(even) { background: #fafafa; }
+  tbody tr.top1 td { background: #fff8e1; font-weight: 700; font-size: 15px; }
+  tbody tr.top2 td { background: #f5f5f5; font-weight: 600; font-size: 14px; }
+  tbody tr.top3 td { background: #fef3e2; font-weight: 600; }
+  td.pts { font-weight: 700; font-size: 15px; color: #c00; }
+  footer { margin-top: 24px; text-align: center; font-size: 10px; color: #888; border-top: 1px solid #ddd; padding-top: 8px; }
+  #print-btn { position: fixed; top: 12px; right: 12px; background: #c00; color: #fff; border: none; padding: 10px 16px; font-size: 13px; font-weight: 700; border-radius: 6px; cursor: pointer; z-index: 999; }
+  @media print { #print-btn { display: none; } }
+</style>
+</head>
+<body>
+  <button id="print-btn">🖨️ Imprimir / Guardar como PDF</button>
+  <header>
+    <h1>🦁 BOLILLA GARRAS — Clasificación</h1>
+    <div class="sub">Peña Garras Taldea Sestao · Generado ${esc(reportDate)}</div>
+  </header>
+  <table>
+    <thead><tr><th class="center">Pos.</th><th>Jugador</th><th class="center">Puntos</th><th class="center">Plenos</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <footer>Bolilla Garras · ${leaderboard.length} participante${leaderboard.length === 1 ? '' : 's'}</footer>
+  <script>
+    document.getElementById('print-btn').addEventListener('click', function() { window.print(); });
+    setTimeout(function() { window.print(); }, 400);
+  </script>
+</body>
+</html>`;
+
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+}
 
 async function printLeaderboardReport() {
   const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

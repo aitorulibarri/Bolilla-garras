@@ -211,9 +211,14 @@
             <section id="tab-leaderboard" class="tab-content" role="tabpanel">
                 <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                     <h2 class="section-title">🏆 Clasificación General</h2>
-                    <button id="leaderboard-print-btn" class="btn btn-secondary btn-sm" style="display: none;" title="Genera un informe PDF con los puntos por pronóstico">
-                        🖨️ Exportar PDF
-                    </button>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button id="leaderboard-ranking-btn" class="btn btn-secondary btn-sm" style="display: none;" title="PDF solo con la clasificación general">
+                            🏆 Exportar clasificación
+                        </button>
+                        <button id="leaderboard-print-btn" class="btn btn-secondary btn-sm" style="display: none;" title="Genera un informe PDF con los puntos por pronóstico">
+                            🖨️ Exportar PDF
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Leaderboard Container (Podium + Table) -->
@@ -429,7 +434,7 @@
     <div class="toast-container" id="toast-container" aria-live="polite"></div>
 
     <script src="podium.js?v=6.4"></script>
-    <script src="app.js?v=7.7"></script>
+    <script src="app.js?v=7.8"></script>
 </body>
 
 </html>
