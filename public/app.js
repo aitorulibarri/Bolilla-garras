@@ -1525,12 +1525,9 @@ async function printTrackerReport() {
   tbody td { padding: 5px 8px; border-bottom: 1px solid #ddd; }
   tbody tr.missing td { color: #bbb; font-style: italic; }
   footer { margin-top: 20px; text-align: center; font-size: 10px; color: #888; border-top: 1px solid #ccc; padding-top: 8px; }
-  .print-btn { position: fixed; top: 10px; right: 10px; background: #c00; color: white; border: none; padding: 10px 16px; font-size: 14px; font-weight: 700; border-radius: 6px; cursor: pointer; }
-  @media print { .print-btn { display: none; } }
 </style>
 </head>
 <body>
-  <button class="print-btn" onclick="window.print()">🖨️ Imprimir / Guardar como PDF</button>
   <header>
     <h1>🦁 BOLILLA GARRAS — Seguimiento</h1>
     <div class="sub">Peña Garras Taldea Sestao · Generado ${esc(reportDate)}</div>
@@ -1760,17 +1757,9 @@ async function printLeaderboardReport() {
     border-top: 1px solid #ccc;
     padding-top: 8px;
   }
-  .print-btn {
-    position: fixed; top: 10px; right: 10px;
-    background: #c00; color: white; border: none;
-    padding: 10px 16px; font-size: 14px; font-weight: 700;
-    border-radius: 6px; cursor: pointer;
-  }
-  @media print { .print-btn { display: none; } }
 </style>
 </head>
 <body>
-  <button class="print-btn" onclick="window.print()">🖨️ Imprimir / Guardar como PDF</button>
   <header>
     <h1>🦁 BOLILLA GARRAS — Clasificación General</h1>
     <div class="sub">Peña Garras Taldea Sestao · Generado ${esc(reportDate)}</div>
