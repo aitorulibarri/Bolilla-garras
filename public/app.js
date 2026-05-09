@@ -1525,16 +1525,22 @@ async function printTrackerReport() {
   tbody td { padding: 5px 8px; border-bottom: 1px solid #ddd; }
   tbody tr.missing td { color: #bbb; font-style: italic; }
   footer { margin-top: 20px; text-align: center; font-size: 10px; color: #888; border-top: 1px solid #ccc; padding-top: 8px; }
+  #print-btn { position: fixed; top: 12px; right: 12px; background: #c00; color: #fff; border: none; padding: 10px 16px; font-size: 13px; font-weight: 700; border-radius: 6px; cursor: pointer; z-index: 999; }
+  @media print { #print-btn { display: none; } }
 </style>
 </head>
 <body>
+  <button id="print-btn">🖨️ Imprimir / Guardar como PDF</button>
   <header>
     <h1>🦁 BOLILLA GARRAS — Seguimiento</h1>
     <div class="sub">Peña Garras Taldea Sestao · Generado ${esc(reportDate)}</div>
   </header>
   ${sections}
   <footer>Bolilla Garras · ${users.length} usuario${users.length === 1 ? '' : 's'} · ${matches.length} partido${matches.length === 1 ? '' : 's'} abierto${matches.length === 1 ? '' : 's'}</footer>
-  <script>setTimeout(() => window.print(), 400);</script>
+  <script>
+    document.getElementById('print-btn').addEventListener('click', function() { window.print(); });
+    setTimeout(function() { window.print(); }, 400);
+  </script>
 </body>
 </html>`;
 
@@ -1757,9 +1763,12 @@ async function printLeaderboardReport() {
     border-top: 1px solid #ccc;
     padding-top: 8px;
   }
+  #print-btn { position: fixed; top: 12px; right: 12px; background: #c00; color: #fff; border: none; padding: 10px 16px; font-size: 13px; font-weight: 700; border-radius: 6px; cursor: pointer; z-index: 999; }
+  @media print { #print-btn { display: none; } }
 </style>
 </head>
 <body>
+  <button id="print-btn">🖨️ Imprimir / Guardar como PDF</button>
   <header>
     <h1>🦁 BOLILLA GARRAS — Clasificación General</h1>
     <div class="sub">Peña Garras Taldea Sestao · Generado ${esc(reportDate)}</div>
@@ -1783,7 +1792,10 @@ async function printLeaderboardReport() {
   </section>
 
   <footer>Bolilla Garras · ${leaderboard.length} jugador${leaderboard.length === 1 ? '' : 'es'} · ${esc(reportDate)}</footer>
-  <script>setTimeout(() => window.print(), 400);</script>
+  <script>
+    document.getElementById('print-btn').addEventListener('click', function() { window.print(); });
+    setTimeout(function() { window.print(); }, 400);
+  </script>
 </body>
 </html>`;
 
