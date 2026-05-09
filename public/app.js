@@ -137,8 +137,8 @@ const authTabs = document.querySelectorAll('.auth-tab');
 
 // ==================== FETCH WITH RETRY (for cold starts) ====================
 async function fetchWithRetry(url, options = {}, retries = 3, delay = 1000) {
-  // Get JWT token from localStorage
-  const token = localStorage.getItem('bolilla_token') || '';
+  // Get JWT token from sessionStorage
+  const token = sessionStorage.getItem('bolilla_token') || '';
 
   // Merge headers: Authorization + caller's headers
   const mergedHeaders = {
@@ -204,14 +204,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function checkSavedUser() {
-  const savedUser = localStorage.getItem('bolilla_user');
+  const savedUser = sessionStorage.getItem('bolilla_user');
   if (savedUser) {
     try {
       currentUser = JSON.parse(savedUser);
       showApp();
     } catch {
-      localStorage.removeItem('bolilla_user');
-      localStorage.removeItem('bolilla_token');
+      sessionStorage.removeItem('bolilla_user');
+      sessionStorage.removeItem('bolilla_token');
     }
   }
 }
@@ -288,9 +288,9 @@ function setupEventListeners() {
 
       if (res.ok && data.success) {
         currentUser = data.user;
-        // Save token and user to localStorage
-        localStorage.setItem('bolilla_token', data.token || '');
-        localStorage.setItem('bolilla_user', JSON.stringify(currentUser));
+        // Save token and user to sessionStorage
+        sessionStorage.setItem('bolilla_token', data.token || '');
+        sessionStorage.setItem('bolilla_user', JSON.stringify(currentUser));
         showApp();
         showToast(`¡Bienvenido, ${currentUser.displayName}!`, 'success');
       } else {
@@ -346,9 +346,9 @@ function setupEventListeners() {
 
       if (res.ok && data.success) {
         currentUser = data.user;
-        // Save token and user to localStorage
-        localStorage.setItem('bolilla_token', data.token || '');
-        localStorage.setItem('bolilla_user', JSON.stringify(currentUser));
+        // Save token and user to sessionStorage
+        sessionStorage.setItem('bolilla_token', data.token || '');
+        sessionStorage.setItem('bolilla_user', JSON.stringify(currentUser));
         showApp();
         showToast(`¡Bienvenido, ${currentUser.displayName}! Tu cuenta ha sido creada.`, 'success');
       } else {
@@ -364,7 +364,7 @@ function setupEventListeners() {
 
   // Change name button (logout)
   changeNameBtn.addEventListener('click', async () => {
-    const token = localStorage.getItem('bolilla_token') || '';
+    const token = sessionStorage.getItem('bolilla_token') || '';
     try {
       await fetch('/api/logout', {
         method: 'POST',
@@ -373,8 +373,8 @@ function setupEventListeners() {
     } catch (e) {
       // Ignore errors
     }
-    localStorage.removeItem('bolilla_user');
-    localStorage.removeItem('bolilla_token');
+    sessionStorage.removeItem('bolilla_user');
+    sessionStorage.removeItem('bolilla_token');
     // Limpieza total del estado
     window.location.reload();
   });
@@ -459,7 +459,7 @@ function setupEventListeners() {
       const matchDate = document.getElementById('match-date').value;
       const deadline = document.getElementById('match-deadline').value;
       try {
-        const token = localStorage.getItem('bolilla_token') || '';
+        const token = sessionStorage.getItem('bolilla_token') || '';
         const res = await fetch('/api/matches', {
           method: 'POST',
           headers: {
@@ -903,7 +903,7 @@ async function saveAllPredictions(matchIds) {
 
   let saved = 0;
   let errors = 0;
-  const token = localStorage.getItem('bolilla_token') || '';
+  const token = sessionStorage.getItem('bolilla_token') || '';
 
   for (const { matchId, homeGoals, awayGoals } of predictions) {
     try {
@@ -2117,7 +2117,7 @@ async function setResult(matchId) {
 async function deleteMatch(matchId) {
   if (!confirm('¿Seguro que quieres eliminar este partido? Solo se pueden borrar partidos sin resultado; los finalizados no se pueden borrar para no perder la clasificación.')) return;
 
-  const token = localStorage.getItem('bolilla_token') || '';
+  const token = sessionStorage.getItem('bolilla_token') || '';
   try {
     const res = await fetch(`/api/matches/${matchId}`, {
       method: 'DELETE',
@@ -2211,7 +2211,7 @@ async function saveMatchEdit(matchId) {
     return;
   }
 
-  const token = localStorage.getItem('bolilla_token') || '';
+  const token = sessionStorage.getItem('bolilla_token') || '';
   try {
     const res = await fetch(`/api/matches/${matchId}`, {
       method: 'PUT',
@@ -2248,7 +2248,7 @@ async function loadAdminStats() {
 
   container.innerHTML = '<div class="stats-loading"><div class="spinner"></div></div>';
 
-  const token = localStorage.getItem('bolilla_token') || '';
+  const token = sessionStorage.getItem('bolilla_token') || '';
   try {
     const res = await fetch('/api/admin/stats', {
       headers: token ? { 'Authorization': `Bearer ${token}` } : {}
@@ -2377,7 +2377,7 @@ async function deletePrediction(predId, playerName, matchId) {
   if (!confirmed) return;
 
   try {
-    const token = localStorage.getItem('bolilla_token') || '';
+    const token = sessionStorage.getItem('bolilla_token') || '';
     const res = await fetch(`/api/admin/predictions/${predId}`, {
       method: 'DELETE',
       headers: token ? { 'Authorization': `Bearer ${token}` } : {}
