@@ -1601,6 +1601,8 @@ async function printLeaderboardReport() {
       (teamRank[a.team] || 9) - (teamRank[b.team] || 9) || a.match_date.localeCompare(b.match_date)
     );
 
+    const jornadaPts = preds.reduce((sum, p) => sum + Number(p.points), 0);
+
     const rows = preds.map(p => {
       const homeTeam = p.is_home ? p.team : p.opponent;
       const awayTeam = p.is_home ? p.opponent : p.team;
@@ -1629,10 +1631,6 @@ async function printLeaderboardReport() {
         <div class="user-header">
           <span class="rank-badge">${rankLabel}</span>
           <h2>${esc(user.display_name || user.name)}</h2>
-          <div class="user-meta">
-            <span class="total-pts">${user.total_points} pts</span>
-            <span class="exact-badge">${user.exact_predictions} 🎯 plenos</span>
-          </div>
         </div>
         <table>
           <thead>
@@ -1647,8 +1645,8 @@ async function printLeaderboardReport() {
           <tbody>
             ${rows}${emptyRow}
             <tr class="total-row">
-              <td colspan="4" style="text-align:right; font-weight:700;">TOTAL</td>
-              <td class="center total-pts-cell">${user.total_points}</td>
+              <td colspan="4" style="text-align:right; font-weight:700;">TOTAL JORNADA</td>
+              <td class="center total-pts-cell">${jornadaPts}</td>
             </tr>
           </tbody>
         </table>
