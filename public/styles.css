@@ -3,7 +3,7 @@
    Inspired by Gemini Premium Design
    ============================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@400;500;600;700;800;900&display=swap');
 
 :root {
   /* Neon Red Theme - Primary Colors */
@@ -191,7 +191,7 @@ body::before {
 }
 
 .login-logo h1 {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Exo 2', sans-serif;
   font-size: 36px;
   font-weight: 900;
   letter-spacing: 3px;
@@ -356,7 +356,7 @@ body::before {
   padding: 16px 32px;
   border: none;
   border-radius: var(--radius-md);
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Exo 2', sans-serif;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
@@ -496,7 +496,7 @@ body::before {
 }
 
 .header-logo h1 {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Exo 2', sans-serif;
   font-size: 24px;
   font-weight: 900;
   letter-spacing: 2px;
@@ -598,7 +598,7 @@ body::before {
 }
 
 .section-title {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Exo 2', sans-serif;
   font-size: 28px;
   font-weight: 700;
   color: var(--neon-red);
@@ -710,7 +710,7 @@ body::before {
 }
 
 .match-team-name {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Exo 2', sans-serif;
   font-size: 20px;
   font-weight: 700;
   color: var(--text-primary);
@@ -719,7 +719,7 @@ body::before {
 
 .match-vs {
   color: var(--neon-red);
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Exo 2', sans-serif;
   font-size: 18px;
   font-weight: 900;
   background: var(--bg-secondary);
@@ -734,7 +734,7 @@ body::before {
   width: 80px;
   height: 80px;
   text-align: center;
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Exo 2', sans-serif;
   font-size: 36px;
   font-weight: 900;
   background: var(--bg-secondary);
@@ -821,14 +821,14 @@ body::before {
 }
 
 .podium-name {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Exo 2', sans-serif;
   font-size: 18px;
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .podium-points {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Exo 2', sans-serif;
   font-size: 32px;
   font-weight: 900;
   background: var(--gradient-red-neon);
@@ -857,7 +857,7 @@ body::before {
 .leaderboard-table th {
   padding: 16px;
   text-align: left;
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Exo 2', sans-serif;
   font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
@@ -880,7 +880,7 @@ body::before {
 }
 
 .rank {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Exo 2', sans-serif;
   font-size: 20px;
   font-weight: 900;
   color: var(--neon-red);
@@ -898,7 +898,7 @@ body::before {
 }
 
 .footer-brand {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Exo 2', sans-serif;
   font-size: 18px;
   font-weight: 700;
   color: var(--neon-red);
@@ -1264,7 +1264,7 @@ body::before {
 /* ==================== ADDITIONAL PODIUM STYLES ==================== */
 
 .podium-rank {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Exo 2', sans-serif;
   font-size: 16px;
   font-weight: 700;
   color: var(--text-secondary);
@@ -1348,7 +1348,7 @@ body::before {
 }
 
 .prediction-submitted-text {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Exo 2', sans-serif;
   font-size: 16px;
   font-weight: 700;
   color: #00F5A0;
@@ -1484,7 +1484,7 @@ body::before {
 }
 
 .modal-header h2 {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Exo 2', sans-serif;
   font-size: 24px;
   font-weight: 700;
   color: var(--neon-red);
@@ -1553,7 +1553,7 @@ body::before {
 }
 
 .rule-points {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Exo 2', sans-serif;
   font-size: 24px;
   font-weight: 900;
   min-width: 80px;
@@ -1797,7 +1797,7 @@ body::before {
   /* Fondo oscuro grisáceo */
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Exo 2', sans-serif;
   font-size: 32px;
   color: white;
   text-align: center;
@@ -1871,7 +1871,7 @@ body::before {
 
 .rank-badge {
   width: 30px;
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Exo 2', sans-serif;
   font-weight: 700;
   color: #94A3B8;
 }
@@ -1901,7 +1901,7 @@ body::before {
 }
 
 .user-points {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Exo 2', sans-serif;
   font-weight: 700;
   color: #FFD700;
   font-size: 18px;
@@ -2307,7 +2307,7 @@ body::before {
 
 .hist-td-score {
   padding: 10px 8px;
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'Exo 2', sans-serif;
   font-size: 13px;
   font-weight: 700;
   white-space: nowrap;

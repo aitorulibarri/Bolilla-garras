@@ -987,7 +987,7 @@ async function loadLeaderboard() {
                     <div style="font-weight: 700; color: var(--text-primary); font-size: 16px;">${user.display_name || user.name}</div>
                 </td>
                 <td>
-                    <span style="font-family: 'Orbitron', sans-serif; font-size: 20px; color: var(--neon-red); font-weight: 700; text-shadow: 0 0 10px rgba(255, 51, 51, 0.3);">${user.total_points}</span>
+                    <span style="font-family: 'Exo 2', sans-serif; font-size: 20px; color: var(--neon-red); font-weight: 700; text-shadow: 0 0 10px rgba(255, 51, 51, 0.3);">${user.total_points}</span>
                 </td>
                 <td style="color: #00F5A0; font-weight: 600; font-size: 15px;">${user.exact_predictions} 🎯</td>
               </tr>
@@ -1387,7 +1387,7 @@ async function loadOpenPredictions() {
         : m.predictions.map(p => `
             <li style="padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between;">
               <span>${esc(p.display_name)}</span>
-              <strong style="font-family: 'Orbitron', monospace; color: var(--neon-red, #ff3333);">${p.home_goals} - ${p.away_goals}</strong>
+              <strong style="font-family: 'Exo 2', monospace; color: var(--neon-red, #ff3333);">${p.home_goals} - ${p.away_goals}</strong>
             </li>`).join('');
 
       const missingList = m.missing.length === 0
@@ -2421,7 +2421,7 @@ async function togglePredictions(matchId) {
           ${preds.map(p => `
             <tr id="pred-row-${p.id}" style="border-bottom: 1px solid rgba(255,255,255,0.04);">
               <td style="padding: 8px; font-weight: 600; color: var(--text-primary);">${p.player_name}</td>
-              <td style="padding: 8px; text-align: center; font-family: 'Orbitron', sans-serif; color: #00F5A0;">${p.home_goals} - ${p.away_goals}</td>
+              <td style="padding: 8px; text-align: center; font-family: 'Exo 2', sans-serif; color: #00F5A0;">${p.home_goals} - ${p.away_goals}</td>
               <td style="padding: 8px; text-align: center; color: #FFD700;">${p.points !== null ? p.points + ' pts' : '—'}</td>
               <td style="padding: 8px; text-align: center;">
                 <button id="del-pred-${p.id}" class="btn btn-danger btn-sm" style="padding: 4px 10px; font-size: 11px;">🗑️</button>
