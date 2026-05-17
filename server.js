@@ -954,7 +954,7 @@ app.get('/api/leaderboard/detail', requireAuth, async (req, res) => {
         if (!IS_POSTGRES) return res.json([]);
         const lastJornada = req.query.last_jornada === '1';
         const weekFilter = lastJornada
-            ? `AND m.match_date >= (SELECT MAX(match_date) - INTERVAL '4 days' FROM matches WHERE is_finished = 1)`
+            ? `AND m.match_date >= (SELECT MAX(match_date) - INTERVAL '2 days' FROM matches WHERE is_finished = 1)`
             : '';
         const rows = await query(`
             SELECT
