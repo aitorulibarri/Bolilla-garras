@@ -2625,6 +2625,20 @@ body::before {
 
 .garras-empty, .garras-error { font-size: 13px; color: var(--text-secondary); padding: 16px; text-align: center; }
 
+/* MVP voting per match */
+.mvp-match-card { margin-bottom: 16px; }
+.mvp-match-header { margin-bottom: 12px; }
+.mvp-match-title { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+.mvp-match-meta { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.mvp-vote-block { display: flex; flex-direction: column; gap: 12px; }
+.mvp-fem-selector { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px; margin: 8px 0 4px; }
+.mvp-selector-title { font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; font-weight: 500; }
+.mvp-player-checkboxes { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 4px; margin-bottom: 14px; max-height: 240px; overflow-y: auto; }
+.mvp-checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-primary); cursor: pointer; padding: 6px 8px; border-radius: 8px; }
+.mvp-checkbox-label:hover { background: rgba(255,255,255,0.05); }
+.mvp-dorsal { font-size: 11px; color: var(--text-secondary); }
+.mvp-selector-actions { display: flex; gap: 8px; padding-top: 4px; }
+
 /* Inline create form */
 .garras-create-form { padding: 12px 0 4px; }
 .garras-create-row { display: flex; gap: 12px; flex-wrap: wrap; }

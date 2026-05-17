@@ -285,6 +285,28 @@ async function dbInit() {
                 );
             `);
 
+            // ==================== MVP VOTING TABLES ====================
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS match_mvp_votes (
+                    id SERIAL PRIMARY KEY,
+                    match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+                    username TEXT NOT NULL,
+                    player_id INTEGER NOT NULL REFERENCES garras_players(id),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(match_id, username)
+                );
+            `);
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS match_mvp_players (
+                    match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+                    player_id INTEGER NOT NULL REFERENCES garras_players(id),
+                    PRIMARY KEY(match_id, player_id)
+                );
+            `);
+            try {
+                await pool.query(`ALTER TABLE matches ADD COLUMN IF NOT EXISTS mvp_voting_open INTEGER DEFAULT 0`);
+            } catch (e) { /* ignore if exists */ }
+
             // Seed players if table is empty (use pool.query directly — queryOne calls dbInit which would deadlock)
             const playerCountResult = await pool.query('SELECT COUNT(*) as count FROM garras_players');
             if (parseInt(playerCountResult.rows[0].count) === 0) {
@@ -1518,6 +1540,208 @@ app.get('/api/garras/admin/jornadas', requireAdmin, async (req, res) => {
             ORDER BY gj.numero DESC
         `);
         res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ==================== MVP VOTING (MEJOR JUGADOR DEL PARTIDO) ====================
+
+// GET /api/mvp/active — open matches + available players + user's vote
+app.get('/api/mvp/active', requireAuth, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.json([]);
+        const username = req.user.username;
+        const matches = await query(`
+            SELECT id, team, opponent, is_home, match_date
+            FROM matches
+            WHERE mvp_voting_open = 1
+              AND team IN ('Athletic Club', 'Athletic Femenino')
+            ORDER BY match_date DESC
+        `);
+        const result = [];
+        for (const match of matches) {
+            const category = match.team === 'Athletic Club' ? 'masculino' : 'femenino';
+            let players;
+            if (category === 'masculino') {
+                players = await query(`SELECT id, name, dorsal FROM garras_players WHERE active = 1 AND category = 'masculino' ORDER BY name ASC`);
+            } else {
+                players = await query(`
+                    SELECT gp.id, gp.name, gp.dorsal
+                    FROM garras_players gp
+                    JOIN match_mvp_players mmp ON gp.id = mmp.player_id
+                    WHERE mmp.match_id = $1
+                    ORDER BY gp.name ASC
+                `, [match.id]);
+            }
+            const userVote = await queryOne(`
+                SELECT mmv.player_id, gp.name AS player_name
+                FROM match_mvp_votes mmv
+                JOIN garras_players gp ON mmv.player_id = gp.id
+                WHERE mmv.match_id = $1 AND mmv.username = $2
+            `, [match.id, username]);
+            result.push({ ...match, category, players, userVote: userVote || null });
+        }
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/mvp/:id/vote — cast or update vote
+app.post('/api/mvp/:id/vote', requireAuth, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
+        const matchId = parseInt(req.params.id);
+        const { player_id } = req.body;
+        const username = req.user.username;
+        if (!player_id) return res.status(400).json({ error: 'Falta player_id' });
+        const match = await queryOne('SELECT mvp_voting_open, team FROM matches WHERE id = $1', [matchId]);
+        if (!match) return res.status(404).json({ error: 'Partido no encontrado' });
+        if (!match.mvp_voting_open) return res.status(400).json({ error: 'La votación no está abierta' });
+        const player = await queryOne('SELECT id FROM garras_players WHERE id = $1 AND active = 1', [parseInt(player_id)]);
+        if (!player) return res.status(400).json({ error: 'Jugador/a no válido/a' });
+        if (match.team === 'Athletic Femenino') {
+            const allowed = await queryOne('SELECT 1 FROM match_mvp_players WHERE match_id = $1 AND player_id = $2', [matchId, parseInt(player_id)]);
+            if (!allowed) return res.status(400).json({ error: 'Jugadora no disponible para este partido' });
+        }
+        const existing = await queryOne('SELECT id FROM match_mvp_votes WHERE match_id = $1 AND username = $2', [matchId, username]);
+        if (existing) {
+            await pool.query('UPDATE match_mvp_votes SET player_id = $1 WHERE id = $2', [parseInt(player_id), existing.id]);
+        } else {
+            await pool.query('INSERT INTO match_mvp_votes (match_id, username, player_id) VALUES ($1, $2, $3)', [matchId, username, parseInt(player_id)]);
+        }
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/mvp/history — closed matches with vote results
+app.get('/api/mvp/history', requireAuth, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.json([]);
+        const matches = await query(`
+            SELECT m.id, m.team, m.opponent, m.is_home, m.match_date,
+                   COUNT(mmv.id) AS total_votes
+            FROM matches m
+            JOIN match_mvp_votes mmv ON m.id = mmv.match_id
+            WHERE m.mvp_voting_open = 0
+              AND m.team IN ('Athletic Club', 'Athletic Femenino')
+            GROUP BY m.id
+            ORDER BY m.match_date DESC
+            LIMIT 20
+        `);
+        const result = [];
+        for (const match of matches) {
+            const results = await query(`
+                SELECT gp.id, gp.name, COUNT(mmv.id) AS votes
+                FROM match_mvp_votes mmv
+                JOIN garras_players gp ON mmv.player_id = gp.id
+                WHERE mmv.match_id = $1
+                GROUP BY gp.id, gp.name
+                ORDER BY votes DESC
+            `, [match.id]);
+            result.push({ ...match, results });
+        }
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/mvp/ranking — season ranking by matches won + total votes
+app.get('/api/mvp/ranking', requireAuth, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.json({ masculino: [], femenino: [] });
+        const rows = await query(`
+            WITH vote_counts AS (
+                SELECT mmv.match_id, mmv.player_id, COUNT(*) AS votes
+                FROM match_mvp_votes mmv
+                JOIN matches m ON mmv.match_id = m.id
+                WHERE m.mvp_voting_open = 0
+                GROUP BY mmv.match_id, mmv.player_id
+            ),
+            match_max AS (
+                SELECT match_id, MAX(votes) AS max_votes
+                FROM vote_counts GROUP BY match_id
+            ),
+            winners AS (
+                SELECT vc.player_id, COUNT(*) AS partidos_ganados
+                FROM vote_counts vc
+                JOIN match_max mm ON vc.match_id = mm.match_id AND vc.votes = mm.max_votes
+                GROUP BY vc.player_id
+            ),
+            totals AS (
+                SELECT player_id, SUM(votes) AS total_votes
+                FROM vote_counts GROUP BY player_id
+            )
+            SELECT gp.id, gp.name, gp.category,
+                   COALESCE(w.partidos_ganados, 0) AS partidos_ganados,
+                   COALESCE(t.total_votes, 0) AS total_votes
+            FROM garras_players gp
+            JOIN totals t ON gp.id = t.player_id
+            LEFT JOIN winners w ON gp.id = w.player_id
+            ORDER BY partidos_ganados DESC, total_votes DESC
+        `);
+        res.json({
+            masculino: rows.filter(r => r.category === 'masculino'),
+            femenino: rows.filter(r => r.category === 'femenino')
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/mvp/admin/matches — recent matches for admin MVP panel
+app.get('/api/mvp/admin/matches', requireAdmin, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.json([]);
+        const rows = await query(`
+            SELECT m.id, m.team, m.opponent, m.is_home, m.match_date, m.mvp_voting_open,
+                   COUNT(mmv.id) AS vote_count
+            FROM matches m
+            LEFT JOIN match_mvp_votes mmv ON m.id = mmv.match_id
+            WHERE m.team IN ('Athletic Club', 'Athletic Femenino')
+            GROUP BY m.id
+            ORDER BY m.match_date DESC
+            LIMIT 30
+        `);
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// PUT /api/mvp/admin/:id/open — open MVP voting (femenino requires player_ids)
+app.put('/api/mvp/admin/:id/open', requireAdmin, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
+        const matchId = parseInt(req.params.id);
+        const { player_ids } = req.body;
+        const match = await queryOne('SELECT id, team FROM matches WHERE id = $1', [matchId]);
+        if (!match) return res.status(404).json({ error: 'Partido no encontrado' });
+        if (match.team === 'Athletic Femenino') {
+            if (!Array.isArray(player_ids) || player_ids.length === 0)
+                return res.status(400).json({ error: 'Selecciona al menos una jugadora' });
+            await pool.query('DELETE FROM match_mvp_players WHERE match_id = $1', [matchId]);
+            for (const pid of player_ids)
+                await pool.query('INSERT INTO match_mvp_players (match_id, player_id) VALUES ($1, $2)', [matchId, parseInt(pid)]);
+        }
+        await pool.query('UPDATE matches SET mvp_voting_open = 1 WHERE id = $1', [matchId]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// PUT /api/mvp/admin/:id/close — close MVP voting
+app.put('/api/mvp/admin/:id/close', requireAdmin, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
+        const matchId = parseInt(req.params.id);
+        await pool.query('UPDATE matches SET mvp_voting_open = 0 WHERE id = $1', [matchId]);
+        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
