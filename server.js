@@ -54,7 +54,11 @@ function decryptPassword(blob) {
 const app = express();
 app.set('trust proxy', 1); // Fix for express-rate-limit with Vercel
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'bolilla-garras-secret-2026-seguro';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    console.error('FATAL: JWT_SECRET no configurado. Configura la variable de entorno antes de arrancar.');
+    process.exit(1);
+}
 const TOKEN_EXPIRY = '24h';
 
 // Admin usernames (lowercase) - these users will have is_admin = true on registration
@@ -104,7 +108,7 @@ const authLimiter = rateLimit({
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100,
+    max: 300,
     standardHeaders: true,
     legacyHeaders: false,
 });
@@ -172,7 +176,10 @@ if (IS_POSTGRES) {
     const { Pool } = require('pg');
     pool = new Pool({
         connectionString: process.env.DATABASE_URL,
-        ssl: { rejectUnauthorized: false }
+        ssl: { rejectUnauthorized: false },
+        max: 3,
+        idleTimeoutMillis: 10000,
+        connectionTimeoutMillis: 5000,
     });
     console.log('✅ PostgreSQL configured');
 }
@@ -541,38 +548,6 @@ app.get('/api/admin/reset-garras-password', requireAdmin, async (req, res) => {
     }
 });
 
-// Emergency admin reset endpoint
-app.get('/api/admin/emergency-reset-garras', async (req, res) => {
-    try {
-        const key = req.query.key;
-        if (key !== 'GARRAS_SECRET_RESET_2026') {
-            return res.status(403).json({ error: 'Acceso denegado' });
-        }
-        if (!IS_POSTGRES) {
-            return res.status(500).json({ error: 'No database configured' });
-        }
-        // Ensure DB is ready
-        await dbInit();
-
-        // Create GARRAS admin
-        const salt = await bcrypt.genSalt(10);
-        const passwordHash1 = await bcrypt.hash('GARRAS123', salt);
-        const existing = await queryOne('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', ['garras']);
-        let msg;
-        if (existing) {
-            await pool.query('UPDATE users SET password_hash = $1, is_admin = 1 WHERE LOWER(username) = LOWER($2)', [passwordHash1, 'garras']);
-            msg = 'GARRAS actualizado. ';
-        } else {
-            await pool.query('INSERT INTO users (username, display_name, password_hash, is_admin) VALUES ($1, $2, $3, 1)', ['garras', 'Admin Garras', passwordHash1]);
-            msg = 'GARRAS creado. ';
-        }
-
-        res.json({ success: true, message: msg });
-    } catch (err) {
-        console.error('Emergency reset error:', err);
-        res.status(500).json({ error: 'Error al resetear usuario: ' + err.message });
-    }
-});
 
 // Debug endpoint to check current user (admin only)
 app.get('/api/debug/me', requireAdmin, async (req, res) => {
@@ -1006,7 +981,7 @@ app.get('/api/leaderboard/detail', requireAuth, async (req, res) => {
 });
 
 // Get leaderboard
-app.get('/api/leaderboard', async (req, res) => {
+app.get('/api/leaderboard', requireAuth, async (req, res) => {
     try {
         if (!IS_POSTGRES) return res.json([]);
 

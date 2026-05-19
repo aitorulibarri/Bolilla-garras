@@ -756,6 +756,8 @@ function renderMatchCard(match, userPrediction) {
 
   const homeTeam = match.is_home ? match.team : match.opponent;
   const awayTeam = match.is_home ? match.opponent : match.team;
+  const homeTeamSafe = escapeHtml(homeTeam);
+  const awayTeamSafe = escapeHtml(awayTeam);
 
   const homeShield = getShieldUrl(homeTeam);
   const awayShield = getShieldUrl(awayTeam);
@@ -777,10 +779,10 @@ function renderMatchCard(match, userPrediction) {
   const standingsUrl = standingsUrls[contextTeam] || null;
 
   const homeShieldHtml = homeShield
-    ? `<img src="${homeShield}" class="big-shield" alt="${homeTeam}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'shield-fallback',textContent:'⚽'}));">`
+    ? `<img src="${homeShield}" class="big-shield" alt="${homeTeamSafe}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'shield-fallback',textContent:'⚽'}));">`
     : `<span class="shield-fallback">⚽</span>`;
   const awayShieldHtml = awayShield
-    ? `<img src="${awayShield}" class="big-shield" alt="${awayTeam}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'shield-fallback',textContent:'⚽'}));">`
+    ? `<img src="${awayShield}" class="big-shield" alt="${awayTeamSafe}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'shield-fallback',textContent:'⚽'}));">`
     : `<span class="shield-fallback">⚽</span>`;
 
   return `
@@ -791,7 +793,7 @@ function renderMatchCard(match, userPrediction) {
           <span class="match-league-badge">⚽ ${leagueName} • ${dateStr} ${timeStr}</span>
         </div>
         <div class="match-title-large">
-            ${homeTeam} <span style="color:var(--neon-red); margin:0 5px;">vs</span> ${awayTeam}
+            ${homeTeamSafe} <span style="color:var(--neon-red); margin:0 5px;">vs</span> ${awayTeamSafe}
         </div>
       </div>
       
@@ -799,7 +801,7 @@ function renderMatchCard(match, userPrediction) {
         <!-- Home Team -->
         <div class="team-container">
             ${homeShieldHtml}
-            <span class="team-name-label">${homeTeam}</span>
+            <span class="team-name-label">${homeTeamSafe}</span>
         </div>
 
         <!-- Score / Inputs -->
@@ -824,7 +826,7 @@ function renderMatchCard(match, userPrediction) {
         <!-- Away Team -->
         <div class="team-container">
             ${awayShieldHtml}
-            <span class="team-name-label">${awayTeam}</span>
+            <span class="team-name-label">${awayTeamSafe}</span>
         </div>
       </div>
 
