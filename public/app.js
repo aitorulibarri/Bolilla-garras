@@ -1002,7 +1002,7 @@ async function loadLeaderboard() {
     const printBtn = document.getElementById('leaderboard-print-btn');
     if (printBtn) printBtn.style.display = (leaderboard.length > 0 && currentUser?.isAdmin) ? 'inline-flex' : 'none';
     const rankingBtn = document.getElementById('leaderboard-ranking-btn');
-    if (rankingBtn) rankingBtn.style.display = leaderboard.length > 0 ? 'inline-flex' : 'none';
+    if (rankingBtn) rankingBtn.style.display = (leaderboard.length > 0 && currentUser?.isAdmin) ? 'inline-flex' : 'none';
 
     container.innerHTML = podiumHtml + tableHtml;
 
