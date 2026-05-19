@@ -56,8 +56,7 @@ app.set('trust proxy', 1); // Fix for express-rate-limit with Vercel
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
-    console.error('FATAL: JWT_SECRET no configurado. Configura la variable de entorno antes de arrancar.');
-    process.exit(1);
+    console.error('FATAL: JWT_SECRET no configurado. Configura la variable de entorno en Vercel.');
 }
 const TOKEN_EXPIRY = '24h';
 
@@ -98,6 +97,12 @@ app.use(helmet({
 }));
 app.use(compression());
 app.use(morgan('dev'));
+
+// Guard: block all API routes if JWT_SECRET is missing (misconfig, not a crash)
+app.use('/api', (req, res, next) => {
+    if (!JWT_SECRET) return res.status(503).json({ error: 'Servidor mal configurado: falta JWT_SECRET. Contacta al administrador.' });
+    next();
+});
 
 // Rate Limiting - stricter for auth endpoints
 const authLimiter = rateLimit({
@@ -179,17 +184,19 @@ if (IS_POSTGRES) {
         ssl: { rejectUnauthorized: false },
         max: 3,
         idleTimeoutMillis: 10000,
-        connectionTimeoutMillis: 5000,
+        connectionTimeoutMillis: 15000, // Neon free tier puede tardar ~10s en despertar
     });
     console.log('✅ PostgreSQL configured');
 }
 
 // Lazy database initialization - runs once, awaited before any query
+// Retries up to 3 times to handle Neon cold-start latency
 async function dbInit() {
     if (dbReady) return;
     if (dbInitPromise) return dbInitPromise;
 
     dbInitPromise = (async () => {
+        for (let attempt = 1; attempt <= 3; attempt++) {
         try {
             // Check if we need to migrate the users table
             const checkColumn = await pool.query(`
@@ -368,14 +375,26 @@ async function dbInit() {
 
             dbReady = true;
             console.log('✅ Tables initialized');
+            return;
         } catch (err) {
-            console.error('DB init error:', err);
-            dbInitPromise = null; // Allow retry on next request
-            throw err;
+            console.error(`DB init attempt ${attempt}/3 failed:`, err.message);
+            if (attempt < 3) {
+                await new Promise(r => setTimeout(r, 2000 * attempt));
+            } else {
+                dbInitPromise = null; // Allow retry on next incoming request
+                throw err;
+            }
         }
+        } // end for
     })();
 
     return dbInitPromise;
+}
+
+// Warm up DB connection proactively on server start (non-blocking)
+// Reduces first-request latency by pre-establishing the Neon connection
+if (IS_POSTGRES) {
+    dbInit().catch(err => console.error('Proactive DB warm-up failed:', err.message));
 }
 
 // Simple query helpers - ensure DB is initialized first
@@ -1107,7 +1126,6 @@ app.get('/api/admin/open-predictions', requireAdmin, async (req, res) => {
 
         const allUsers = await query('SELECT username, display_name FROM users ORDER BY display_name ASC');
 
-        const now = new Date();
         const result = [];
         for (const m of matches) {
             const preds = await query(`
@@ -1119,6 +1137,11 @@ app.get('/api/admin/open-predictions', requireAdmin, async (req, res) => {
                 ORDER BY display_name ASC
             `, [m.id]);
 
+            const deadlineRow = await queryOne(
+                `SELECT (NOW() AT TIME ZONE 'Europe/Madrid') > deadline AS passed FROM matches WHERE id = $1`,
+                [m.id]
+            );
+
             const predictedSet = new Set(preds.map(p => p.player_name.toLowerCase()));
             const missing = allUsers.filter(u => !predictedSet.has(u.username.toLowerCase()));
 
@@ -1129,7 +1152,7 @@ app.get('/api/admin/open-predictions', requireAdmin, async (req, res) => {
                 is_home: m.is_home,
                 match_date: m.match_date,
                 deadline: m.deadline,
-                deadline_passed: new Date(m.deadline) < now,
+                deadline_passed: deadlineRow?.passed ?? false,
                 predictions: preds.map(p => ({
                     username: p.player_name,
                     display_name: p.display_name,

@@ -2550,8 +2550,18 @@ async function loadMvpVoteSection() {
     });
 
   } catch (err) {
-    section.innerHTML = `<p class="garras-error">Error al cargar la votación: ${escapeHtml(err.message)}</p>`;
     console.error('loadMvpVoteSection error:', err);
+    section.innerHTML = `
+      <div class="card" style="text-align:center; padding: 32px 20px;">
+        <div style="font-size:48px; margin-bottom:12px;">⚠️</div>
+        <h3 style="margin-bottom:8px;">Error al cargar la votación</h3>
+        <p style="color:var(--text-secondary); margin-bottom:20px; font-size:14px;">
+          La base de datos puede estar despertando. Inténtalo de nuevo en unos segundos.
+        </p>
+        <button class="btn btn-secondary" onclick="loadMvpVoteSection()" style="margin: 0 auto;">
+          🔄 Reintentar
+        </button>
+      </div>`;
   }
 }
 
