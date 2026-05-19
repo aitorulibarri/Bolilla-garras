@@ -608,6 +608,27 @@ app.get('/api/debug/users', requireAdmin, async (req, res) => {
     }
 });
 
+// Reset de temporada: borra pronósticos de partidos finalizados (admin only)
+// Los pronósticos pendientes (is_finished=0) se conservan.
+// Usar al inicio de cada temporada o para limpiar el historial de prueba.
+app.post('/api/admin/reset-season', requireAdmin, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
+        const result = await pool.query(`
+            DELETE FROM predictions
+            WHERE match_id IN (SELECT id FROM matches WHERE is_finished = 1)
+        `);
+        res.json({
+            success: true,
+            deleted: result.rowCount,
+            message: `${result.rowCount} pronósticos de partidos finalizados eliminados. Los pronósticos pendientes se conservan.`
+        });
+    } catch (err) {
+        console.error('Reset season error:', err);
+        res.status(500).json({ error: 'Error al resetear temporada' });
+    }
+});
+
 // Emergency: clear all matches and predictions (admin only)
 app.get('/api/admin/clear-matches', requireAdmin, async (req, res) => {
     try {
