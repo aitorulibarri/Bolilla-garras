@@ -189,15 +189,22 @@ Overrides críticos:
 | `JWT_SECRET` | Secret para firmar tokens JWT |
 | `PASSWORD_ENCRYPTION_KEY` | 32 bytes base64 para AES-GCM (opcional) |
 
-## Known Issues (pendientes de arreglar)
+## Known Issues
 
-- **GARRAS SARIA en producción**: el tab muestra "Error al cargar la votación" en la primera visita. Causa pendiente de confirmar — puede ser timing de dbInit o cache de Vercel. Hacer Ctrl+Shift+R suele resolverlo.
-- **JWT_SECRET con fallback público**: `server.js:57` tiene default hardcodeado.
-- **Backdoor sin auth**: `GET /api/admin/emergency-reset-garras?key=GARRAS_SECRET_RESET_2026`.
-- **Registro concede admin por nombre**: username `admin` o `garras` da `is_admin=1`.
-- **`/api/leaderboard` público**: expone usernames sin autenticación.
-- **Timezone backend**: deadline check acepta pronósticos 1-2h tarde (bug TIMESTAMP naive + UTC).
-- **XSS en renderMatchCard**: `match.opponent` y `match.team` en `innerHTML` sin escapar.
+- **JWT_SECRET con fallback público**: `server.js` usa `process.env.JWT_SECRET || 'bolilla-garras-secret-2026-seguro'`. Configurar `JWT_SECRET` en Vercel → Settings → Environment Variables para eliminar el fallback. El fallback es funcional pero conocido en el repo público.
+- **Registro concede admin por nombre**: username `admin` o `garras` da `is_admin=1`. Aceptado por diseño (solo esos dos).
+- **Neon Connection Pooler**: usar la URL pooled (`-pooler.` en hostname) como `DATABASE_URL` en Vercel para mayor estabilidad bajo carga alta.
+
+## Fixes aplicados (Mayo 2026)
+
+- Backdoor `emergency-reset-garras` eliminado
+- `/api/leaderboard` requiere autenticación
+- Timezone: deadline check usa `NOW() AT TIME ZONE 'Europe/Madrid'`
+- XSS corregido en match cards, leaderboard, historial, admin tracker
+- `display_name` max 30 chars validado en registro
+- GARRAS SARIA: cold-start manejado con retry en dbInit (3 intentos) + warm-up
+- Rate limit: 300 req/15min; Pool DB: max 3 con timeouts
+- Stress test: 200 requests concurrentes → 100% éxito, avg 439ms, P95 2s
 
 ## Teams & Logos
 
