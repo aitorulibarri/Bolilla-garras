@@ -54,9 +54,9 @@ function decryptPassword(blob) {
 const app = express();
 app.set('trust proxy', 1); // Fix for express-rate-limit with Vercel
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-    console.error('FATAL: JWT_SECRET no configurado. Configura la variable de entorno en Vercel.');
+const JWT_SECRET = process.env.JWT_SECRET || 'bolilla-garras-secret-2026-seguro';
+if (!process.env.JWT_SECRET) {
+    console.warn('⚠️  JWT_SECRET no configurado en env. Usando valor por defecto. Configura JWT_SECRET en Vercel para mayor seguridad.');
 }
 const TOKEN_EXPIRY = '24h';
 
@@ -97,12 +97,6 @@ app.use(helmet({
 }));
 app.use(compression());
 app.use(morgan('dev'));
-
-// Guard: block all API routes if JWT_SECRET is missing (misconfig, not a crash)
-app.use('/api', (req, res, next) => {
-    if (!JWT_SECRET) return res.status(503).json({ error: 'Servidor mal configurado: falta JWT_SECRET. Contacta al administrador.' });
-    next();
-});
 
 // Rate Limiting - stricter for auth endpoints
 const authLimiter = rateLimit({
