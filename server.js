@@ -1024,14 +1024,14 @@ app.get('/api/leaderboard', requireAuth, async (req, res) => {
 
         const leaderboard = await query(`
       SELECT
-        pr.player_name as name,
-        COALESCE(u.display_name, pr.player_name) as display_name,
+        u.username as name,
+        u.display_name,
         COALESCE(SUM(pr.points), 0) as total_points,
         COUNT(CASE WHEN pr.points = 5 THEN 1 END) as exact_predictions,
         COUNT(CASE WHEN pr.points IS NOT NULL THEN 1 END) as total_predictions
-      FROM predictions pr
-      LEFT JOIN users u ON LOWER(pr.player_name) = LOWER(u.username)
-      GROUP BY pr.player_name, u.display_name
+      FROM users u
+      LEFT JOIN predictions pr ON LOWER(pr.player_name) = LOWER(u.username)
+      GROUP BY u.username, u.display_name
       ORDER BY total_points DESC, exact_predictions DESC
     `);
 
