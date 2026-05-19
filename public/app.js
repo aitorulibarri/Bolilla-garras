@@ -986,7 +986,7 @@ async function loadLeaderboard() {
               <tr>
                 <td class="rank">${rankEmoji}</td>
                 <td>
-                    <div style="font-weight: 700; color: var(--text-primary); font-size: 16px;">${user.display_name || user.name}</div>
+                    <div style="font-weight: 700; color: var(--text-primary); font-size: 16px;">${escapeHtml(user.display_name || user.name)}</div>
                 </td>
                 <td>
                     <span style="font-family: 'Exo 2', sans-serif; font-size: 20px; color: var(--neon-red); font-weight: 700; text-shadow: 0 0 10px rgba(255, 51, 51, 0.3);">${user.total_points}</span>
@@ -1104,8 +1104,8 @@ async function loadHistory() {
 
         const rows = preds.map(pred => {
           const matchDate = parseMatchDate(pred.match_date);
-          const homeTeam = pred.is_home ? pred.team : pred.opponent;
-          const awayTeam = pred.is_home ? pred.opponent : pred.team;
+          const homeTeam = escapeHtml(pred.is_home ? pred.team : pred.opponent);
+          const awayTeam = escapeHtml(pred.is_home ? pred.opponent : pred.team);
           const resultado = pred.is_finished ? `${pred.real_home}-${pred.real_away}` : `<span style="color:#64748b">—</span>`;
           return `
             <tr>
@@ -1154,8 +1154,8 @@ async function loadHistory() {
 
       const rows = filtered.map(pred => {
         const matchDate = parseMatchDate(pred.match_date);
-        const homeTeam = pred.is_home ? pred.team : pred.opponent;
-        const awayTeam = pred.is_home ? pred.opponent : pred.team;
+        const homeTeam = escapeHtml(pred.is_home ? pred.team : pred.opponent);
+        const awayTeam = escapeHtml(pred.is_home ? pred.opponent : pred.team);
         const resultado = pred.is_finished ? `${pred.real_home}-${pred.real_away}` : `<span style="color:#64748b">—</span>`;
         return `
           <tr>
@@ -1924,8 +1924,8 @@ async function loadAdminUsers() {
     }
 
     const rows = users.map(u => {
-      const safeUsername = String(u.username).replace(/"/g, '&quot;');
-      const safeDisplay = String(u.display_name).replace(/</g, '&lt;');
+      const safeUsername = escapeHtml(String(u.username));
+      const safeDisplay = escapeHtml(String(u.display_name));
       const adminBadge = u.is_admin ? '<span class="user-badge-admin">ADMIN</span>' : '';
       return `
         <tr data-user-id="${u.id}">
@@ -2348,8 +2348,8 @@ async function loadAdminStats() {
         <div style="padding: 20px; background: var(--bg-tertiary); border-radius: var(--radius-lg); border: 1px solid rgba(255,255,255,0.06); grid-column: span 2;">
           <h4 style="margin-bottom: 16px; color: var(--text-secondary); font-size: 14px;">📊 Participación en Próximos Partidos</h4>
           ${upcomingMatches.length === 0 ? '<p style="color: var(--text-muted);">No hay partidos próximos</p>' : upcomingMatches.map(m => {
-      const homeTeam = m.is_home ? m.team : m.opponent;
-      const awayTeam = m.is_home ? m.opponent : m.team;
+      const homeTeam = escapeHtml(m.is_home ? m.team : m.opponent);
+      const awayTeam = escapeHtml(m.is_home ? m.opponent : m.team);
       const barColor = m.participation >= 80 ? 'var(--success)' : m.participation >= 50 ? 'var(--warning)' : 'var(--error)';
 
       return `
@@ -2372,7 +2372,7 @@ async function loadAdminStats() {
           ${usersWithoutPredictions.length === 0
         ? '<p style="color: var(--success);">¡Todos los usuarios han pronosticado! 🎉</p>'
         : `<div style="display: flex; flex-wrap: wrap; gap: 8px;">${usersWithoutPredictions.map(u =>
-          `<span style="padding: 6px 12px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 16px; font-size: 12px; color: var(--error);">${u.display_name}</span>`
+          `<span style="padding: 6px 12px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 16px; font-size: 12px; color: var(--error);">${escapeHtml(u.display_name)}</span>`
         ).join('')}</div>`
       }
         </div>

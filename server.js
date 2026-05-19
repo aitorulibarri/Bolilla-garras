@@ -405,6 +405,9 @@ app.post('/api/register', authLimiter, async (req, res) => {
         if (!displayName || displayName.length < 2) {
             return res.status(400).json({ error: 'Nombre debe tener al menos 2 caracteres' });
         }
+        if (displayName.length > 30) {
+            return res.status(400).json({ error: 'El nombre no puede tener más de 30 caracteres' });
+        }
         if (!password || password.length < 8) {
             return res.status(400).json({ error: 'Contraseña debe tener al menos 8 caracteres' });
         }
@@ -736,7 +739,7 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
                   AND m.deadline > NOW()
             )
             ORDER BY p.display_name
-            LIMIT 10
+            LIMIT 200
         `);
 
         res.json({
@@ -881,13 +884,13 @@ app.post('/api/predictions', requireAuth, async (req, res) => {
 
         if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
 
-        // Check deadline
-        const match = await queryOne('SELECT deadline FROM matches WHERE id = $1', [matchId]);
+        // Check deadline (deadline stored as Madrid time, compare consistently in DB)
+        const match = await queryOne(
+            `SELECT id, (NOW() AT TIME ZONE 'Europe/Madrid') > deadline AS past_deadline FROM matches WHERE id = $1`,
+            [matchId]
+        );
         if (!match) return res.status(404).json({ error: 'Partido no encontrado' });
-
-        const now = new Date();
-        const deadline = new Date(match.deadline);
-        if (now > deadline) {
+        if (match.past_deadline) {
             return res.status(400).json({ error: 'El plazo para pronósticos ha terminado' });
         }
 
