@@ -1,5 +1,5 @@
-// Bolilla Garras App v8.4 — CSV export + compact tracker matrix
-console.log('📱 Bolilla Garras App v8.4 loaded');
+// Bolilla Garras App v8.5 — Excel con colores (clasificacion + seguimiento)
+console.log('📱 Bolilla Garras App v8.5 loaded');
 // ==================== STATE ====================
 let currentUser = null;
 
@@ -1426,16 +1426,9 @@ async function loadOpenPredictions() {
   }
 }
 
-// PDF de seguimiento: matriz compacta (filas=usuarios, columnas=partidos) — landscape A4
+// Seguimiento: Excel con colores (filas=usuarios, columnas=partidos)
 async function printTrackerReport() {
-  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-  const win = window.open('', '_blank');
-  if (!win) {
-    showToast('Permite ventanas emergentes para exportar el PDF', 'error');
-    return;
-  }
-  win.document.write('<p style="font-family:sans-serif;padding:20px">Cargando pronósticos...</p>');
+  showToast('Generando Excel...', 'info');
 
   let matches, totalUsers;
   try {
@@ -1445,31 +1438,25 @@ async function printTrackerReport() {
     matches = data.matches || [];
     totalUsers = data.totalUsers || 0;
   } catch (err) {
-    win.close();
-    showToast('Error al cargar datos para el PDF', 'error');
+    showToast('Error al cargar datos para el Excel', 'error');
     return;
   }
 
   if (matches.length === 0) {
-    win.close();
     showToast('No hay partidos abiertos', 'error');
     return;
   }
 
-  const reportDate = new Date().toLocaleString('es-ES', {
-    day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
-  });
-
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const teamRank = { 'Athletic Club': 1, 'Athletic Femenino': 2, 'Bilbao Athletic': 3 };
   matches.sort((a, b) =>
     (teamRank[a.team] || 9) - (teamRank[b.team] || 9) ||
     String(a.match_date).localeCompare(String(b.match_date))
   );
 
-  // Recopilar todos los usuarios y sus pronósticos por partido
-  const allUsers = new Map(); // username.lower → displayName
-  const predMap = {};         // username.lower → matchId → {h, a}
-
+  // Recopilar usuarios y pronósticos
+  const allUsers = new Map();
+  const predMap = {};
   matches.forEach(m => {
     m.predictions.forEach(p => {
       const k = p.username.toLowerCase();
@@ -1485,93 +1472,82 @@ async function printTrackerReport() {
 
   const sortedUsers = [...allUsers.entries()].sort((a, b) => a[1].localeCompare(b[1], 'es'));
 
-  // Cabeceras de partidos
+  // Cabecera de partidos
   const matchHeaders = matches.map(m => {
     const homeTeam = m.is_home ? m.team : m.opponent;
     const awayTeam = m.is_home ? m.opponent : m.team;
     const fecha = formatMatchDateForPDF(m.match_date);
-    const cls = m.deadline_passed ? 'th-closed' : 'th-open';
-    return `<th class="${cls}">${esc(homeTeam)}<br>vs ${esc(awayTeam)}<br><span class="match-date">${fecha}</span></th>`;
+    const bg = m.deadline_passed ? '#555555' : '#cc0000';
+    return `<th style="background:${bg};color:#fff;border:1px solid #888;padding:5px 8px;text-align:center;font-size:10px;">${esc(homeTeam)} vs ${esc(awayTeam)}<br><span style="font-weight:normal;font-size:8px;">${fecha}${m.deadline_passed ? ' · CERRADO' : ' · ABIERTO'}</span></th>`;
   }).join('');
 
   // Filas de usuarios
-  const dataRows = sortedUsers.map(([ukey, displayName]) => {
+  const dataRows = sortedUsers.map(([ukey, displayName], idx) => {
+    const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8f8f8';
     const cells = matches.map(m => {
       const p = predMap[ukey]?.[m.id];
       if (p !== undefined) {
-        return `<td class="has-pred">${p.h}-${p.a}</td>`;
+        return `<td style="background:#c8f7c5;color:#155724;border:1px solid #ccc;text-align:center;font-weight:700;font-size:10px;font-family:monospace;">${p.h}-${p.a}</td>`;
       }
-      return `<td class="no-pred">${m.deadline_passed ? '✗' : '—'}</td>`;
+      if (m.deadline_passed) {
+        return `<td style="background:#fecaca;color:#991b1b;border:1px solid #ccc;text-align:center;font-weight:700;font-size:11px;">✗</td>`;
+      }
+      return `<td style="background:#fff9e6;color:#92400e;border:1px solid #ccc;text-align:center;font-size:10px;">⏳</td>`;
     }).join('');
-    return `<tr><td class="user-name">${esc(displayName)}</td>${cells}</tr>`;
+    return `<tr><td style="background:${rowBg};border:1px solid #ddd;padding:4px 8px;font-size:10px;font-weight:600;white-space:nowrap;">${esc(displayName)}</td>${cells}</tr>`;
   }).join('');
 
   // Fila totales
   const totalRow = matches.map(m =>
-    `<td class="summary">${m.predictions.length}/${totalUsers}</td>`
+    `<td style="background:#e0e0e0;border:1px solid #aaa;text-align:center;font-weight:700;font-size:10px;">${m.predictions.length}/${totalUsers}</td>`
   ).join('');
 
-  const html = `<!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<title>Seguimiento Bolilla Garras — ${esc(reportDate)}</title>
-<style>
-  @page { size: A4 landscape; margin: 8mm; }
-  * { box-sizing: border-box; }
-  body { font-family: Arial, sans-serif; font-size: 9px; color: #111; margin: 0; padding: 8px; }
-  header { text-align: center; margin-bottom: 6px; border-bottom: 2px solid #c00; padding-bottom: 5px; }
-  header h1 { font-size: 13px; color: #c00; margin: 0 0 2px; }
-  header .sub { font-size: 8px; color: #666; }
-  table { width: 100%; border-collapse: collapse; }
-  th { background: #c00; color: #fff; padding: 3px 5px; text-align: center; font-size: 8px; border: 1px solid #aaa; vertical-align: bottom; }
-  th.th-closed { background: #555; }
-  th.th-open { background: #c00; }
-  th:first-child { background: #222; text-align: left; width: 110px; }
-  .match-date { font-weight: normal; font-size: 7px; opacity: 0.8; }
-  td { padding: 2px 4px; border: 1px solid #ddd; text-align: center; font-size: 8px; white-space: nowrap; }
-  td.user-name { text-align: left; font-weight: 600; background: #f5f5f5; font-size: 8.5px; }
-  td.has-pred { color: #006b35; font-weight: 700; font-family: monospace; background: #f0fff6; }
-  td.no-pred { color: #bbb; }
-  tr:nth-child(even) td { background: #fafafa; }
-  tr:nth-child(even) td.user-name { background: #efefef; }
-  tr:nth-child(even) td.has-pred { background: #e8f8ef; }
-  tr.total-row td { background: #e0e0e0; font-weight: 700; border-top: 2px solid #888; font-size: 8.5px; }
-  tr.total-row td.user-name { background: #d0d0d0; }
-  footer { margin-top: 5px; text-align: center; font-size: 7px; color: #888; border-top: 1px solid #ccc; padding-top: 3px; }
-  #print-btn { position: fixed; top: 8px; right: 8px; background: #c00; color: #fff; border: none; padding: 7px 12px; font-size: 11px; font-weight: 700; border-radius: 5px; cursor: pointer; }
-  @media print { #print-btn { display: none; } }
-</style>
-</head>
-<body>
-  <button id="print-btn">🖨️ Imprimir / PDF</button>
-  <header>
-    <h1>🦁 BOLILLA GARRAS — Seguimiento de Pronósticos</h1>
-    <div class="sub">Peña Garras Taldea Sestao · ${esc(reportDate)} · ${totalUsers} usuarios · ${matches.length} partido${matches.length === 1 ? '' : 's'}</div>
-  </header>
-  <table>
-    <thead>
-      <tr><th>Jugador</th>${matchHeaders}</tr>
-    </thead>
-    <tbody>
-      ${dataRows}
-      <tr class="total-row">
-        <td class="user-name">TOTAL</td>
-        ${totalRow}
-      </tr>
-    </tbody>
-  </table>
-  <footer>Verde = ha pronosticado · — = pendiente · ✗ = no pronosticó (plazo cerrado)</footer>
-  <script>
-    document.getElementById('print-btn').addEventListener('click', function() { window.print(); });
-    setTimeout(function() { window.print(); }, 400);
-  </script>
-</body>
-</html>`;
+  const reportDate = new Date().toLocaleString('es-ES', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8">
+<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+<x:Name>Seguimiento</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+</head><body>
+<table>
+  <thead>
+    <tr>
+      <th style="background:#1e1e2e;color:#fff;border:1px solid #555;padding:6px 10px;font-size:12px;text-align:left;">🦁 BOLILLA GARRAS — Seguimiento &nbsp;·&nbsp; <span style="font-size:9px;font-weight:normal;">${esc(reportDate)} · ${totalUsers} usuarios</span></th>
+      ${matchHeaders}
+    </tr>
+    <tr>
+      <th style="background:#333;color:#fff;border:1px solid #555;padding:4px 8px;font-size:10px;text-align:left;">Jugador</th>
+      ${matches.map(m => `<th style="background:#eee;color:#333;border:1px solid #bbb;padding:3px 6px;font-size:9px;text-align:center;">${m.predictions.length} pronóst.</th>`).join('')}
+    </tr>
+  </thead>
+  <tbody>
+    ${dataRows}
+    <tr>
+      <td style="background:#d0d0d0;border:1px solid #aaa;padding:4px 8px;font-weight:700;font-size:10px;">TOTAL</td>
+      ${totalRow}
+    </tr>
+  </tbody>
+</table>
+<br>
+<table><tr>
+  <td style="font-size:9px;color:#555;padding:3px 6px;">Leyenda:</td>
+  <td style="background:#c8f7c5;color:#155724;font-size:9px;padding:3px 10px;border:1px solid #aaa;font-weight:700;">Verde — ha pronosticado</td>
+  <td style="background:#fff9e6;color:#92400e;font-size:9px;padding:3px 10px;border:1px solid #aaa;font-weight:700;">⏳ — pendiente (plazo abierto)</td>
+  <td style="background:#fecaca;color:#991b1b;font-size:9px;padding:3px 10px;border:1px solid #aaa;font-weight:700;">✗ — no pronosticó (plazo cerrado)</td>
+</tr></table>
+</body></html>`;
+
+  const blob = new Blob(['﻿' + html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `bolilla-garras-seguimiento-${new Date().toISOString().split('T')[0]}.xls`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('✅ Descargado — ábrelo con Excel o Google Sheets', 'success');
 }
 
 // ==================== LEADERBOARD PDF ====================
@@ -1685,7 +1661,7 @@ async function exportLeaderboardCSV() {
     return;
   }
 
-  const cell = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const teamRank = { 'Athletic Club': 1, 'Athletic Femenino': 2, 'Bilbao Athletic': 3 };
 
   // Collect all unique finished matches
@@ -1712,31 +1688,83 @@ async function exportLeaderboardCSV() {
     byPlayer[key][mk] = row;
   });
 
-  // Header
-  const matchHeaders = sortedMatches.flatMap(m => {
-    const dateStr = formatMatchDateForPDF(m.date);
-    return [cell(`${m.label} (${dateStr}) Pron.`), cell(`${m.label} (${dateStr}) Result.`), cell(`${m.label} (${dateStr}) Pts`)];
-  });
-  const header = [cell('Pos'), cell('Nombre'), cell('Pts Total'), cell('Plenos'), ...matchHeaders].join(';');
+  // Color coding by points
+  const ptsBg  = (pts) => { const n = Number(pts); if (n === 5) return '#b7e4b7'; if (n >= 3) return '#fde68a'; if (n >= 1) return '#fcd9a0'; return '#fecaca'; };
+  const ptsFg  = (pts) => { const n = Number(pts); if (n === 5) return '#166534'; if (n >= 3) return '#78350f'; if (n >= 1) return '#92400e'; return '#991b1b'; };
+  const rankBg = (i)   => i === 0 ? '#fef9c3' : i === 1 ? '#f3f4f6' : i === 2 ? '#fff7ed' : '#ffffff';
+  const rankFg = (i)   => i === 0 ? '#854d0e' : i === 1 ? '#374151' : i === 2 ? '#9a3412' : '#111111';
+
+  const th = (content, extra = '') => `<th style="background:#1e1e2e;color:#fff;border:1px solid #555;padding:5px 8px;font-size:10px;white-space:nowrap;${extra}">${content}</th>`;
+  const thMatch = (content) => `<th colspan="3" style="background:#c00;color:#fff;border:1px solid #900;padding:5px 8px;font-size:10px;text-align:center;">${content}</th>`;
+  const thSub   = (content) => `<th style="background:#eee;color:#333;border:1px solid #bbb;padding:3px 6px;font-size:9px;text-align:center;">${content}</th>`;
+
+  // Match header rows
+  const headerRow1 = sortedMatches.map(m => thMatch(`${esc(m.label)}<br><span style="font-weight:normal;font-size:8px;">${formatMatchDateForPDF(m.date)}</span>`)).join('');
+  const headerRow2 = sortedMatches.map(() => thSub('Pron.') + thSub('Result.') + thSub('Pts')).join('');
 
   // Data rows
-  const rows = leaderboard.map((user, index) => {
+  const dataRows = leaderboard.map((user, i) => {
     const pkey = user.name.toLowerCase();
     const preds = byPlayer[pkey] || {};
-    const matchCells = sortedMatches.flatMap(m => {
-      const p = preds[m.mk];
-      if (!p) return [cell('—'), cell('—'), cell('—')];
-      return [cell(`${p.pred_home}-${p.pred_away}`), cell(`${p.real_home}-${p.real_away}`), cell(p.points)];
-    });
-    return [cell(index + 1), cell(user.display_name || user.name), cell(user.total_points), cell(user.exact_predictions), ...matchCells].join(';');
-  });
+    const bg = rankBg(i);
+    const fg = rankFg(i);
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1;
+    const baseTd = `border:1px solid #ddd;padding:4px 7px;`;
 
-  const csv = '﻿' + [header, ...rows].join('\r\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const matchCells = sortedMatches.map(m => {
+      const p = preds[m.mk];
+      if (!p) return `<td style="background:#f0f0f0;color:#aaa;${baseTd}text-align:center;font-size:9px;">—</td><td style="background:#f0f0f0;color:#aaa;${baseTd}text-align:center;font-size:9px;">—</td><td style="background:#f0f0f0;color:#aaa;${baseTd}text-align:center;font-size:9px;">—</td>`;
+      const cbg = ptsBg(p.points); const cfg = ptsFg(p.points);
+      const s = `background:${cbg};color:${cfg};${baseTd}text-align:center;font-size:9px;font-weight:700;`;
+      return `<td style="${s}">${p.pred_home}-${p.pred_away}</td><td style="${s}">${p.real_home}-${p.real_away}</td><td style="${s}">${p.points}</td>`;
+    }).join('');
+
+    return `<tr>
+      <td style="background:${bg};color:${fg};${baseTd}text-align:center;font-weight:700;font-size:11px;">${medal}</td>
+      <td style="background:${bg};color:${fg};${baseTd}font-weight:600;font-size:10px;white-space:nowrap;">${esc(user.display_name || user.name)}</td>
+      <td style="background:${bg};color:#c00;${baseTd}text-align:center;font-weight:700;font-size:13px;">${user.total_points}</td>
+      <td style="background:${bg};color:#166534;${baseTd}text-align:center;font-weight:600;font-size:10px;">${user.exact_predictions} 🎯</td>
+      ${matchCells}
+    </tr>`;
+  }).join('');
+
+  const reportDate = new Date().toLocaleString('es-ES', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8">
+<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+<x:Name>Clasificación</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+</head><body>
+<table>
+  <thead>
+    <tr>
+      <th colspan="4" style="background:#c00;color:#fff;font-size:13px;padding:8px 12px;border:1px solid #900;text-align:left;">🦁 BOLILLA GARRAS — Clasificación &nbsp;·&nbsp; <span style="font-size:10px;font-weight:normal;">${esc(reportDate)}</span></th>
+      ${headerRow1}
+    </tr>
+    <tr>
+      ${th('Pos', 'text-align:center;')}${th('Jugador')}${th('Pts', 'text-align:center;')}${th('Plenos', 'text-align:center;')}
+      ${headerRow2}
+    </tr>
+  </thead>
+  <tbody>${dataRows}</tbody>
+</table>
+<br>
+<table><tr>
+  <td style="font-size:9px;color:#555;padding:3px 6px;">Leyenda:</td>
+  <td style="background:#b7e4b7;color:#166534;font-size:9px;padding:3px 10px;border:1px solid #aaa;font-weight:700;">5 pts — Pleno exacto 🎯</td>
+  <td style="background:#fde68a;color:#78350f;font-size:9px;padding:3px 10px;border:1px solid #aaa;font-weight:700;">3 pts — Muy bien</td>
+  <td style="background:#fcd9a0;color:#92400e;font-size:9px;padding:3px 10px;border:1px solid #aaa;font-weight:700;">1-2 pts — Parcial</td>
+  <td style="background:#fecaca;color:#991b1b;font-size:9px;padding:3px 10px;border:1px solid #aaa;font-weight:700;">0 pts — Fallo</td>
+  <td style="background:#f0f0f0;color:#888;font-size:9px;padding:3px 10px;border:1px solid #aaa;">— Sin pronóstico</td>
+</tr></table>
+</body></html>`;
+
+  const blob = new Blob(['﻿' + html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `bolilla-garras-clasificacion-${new Date().toISOString().split('T')[0]}.csv`;
+  a.download = `bolilla-garras-clasificacion-${new Date().toISOString().split('T')[0]}.xls`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
