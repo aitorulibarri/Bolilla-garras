@@ -1,5 +1,5 @@
-// Bolilla Garras App v6.6 — GARRAS SARIA error handling
-console.log('📱 Bolilla Garras App v6.6 loaded');
+// Bolilla Garras App v8.4 — CSV export + compact tracker matrix
+console.log('📱 Bolilla Garras App v8.4 loaded');
 // ==================== STATE ====================
 let currentUser = null;
 
@@ -226,7 +226,7 @@ function setupEventListeners() {
   // Botón de exportar PDF de la Clasificación General
   const leaderboardPrintBtn = document.getElementById('leaderboard-print-btn');
   if (leaderboardPrintBtn) {
-    leaderboardPrintBtn.addEventListener('click', printLeaderboardReport);
+    leaderboardPrintBtn.addEventListener('click', exportLeaderboardCSV);
   }
 
   // Botón de exportar solo la clasificación
@@ -1426,11 +1426,10 @@ async function loadOpenPredictions() {
   }
 }
 
-// PDF de seguimiento: partidos abiertos con estado de pronósticos en tiempo real
+// PDF de seguimiento: matriz compacta (filas=usuarios, columnas=partidos) — landscape A4
 async function printTrackerReport() {
   const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-  // Abrir ventana antes del await para no perder el gesto del usuario (iOS/Android)
   const win = window.open('', '_blank');
   if (!win) {
     showToast('Permite ventanas emergentes para exportar el PDF', 'error');
@@ -1461,57 +1460,56 @@ async function printTrackerReport() {
     day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
   });
 
-  // Ordenar partidos: Athletic Club → Athletic Femenino → Bilbao Athletic, luego fecha
   const teamRank = { 'Athletic Club': 1, 'Athletic Femenino': 2, 'Bilbao Athletic': 3 };
   matches.sort((a, b) =>
     (teamRank[a.team] || 9) - (teamRank[b.team] || 9) ||
     String(a.match_date).localeCompare(String(b.match_date))
   );
 
-  // Agrupar por usuario: { key: { displayName, rows: [{matchLabel, dateShort, score, missing}] } }
-  const byUser = {};
-  matches.forEach(m => {
-    const homeTeam = m.is_home ? m.team : m.opponent;
-    const awayTeam = m.is_home ? m.opponent : m.team;
-    const matchLabel = `${homeTeam} vs ${awayTeam}`;
-    const dateShort = formatMatchDateForPDF(m.match_date);
+  // Recopilar todos los usuarios y sus pronósticos por partido
+  const allUsers = new Map(); // username.lower → displayName
+  const predMap = {};         // username.lower → matchId → {h, a}
 
+  matches.forEach(m => {
     m.predictions.forEach(p => {
-      const key = p.username.toLowerCase();
-      if (!byUser[key]) byUser[key] = { displayName: p.display_name, rows: [] };
-      byUser[key].rows.push({ matchLabel, dateShort, score: `${p.home_goals} - ${p.away_goals}`, missing: false });
+      const k = p.username.toLowerCase();
+      if (!allUsers.has(k)) allUsers.set(k, p.display_name);
+      if (!predMap[k]) predMap[k] = {};
+      predMap[k][m.id] = { h: p.home_goals, a: p.away_goals };
     });
     m.missing.forEach(u => {
-      const key = u.username.toLowerCase();
-      if (!byUser[key]) byUser[key] = { displayName: u.display_name, rows: [] };
-      byUser[key].rows.push({ matchLabel, dateShort, score: '—', missing: true });
+      const k = u.username.toLowerCase();
+      if (!allUsers.has(k)) allUsers.set(k, u.display_name);
     });
   });
 
-  // Ordenar usuarios alfabéticamente
-  const users = Object.values(byUser).sort((a, b) => a.displayName.localeCompare(b.displayName, 'es'));
+  const sortedUsers = [...allUsers.entries()].sort((a, b) => a[1].localeCompare(b[1], 'es'));
 
-  const sections = users.map(u => {
-    const predCount = u.rows.filter(r => !r.missing).length;
-    const tableRows = u.rows.map(r => `
-      <tr class="${r.missing ? 'missing' : ''}">
-        <td>${esc(r.matchLabel)}</td>
-        <td class="date">${esc(r.dateShort)}</td>
-        <td class="score">${esc(r.score)}</td>
-      </tr>`).join('');
-
-    return `
-      <section class="user-block">
-        <div class="user-header">
-          <h2>${esc(u.displayName)}</h2>
-          <div class="counts">Pronosticó <strong>${predCount}</strong> de ${u.rows.length}</div>
-        </div>
-        <table>
-          <thead><tr><th>Partido</th><th class="date">Fecha</th><th class="score">Pronóstico</th></tr></thead>
-          <tbody>${tableRows}</tbody>
-        </table>
-      </section>`;
+  // Cabeceras de partidos
+  const matchHeaders = matches.map(m => {
+    const homeTeam = m.is_home ? m.team : m.opponent;
+    const awayTeam = m.is_home ? m.opponent : m.team;
+    const fecha = formatMatchDateForPDF(m.match_date);
+    const cls = m.deadline_passed ? 'th-closed' : 'th-open';
+    return `<th class="${cls}">${esc(homeTeam)}<br>vs ${esc(awayTeam)}<br><span class="match-date">${fecha}</span></th>`;
   }).join('');
+
+  // Filas de usuarios
+  const dataRows = sortedUsers.map(([ukey, displayName]) => {
+    const cells = matches.map(m => {
+      const p = predMap[ukey]?.[m.id];
+      if (p !== undefined) {
+        return `<td class="has-pred">${p.h}-${p.a}</td>`;
+      }
+      return `<td class="no-pred">${m.deadline_passed ? '✗' : '—'}</td>`;
+    }).join('');
+    return `<tr><td class="user-name">${esc(displayName)}</td>${cells}</tr>`;
+  }).join('');
+
+  // Fila totales
+  const totalRow = matches.map(m =>
+    `<td class="summary">${m.predictions.length}/${totalUsers}</td>`
+  ).join('');
 
   const html = `<!doctype html>
 <html lang="es">
@@ -1519,34 +1517,51 @@ async function printTrackerReport() {
 <meta charset="utf-8">
 <title>Seguimiento Bolilla Garras — ${esc(reportDate)}</title>
 <style>
-  @page { size: A4; margin: 15mm; }
+  @page { size: A4 landscape; margin: 8mm; }
   * { box-sizing: border-box; }
-  body { font-family: 'Helvetica', 'Arial', sans-serif; color: #111; background: #fff; margin: 0; padding: 20px; font-size: 12px; line-height: 1.4; }
-  header { text-align: center; border-bottom: 3px solid #c00; padding-bottom: 12px; margin-bottom: 20px; }
-  header h1 { margin: 0 0 4px 0; font-size: 22px; color: #c00; letter-spacing: 1px; }
-  header .sub { font-size: 11px; color: #555; }
-  .user-block { page-break-inside: avoid; margin-bottom: 18px; border-left: 3px solid #c00; padding-left: 10px; }
-  .user-header h2 { margin: 0 0 2px 0; font-size: 15px; color: #000; }
-  .counts { font-size: 11px; color: #555; margin-bottom: 6px; }
-  th.date, td.date { text-align: center; font-size: 10px; color: #555; white-space: nowrap; width: 1%; }
-  table { width: 100%; border-collapse: collapse; margin-top: 4px; }
-  thead th { text-align: left; background: #f4f4f4; border-bottom: 2px solid #999; padding: 6px 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
-  th.score, td.score { text-align: right; font-family: 'Courier New', monospace; }
-  tbody td { padding: 5px 8px; border-bottom: 1px solid #ddd; }
-  tbody tr.missing td { color: #bbb; font-style: italic; }
-  footer { margin-top: 20px; text-align: center; font-size: 10px; color: #888; border-top: 1px solid #ccc; padding-top: 8px; }
-  #print-btn { position: fixed; top: 12px; right: 12px; background: #c00; color: #fff; border: none; padding: 10px 16px; font-size: 13px; font-weight: 700; border-radius: 6px; cursor: pointer; z-index: 999; }
+  body { font-family: Arial, sans-serif; font-size: 9px; color: #111; margin: 0; padding: 8px; }
+  header { text-align: center; margin-bottom: 6px; border-bottom: 2px solid #c00; padding-bottom: 5px; }
+  header h1 { font-size: 13px; color: #c00; margin: 0 0 2px; }
+  header .sub { font-size: 8px; color: #666; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #c00; color: #fff; padding: 3px 5px; text-align: center; font-size: 8px; border: 1px solid #aaa; vertical-align: bottom; }
+  th.th-closed { background: #555; }
+  th.th-open { background: #c00; }
+  th:first-child { background: #222; text-align: left; width: 110px; }
+  .match-date { font-weight: normal; font-size: 7px; opacity: 0.8; }
+  td { padding: 2px 4px; border: 1px solid #ddd; text-align: center; font-size: 8px; white-space: nowrap; }
+  td.user-name { text-align: left; font-weight: 600; background: #f5f5f5; font-size: 8.5px; }
+  td.has-pred { color: #006b35; font-weight: 700; font-family: monospace; background: #f0fff6; }
+  td.no-pred { color: #bbb; }
+  tr:nth-child(even) td { background: #fafafa; }
+  tr:nth-child(even) td.user-name { background: #efefef; }
+  tr:nth-child(even) td.has-pred { background: #e8f8ef; }
+  tr.total-row td { background: #e0e0e0; font-weight: 700; border-top: 2px solid #888; font-size: 8.5px; }
+  tr.total-row td.user-name { background: #d0d0d0; }
+  footer { margin-top: 5px; text-align: center; font-size: 7px; color: #888; border-top: 1px solid #ccc; padding-top: 3px; }
+  #print-btn { position: fixed; top: 8px; right: 8px; background: #c00; color: #fff; border: none; padding: 7px 12px; font-size: 11px; font-weight: 700; border-radius: 5px; cursor: pointer; }
   @media print { #print-btn { display: none; } }
 </style>
 </head>
 <body>
-  <button id="print-btn">🖨️ Imprimir / Guardar como PDF</button>
+  <button id="print-btn">🖨️ Imprimir / PDF</button>
   <header>
-    <h1>🦁 BOLILLA GARRAS — Seguimiento</h1>
-    <div class="sub">Peña Garras Taldea Sestao · Generado ${esc(reportDate)}</div>
+    <h1>🦁 BOLILLA GARRAS — Seguimiento de Pronósticos</h1>
+    <div class="sub">Peña Garras Taldea Sestao · ${esc(reportDate)} · ${totalUsers} usuarios · ${matches.length} partido${matches.length === 1 ? '' : 's'}</div>
   </header>
-  ${sections}
-  <footer>Bolilla Garras · ${users.length} usuario${users.length === 1 ? '' : 's'} · ${matches.length} partido${matches.length === 1 ? '' : 's'} abierto${matches.length === 1 ? '' : 's'}</footer>
+  <table>
+    <thead>
+      <tr><th>Jugador</th>${matchHeaders}</tr>
+    </thead>
+    <tbody>
+      ${dataRows}
+      <tr class="total-row">
+        <td class="user-name">TOTAL</td>
+        ${totalRow}
+      </tr>
+    </tbody>
+  </table>
+  <footer>Verde = ha pronosticado · — = pendiente · ✗ = no pronosticó (plazo cerrado)</footer>
   <script>
     document.getElementById('print-btn').addEventListener('click', function() { window.print(); });
     setTimeout(function() { window.print(); }, 400);
@@ -1649,257 +1664,84 @@ async function printRankingOnly() {
   win.document.close();
 }
 
-async function printLeaderboardReport() {
-  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-  // Abrir ventana antes del await para no perder el gesto del usuario (iOS/Android)
-  const win = window.open('', '_blank');
-  if (!win) {
-    showToast('Permite ventanas emergentes para exportar el PDF', 'error');
-    return;
-  }
-  win.document.write('<p style="font-family:sans-serif;padding:20px">Cargando clasificación...</p>');
+async function exportLeaderboardCSV() {
+  showToast('Generando Excel...', 'info');
 
   let leaderboard, detail;
   try {
     const [r1, r2] = await Promise.all([
       fetchWithRetry('/api/leaderboard'),
-      fetchWithRetry('/api/leaderboard/detail?last_jornada=1')
+      fetchWithRetry('/api/leaderboard/detail')
     ]);
     leaderboard = await r1.json();
     detail = await r2.json();
   } catch (err) {
-    win.close();
-    showToast('Error al cargar datos para el PDF', 'error');
+    showToast('Error al cargar datos', 'error');
     return;
   }
 
-  if (!leaderboard.length) {
-    win.close();
+  if (!Array.isArray(leaderboard) || !leaderboard.length) {
     showToast('No hay datos de clasificación aún', 'error');
     return;
   }
 
-  const reportDate = new Date().toLocaleString('es-ES', {
-    day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  const cell = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
+  const teamRank = { 'Athletic Club': 1, 'Athletic Femenino': 2, 'Bilbao Athletic': 3 };
+
+  // Collect all unique finished matches
+  const matchMap = new Map();
+  detail.forEach(row => {
+    const mk = `${row.team}|${row.opponent}|${String(row.match_date).slice(0, 13)}`;
+    if (!matchMap.has(mk)) {
+      const homeTeam = row.is_home ? row.team : row.opponent;
+      const awayTeam = row.is_home ? row.opponent : row.team;
+      matchMap.set(mk, { mk, label: `${homeTeam} vs ${awayTeam}`, date: row.match_date, team: row.team });
+    }
   });
 
-  // Agrupar detalle por player_name (lower)
+  const sortedMatches = [...matchMap.values()].sort((a, b) =>
+    (teamRank[a.team] || 9) - (teamRank[b.team] || 9) || a.date.localeCompare(b.date)
+  );
+
+  // Group detail by player
   const byPlayer = {};
   detail.forEach(row => {
     const key = row.player_name.toLowerCase();
-    if (!byPlayer[key]) byPlayer[key] = [];
-    byPlayer[key].push(row);
+    if (!byPlayer[key]) byPlayer[key] = {};
+    const mk = `${row.team}|${row.opponent}|${String(row.match_date).slice(0, 13)}`;
+    byPlayer[key][mk] = row;
   });
 
-  // Secciones por usuario en orden de clasificación
-  const sections = leaderboard.map((user, index) => {
-    const rank = index + 1;
-    const rankLabel = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
-    const key = user.name.toLowerCase();
-    const teamRank = { 'Athletic Club': 1, 'Athletic Femenino': 2, 'Bilbao Athletic': 3 };
-    const preds = (byPlayer[key] || []).slice().sort((a, b) =>
-      (teamRank[a.team] || 9) - (teamRank[b.team] || 9) || a.match_date.localeCompare(b.match_date)
-    );
+  // Header
+  const matchHeaders = sortedMatches.flatMap(m => {
+    const dateStr = formatMatchDateForPDF(m.date);
+    return [cell(`${m.label} (${dateStr}) Pron.`), cell(`${m.label} (${dateStr}) Result.`), cell(`${m.label} (${dateStr}) Pts`)];
+  });
+  const header = [cell('Pos'), cell('Nombre'), cell('Pts Total'), cell('Plenos'), ...matchHeaders].join(';');
 
-    const jornadaPts = preds.reduce((sum, p) => sum + Number(p.points), 0);
+  // Data rows
+  const rows = leaderboard.map((user, index) => {
+    const pkey = user.name.toLowerCase();
+    const preds = byPlayer[pkey] || {};
+    const matchCells = sortedMatches.flatMap(m => {
+      const p = preds[m.mk];
+      if (!p) return [cell('—'), cell('—'), cell('—')];
+      return [cell(`${p.pred_home}-${p.pred_away}`), cell(`${p.real_home}-${p.real_away}`), cell(p.points)];
+    });
+    return [cell(index + 1), cell(user.display_name || user.name), cell(user.total_points), cell(user.exact_predictions), ...matchCells].join(';');
+  });
 
-    const rows = preds.map(p => {
-      const homeTeam = p.is_home ? p.team : p.opponent;
-      const awayTeam = p.is_home ? p.opponent : p.team;
-      const predScore = `${p.pred_home} - ${p.pred_away}`;
-      const realScore = `${p.real_home} - ${p.real_away}`;
-      const pts = Number(p.points);
-      const ptsClass = pts === 5 ? 'pts-exact' : pts > 0 ? 'pts-partial' : 'pts-zero';
-      const ptsLabel = pts === 5 ? `5 🎯` : String(pts);
-      const dateShort = formatMatchDateForPDF(p.match_date);
-      return `
-        <tr>
-          <td>${esc(homeTeam)} vs ${esc(awayTeam)}</td>
-          <td class="center">${esc(dateShort)}</td>
-          <td class="center mono">${esc(predScore)}</td>
-          <td class="center mono">${esc(realScore)}</td>
-          <td class="center ${ptsClass}">${ptsLabel}</td>
-        </tr>`;
-    }).join('');
-
-    const emptyRow = preds.length === 0
-      ? `<tr><td colspan="5" class="empty">Sin pronósticos en partidos disputados</td></tr>`
-      : '';
-
-    return `
-      <section class="user-block">
-        <div class="user-header">
-          <span class="rank-badge">${rankLabel}</span>
-          <h2>${esc(user.display_name || user.name)}</h2>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Partido</th>
-              <th class="center">Fecha</th>
-              <th class="center">Pronóstico</th>
-              <th class="center">Resultado</th>
-              <th class="center">Pts</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows}${emptyRow}
-            <tr class="total-row">
-              <td colspan="4" style="text-align:right; font-weight:700;">TOTAL JORNADA</td>
-              <td class="center total-pts-cell">${jornadaPts}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>`;
-  }).join('');
-
-  // Tabla final de clasificación general
-  const rankingRows = leaderboard.map((user, index) => {
-    const rank = index + 1;
-    const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}`;
-    return `
-      <tr class="${rank <= 3 ? 'top' + rank : ''}">
-        <td class="center">${medal}</td>
-        <td>${esc(user.display_name || user.name)}</td>
-        <td class="center total-pts-cell">${user.total_points}</td>
-        <td class="center">${user.exact_predictions} 🎯</td>
-      </tr>`;
-  }).join('');
-
-  const html = `<!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<title>Clasificación Bolilla Garras — ${esc(reportDate)}</title>
-<style>
-  @page { size: A4; margin: 15mm; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Helvetica', 'Arial', sans-serif;
-    color: #111;
-    background: #fff;
-    padding: 20px;
-    font-size: 12px;
-    line-height: 1.4;
-  }
-  header {
-    text-align: center;
-    border-bottom: 3px solid #c00;
-    padding-bottom: 12px;
-    margin-bottom: 24px;
-  }
-  header h1 { font-size: 22px; color: #c00; letter-spacing: 1px; margin-bottom: 4px; }
-  header .sub { font-size: 11px; color: #555; }
-
-  .user-block {
-    page-break-inside: avoid;
-    margin-bottom: 22px;
-    border-left: 3px solid #c00;
-    padding-left: 10px;
-  }
-  .user-header {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    margin-bottom: 6px;
-    flex-wrap: wrap;
-  }
-  .rank-badge { font-size: 16px; }
-  .user-header h2 { font-size: 15px; color: #000; }
-  .user-meta { margin-left: auto; display: flex; gap: 12px; align-items: center; }
-  .total-pts { font-size: 15px; font-weight: 700; color: #c00; }
-  .exact-badge { font-size: 11px; color: #555; }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 4px;
-    font-size: 11px;
-  }
-  thead th {
-    background: #f4f4f4;
-    border-bottom: 2px solid #bbb;
-    padding: 5px 8px;
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-  }
-  tbody td { padding: 4px 8px; border-bottom: 1px solid #e8e8e8; }
-  .center { text-align: center; }
-  .mono { font-family: 'Courier New', monospace; letter-spacing: 0.5px; }
-  .pts-exact  { color: #007a3d; font-weight: 700; }
-  .pts-partial { color: #b25000; font-weight: 600; }
-  .pts-zero   { color: #999; }
-  .empty { color: #aaa; font-style: italic; text-align: center; }
-  .total-row td { background: #f9f9f9; border-top: 2px solid #bbb; padding: 6px 8px; }
-  .total-pts-cell { font-size: 13px; font-weight: 700; color: #c00; font-family: 'Courier New', monospace; }
-
-  .ranking-section {
-    page-break-before: always;
-    margin-top: 8px;
-  }
-  .ranking-section h2 {
-    font-size: 16px;
-    color: #c00;
-    border-bottom: 2px solid #c00;
-    padding-bottom: 6px;
-    margin-bottom: 12px;
-    letter-spacing: 0.5px;
-  }
-  .top1 td { background: #fffbe6; }
-  .top2 td { background: #f6f6f6; }
-  .top3 td { background: #fff5ee; }
-  .ranking-section thead th { font-size: 11px; }
-  .ranking-section tbody td { padding: 6px 8px; font-size: 12px; }
-
-  footer {
-    margin-top: 20px;
-    text-align: center;
-    font-size: 10px;
-    color: #888;
-    border-top: 1px solid #ccc;
-    padding-top: 8px;
-  }
-  #print-btn { position: fixed; top: 12px; right: 12px; background: #c00; color: #fff; border: none; padding: 10px 16px; font-size: 13px; font-weight: 700; border-radius: 6px; cursor: pointer; z-index: 999; }
-  @media print { #print-btn { display: none; } }
-</style>
-</head>
-<body>
-  <button id="print-btn">🖨️ Imprimir / Guardar como PDF</button>
-  <header>
-    <h1>🦁 BOLILLA GARRAS — Clasificación General</h1>
-    <div class="sub">Peña Garras Taldea Sestao · Generado ${esc(reportDate)}</div>
-  </header>
-
-  ${sections}
-
-  <section class="ranking-section">
-    <h2>🏆 Clasificación General</h2>
-    <table>
-      <thead>
-        <tr>
-          <th class="center" style="width:50px;">Pos</th>
-          <th>Jugador</th>
-          <th class="center" style="width:70px;">Puntos</th>
-          <th class="center" style="width:70px;">Plenos</th>
-        </tr>
-      </thead>
-      <tbody>${rankingRows}</tbody>
-    </table>
-  </section>
-
-  <footer>Bolilla Garras · ${leaderboard.length} jugador${leaderboard.length === 1 ? '' : 'es'} · ${esc(reportDate)}</footer>
-  <script>
-    document.getElementById('print-btn').addEventListener('click', function() { window.print(); });
-    setTimeout(function() { window.print(); }, 400);
-  </script>
-</body>
-</html>`;
-
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
+  const csv = '﻿' + [header, ...rows].join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `bolilla-garras-clasificacion-${new Date().toISOString().split('T')[0]}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('✅ Descargado — ábrelo con Excel o Google Sheets', 'success');
 }
 
 // ==================== ADMIN: USERS ====================
