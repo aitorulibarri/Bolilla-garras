@@ -13,13 +13,14 @@ Bolilla Garras — quiniela de pronósticos de fútbol + sistema de votación MV
 ## Commands
 
 ```bash
-npm install       # instalar dependencias
-npm start         # arrancar server.js en puerto 3000
-vercel deploy     # deploy preview
-vercel --prod     # deploy producción
+npm install          # instalar dependencias
+npm start            # arrancar server.js en puerto 3000
+vercel deploy        # deploy preview
+vercel --prod        # deploy producción
+git push origin main # auto-deploy en Vercel vía GitHub integration
 ```
 
-Auto-deploy al hacer `git push origin main` (integración GitHub → Vercel). No hay tests ni linter configurados.
+No hay tests ni linter configurados.
 
 ## Architecture
 
@@ -47,7 +48,7 @@ vercel.json           Config deploy: rutas, headers, builds
 - `/api/(.*)` → `server.js`
 - `(.*)` fallback → `server.js` (Express sirve el SPA)
 
-**Cache busting**: incrementar `?v=X.Y` en `app.js` y `podium.js` en `index.html` cada vez que se modifiquen. Tras un push, los usuarios deben hacer **Ctrl+Shift+R**.
+**Cache busting**: incrementar `?v=X.Y` en `app.js` y `podium.js` en `index.html` cada vez que se modifiquen (versión actual: `v8.5`). Tras un push, los usuarios deben hacer **Ctrl+Shift+R**.
 
 **Imágenes en assets**: usar siempre nombre de archivo nuevo al sustituir una imagen. Vercel deduplica por hash de contenido.
 
@@ -187,13 +188,19 @@ Primera subpestaña "Por jornada": `renderByWeek()` agrupa por semana lunes-domi
 | `PUT /api/admin/users/:id/password` | Resetear contraseña de un usuario |
 | `DELETE /api/admin/users/:id` | Borrar usuario y sus predicciones |
 
-## PDF Reports
+## Exports (Excel / PDF)
 
-| Función | Pestaña | Fuente |
-|---|---|---|
-| `printTrackerReport()` | Seguimiento | `_trackerData` (en memoria) |
-| `printLeaderboardReport()` | Clasificación | `/api/leaderboard` + `/api/leaderboard/detail` |
-| `printRankingOnly()` | Clasificación | `/api/leaderboard` |
+| Función | Pestaña | Formato | Fuente |
+|---|---|---|---|
+| `printTrackerReport()` | Seguimiento | `.xls` con colores | `/api/admin/open-predictions` |
+| `exportLeaderboardCSV()` | Clasificación | `.xls` con colores | `/api/leaderboard` + `/api/leaderboard/detail` |
+| `printRankingOnly()` | Clasificación | PDF | `/api/leaderboard` |
+
+**Formato Excel** (`.xls`): se genera como HTML con namespace Office, que Excel abre con colores intactos. Usar MIME `application/vnd.ms-excel` y BOM `﻿`.
+
+- `exportLeaderboardCSV()`: celdas de pronóstico coloreadas por puntos (verde=5, amarillo=3, naranja=1-2, rojo=0, gris=sin pronóstico). Event listener registrado en `setupEventListeners()` bajo `#leaderboard-print-btn`.
+- `printTrackerReport()`: matriz usuarios×partidos. Verde=pronosticó, naranja+⏳=pendiente, rojo+✗=no pronosticó (plazo cerrado). Event listener bajo `#tracker-print-btn`.
+- `printRankingOnly()`: PDF sencillo con la tabla de clasificación general. Event listener bajo `#leaderboard-ranking-btn`.
 
 ## Env Vars (Vercel)
 
