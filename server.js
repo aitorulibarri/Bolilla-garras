@@ -1740,9 +1740,18 @@ app.put('/api/mvp/admin/:id/open', requireAdmin, async (req, res) => {
         if (match.team === 'Athletic Femenino') {
             if (!Array.isArray(player_ids) || player_ids.length === 0)
                 return res.status(400).json({ error: 'Selecciona al menos una jugadora' });
+            const parsedIds = player_ids.map(pid => parseInt(pid)).filter(pid => !isNaN(pid));
+            if (parsedIds.length === 0)
+                return res.status(400).json({ error: 'IDs de jugadoras inválidos' });
+            const playerRows = await query(
+                `SELECT id FROM garras_players WHERE id = ANY($1) AND category = 'femenino' AND active = 1`,
+                [parsedIds]
+            );
+            if (playerRows.length !== parsedIds.length)
+                return res.status(400).json({ error: 'Una o más jugadoras no son válidas o no pertenecen al equipo femenino' });
             await pool.query('DELETE FROM match_mvp_players WHERE match_id = $1', [matchId]);
-            for (const pid of player_ids)
-                await pool.query('INSERT INTO match_mvp_players (match_id, player_id) VALUES ($1, $2)', [matchId, parseInt(pid)]);
+            for (const pid of parsedIds)
+                await pool.query('INSERT INTO match_mvp_players (match_id, player_id) VALUES ($1, $2)', [matchId, pid]);
         }
         await pool.query('UPDATE matches SET mvp_voting_open = 1 WHERE id = $1', [matchId]);
         res.json({ success: true });
