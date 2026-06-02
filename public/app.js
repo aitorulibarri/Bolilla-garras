@@ -2518,7 +2518,7 @@ async function loadMvpHistory() {
         </div>`;
       }).join('');
       const exportBtn = currentUser?.isAdmin
-        ? `<button class="garras-history-export-btn" data-export-idx="${idx}">📤 Exportar resultado</button>`
+        ? `<button class="garras-history-export-btn" data-export-idx="${idx}">📥 Descargar imagen</button>`
         : '';
       return `<div class="card garras-history-match">
         <div class="garras-history-match-head">
@@ -2591,67 +2591,230 @@ async function loadMvpRanking() {
 
 // ---- Export: tarjeta de resultados por partido ----
 
-function exportMatchResult(match) {
+async function exportMatchResult(match) {
   if (!match) return;
-  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  showToast('Generando imagen...', 'success');
+
   const homeTeam = match.is_home ? match.team : match.opponent;
   const awayTeam = match.is_home ? match.opponent : match.team;
-  const label = `${esc(homeTeam)} vs ${esc(awayTeam)}`;
-  const fecha = parseMatchDate(match.match_date).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const matchLabel = `${homeTeam} vs ${awayTeam}`;
+  const fecha = parseMatchDate(match.match_date).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const isFem = match.team === 'Athletic Femenino';
-  const catColor = isFem ? '#f472b6' : '#60a5fa';
-  const catBg = isFem ? 'rgba(236,72,153,0.15)' : 'rgba(59,130,246,0.15)';
   const catLabel = isFem ? '👟 Athletic Femenino' : '⚽ Athletic Club';
-  const MEDALS = ['🥇','🥈','🥉'];
   const results = match.results || [];
+  const MEDALS = ['🥇', '🥈', '🥉'];
+  const restCount = Math.max(results.length - 3, 0);
 
-  const rowsHtml = results.map((p, i) => {
-    const medal = i < 3 ? MEDALS[i] : `${i + 1}.`;
-    const isGold = i === 0;
-    const isTop3 = i < 3;
-    return `<tr>
-      <td style="width:36px;text-align:center;font-size:${isTop3?'22':'13'}px;color:${isTop3?'inherit':'#64748b'};padding:${isTop3?'10':'6'}px 8px;">${medal}</td>
-      <td style="font-size:${isGold?'17':'14'}px;font-weight:${isGold?'700':'500'};color:${isTop3?'#f1f5f9':'#94a3b8'};padding:${isTop3?'10':'6'}px 8px;">${esc(p.name)}</td>
-      <td style="text-align:right;font-size:13px;color:${isGold?'rgba(251,191,36,0.9)':'#64748b'};font-weight:${isGold?'600':'400'};padding:${isTop3?'10':'6'}px 8px;">${p.votes} voto${parseInt(p.votes)===1?'':'s'}</td>
-    </tr>`;
-  }).join('');
+  // Canvas dimensions
+  const W = 900;
+  let H = 300
+    + (results.length > 0 ? 112 : 40)
+    + (results.length > 1 ? 66 : 0)
+    + (results.length > 2 ? 66 : 0)
+    + (restCount > 0 ? 54 + restCount * 48 : 0)
+    + 80;
 
-  const html = `<!DOCTYPE html><html lang="es"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Garras Saria — ${label}</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0f13;color:#f1f5f9;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:32px 16px}
-.card{background:#1a1a2e;border-radius:20px;padding:28px 22px;width:100%;max-width:420px;border:1px solid rgba(255,255,255,0.08);box-shadow:0 8px 32px rgba(0,0,0,0.4)}
-.divider{height:2px;background:linear-gradient(90deg,#e41e26,transparent);margin:16px 0 20px;border-radius:2px}
-.match-title{font-size:20px;font-weight:800;color:#f1f5f9;margin-bottom:6px;line-height:1.2}
-.cat-badge{display:inline-block;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;background:${catBg};color:${catColor};margin-right:6px}
-.fecha{font-size:13px;color:#64748b;margin-bottom:22px;margin-top:6px}
-.section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#64748b;margin-bottom:10px}
-table{width:100%;border-collapse:collapse}
-tr+tr{border-top:1px solid rgba(255,255,255,0.04)}
-tr:first-child td{background:rgba(251,191,36,0.08);border-radius:8px}
-.footer{margin-top:22px;font-size:11px;color:#475569;text-align:center;border-top:1px solid rgba(255,255,255,0.04);padding-top:14px}
-.print-btn{display:block;width:100%;margin-top:16px;padding:12px;background:rgba(228,30,38,0.15);border:1px solid rgba(228,30,38,0.3);border-radius:10px;color:#f87171;font-size:14px;font-weight:600;cursor:pointer;text-align:center}
-.print-btn:hover{background:rgba(228,30,38,0.25)}
-@media print{body{background:white;padding:0}.card{background:white;border:none;box-shadow:none;color:#1a1a2e;max-width:100%}.match-title{color:#1a1a2e}.footer{color:#64748b}.print-btn{display:none}}
-</style></head><body>
-<div class="card">
-  <div style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:#e41e26">🏅 Garras Saria</div>
-  <div style="font-size:11px;color:#64748b;margin-top:2px">Peña Garras Taldea · Sestao</div>
-  <div class="divider"></div>
-  <div class="match-title">${label}</div>
-  <div class="fecha"><span class="cat-badge">${catLabel}</span>${fecha}</div>
-  <div class="section-label">Resultado de la votación</div>
-  <table>${rowsHtml}</table>
-  <div class="footer">Bolilla Garras · garras-taldea.vercel.app</div>
-  <button class="print-btn" onclick="window.print()">🖨️ Guardar / Imprimir PDF</button>
-</div>
-</body></html>`;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
 
-  const win = window.open('', '_blank');
-  if (win) { win.document.write(html); win.document.close(); }
-  else showToast('Permite ventanas emergentes para exportar', 'error');
+  // Background gradient
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#0d0d18');
+  bg.addColorStop(1, '#180808');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Subtle red glow top-right
+  const glow = ctx.createRadialGradient(W * 0.82, 0, 0, W * 0.82, 0, W * 0.55);
+  glow.addColorStop(0, 'rgba(228,30,38,0.14)');
+  glow.addColorStop(1, 'transparent');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, H);
+
+  // Club logo
+  let y = 42;
+  try {
+    const logo = await new Promise((res, rej) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => res(img);
+      img.onerror = rej;
+      img.src = '/assets/garras-logo.png';
+    });
+    const sz = 72;
+    ctx.globalAlpha = 0.95;
+    ctx.drawImage(logo, (W - sz) / 2, y, sz, sz);
+    ctx.globalAlpha = 1;
+    y += sz + 10;
+  } catch { y += 16; }
+
+  // Club name
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
+  ctx.fillStyle = '#e41e26';
+  ctx.fillText('PEÑA GARRAS TALDEA · SESTAO', W / 2, y);
+  y += 15;
+  ctx.font = '11px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
+  ctx.fillStyle = '#475569';
+  ctx.fillText('GARRAS SARIA — MVP DEL PARTIDO', W / 2, y);
+  y += 26;
+
+  // Red divider
+  const dg = ctx.createLinearGradient(60, 0, W - 60, 0);
+  dg.addColorStop(0, 'transparent');
+  dg.addColorStop(0.15, '#e41e26');
+  dg.addColorStop(0.85, '#e41e26');
+  dg.addColorStop(1, 'transparent');
+  ctx.beginPath(); ctx.moveTo(60, y); ctx.lineTo(W - 60, y);
+  ctx.strokeStyle = dg; ctx.lineWidth = 2; ctx.stroke();
+  y += 24;
+
+  // Match title (auto-shrink)
+  let mFont = 28;
+  ctx.font = `bold ${mFont}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
+  while (ctx.measureText(matchLabel).width > W - 80 && mFont > 14) {
+    mFont--;
+    ctx.font = `bold ${mFont}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
+  }
+  ctx.fillStyle = '#f1f5f9';
+  ctx.fillText(matchLabel, W / 2, y);
+  y += mFont + 10;
+
+  // Category + date
+  ctx.font = '14px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
+  ctx.fillStyle = '#64748b';
+  ctx.fillText(`${catLabel}  ·  ${fecha}`, W / 2, y);
+  y += 36;
+
+  const pad = 48;
+  const rowW = W - pad * 2;
+
+  if (results.length === 0) {
+    ctx.font = '18px -apple-system, sans-serif';
+    ctx.fillStyle = '#475569';
+    ctx.fillText('Sin votos registrados', W / 2, y + 40);
+    y += 60;
+  } else {
+    // Gold row
+    const winner = results[0];
+    ctx.fillStyle = 'rgba(251,191,36,0.08)';
+    _rrPath(ctx, pad, y, rowW, 100, 12); ctx.fill();
+    ctx.strokeStyle = 'rgba(251,191,36,0.22)'; ctx.lineWidth = 1;
+    _rrPath(ctx, pad, y, rowW, 100, 12); ctx.stroke();
+
+    ctx.font = '46px serif';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillText('🥇', pad + 14, y + 64);
+
+    let nFont = 30;
+    ctx.font = `bold ${nFont}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
+    while (ctx.measureText(winner.name).width > rowW - 100 && nFont > 14) {
+      nFont--; ctx.font = `bold ${nFont}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
+    }
+    ctx.fillStyle = '#fde68a';
+    ctx.fillText(winner.name, pad + 76, y + 50);
+    ctx.font = '14px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
+    ctx.fillStyle = 'rgba(251,191,36,0.55)';
+    ctx.fillText(`${winner.votes} voto${parseInt(winner.votes) === 1 ? '' : 's'}`, pad + 76, y + 72);
+    ctx.textAlign = 'center';
+    y += 112;
+
+    // Silver + Bronze
+    const podiumColors = ['#cbd5e1', '#d97706'];
+    for (let i = 1; i < Math.min(3, results.length); i++) {
+      const p = results[i];
+      ctx.font = '32px serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(MEDALS[i], pad + 14, y + 40);
+      let pFont = 20;
+      ctx.font = `600 ${pFont}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
+      while (ctx.measureText(p.name).width > rowW - 110 && pFont > 13) {
+        pFont--; ctx.font = `600 ${pFont}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
+      }
+      ctx.fillStyle = podiumColors[i - 1];
+      ctx.fillText(p.name, pad + 72, y + 33);
+      ctx.font = '13px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
+      ctx.fillStyle = '#475569';
+      ctx.fillText(`${p.votes} voto${parseInt(p.votes) === 1 ? '' : 's'}`, pad + 72, y + 51);
+      ctx.textAlign = 'center';
+      y += 66;
+    }
+
+    // Rest of players
+    if (restCount > 0) {
+      y += 8;
+      ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - pad, y);
+      ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 1; ctx.stroke();
+      y += 14;
+      ctx.font = '10px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
+      ctx.fillStyle = '#334155';
+      ctx.textAlign = 'center';
+      ctx.fillText('VOTACIÓN COMPLETA', W / 2, y);
+      y += 22;
+
+      for (let i = 3; i < results.length; i++) {
+        const p = results[i];
+        ctx.font = '13px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#475569';
+        ctx.fillText(`${i + 1}.`, pad + 4, y + 16);
+        ctx.fillStyle = '#94a3b8';
+        let dn = p.name;
+        const maxNW = W - pad * 2 - 70 - 70;
+        ctx.font = '14px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
+        while (ctx.measureText(dn).width > maxNW && dn.length > 3) dn = dn.slice(0, -1);
+        if (dn !== p.name) dn += '…';
+        ctx.fillText(dn, pad + 30, y + 16);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#475569';
+        ctx.font = '13px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
+        ctx.fillText(`${p.votes}v`, W - pad, y + 16);
+        ctx.textAlign = 'center';
+        y += 48;
+      }
+    }
+  }
+
+  // Footer
+  y += 18;
+  ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - pad, y);
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth = 1; ctx.stroke();
+  y += 16;
+  ctx.font = '11px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
+  ctx.fillStyle = '#1e293b';
+  ctx.textAlign = 'center';
+  ctx.fillText('bolilla-garras-kwz7.vercel.app', W / 2, y);
+
+  // Download or open (iOS vs rest)
+  const dataURL = canvas.toDataURL('image/png');
+  const slug = `${homeTeam}-vs-${awayTeam}`.replace(/\s+/g, '-').replace(/[^a-zA-ZÀ-ÿ0-9-]/g, '').slice(0, 40);
+  if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+    const win = window.open('', '_blank');
+    if (win) {
+      win.document.write(`<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Garras Saria</title><style>body{margin:0;background:#000;display:flex;justify-content:center}img{max-width:100%;display:block}</style></head><body><img src="${dataURL}"></body></html>`);
+      win.document.close();
+      showToast('Mantén pulsada la imagen para guardarla', 'success');
+    }
+  } else {
+    const a = document.createElement('a');
+    a.download = `garras-saria-${slug}.png`;
+    a.href = dataURL;
+    a.click();
+    showToast('Imagen descargada ✅', 'success');
+  }
+}
+
+function _rrPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
 }
 
 // ---- Admin: MVP voting panel ----
