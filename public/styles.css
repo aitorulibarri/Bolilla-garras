@@ -2551,29 +2551,81 @@ body::before {
   color: #4ade80;
 }
 
-/* --- History --- */
-.garras-history-list { display: flex; flex-direction: column; gap: 8px; padding: 8px 0; }
-.garras-history-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 14px;
-  background: rgba(255,255,255,0.03);
-  border-radius: 8px;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.garras-history-label { font-size: 14px; font-weight: 600; color: var(--text-primary); min-width: 80px; }
-.garras-history-winners { display: flex; gap: 8px; flex-wrap: wrap; }
-.garras-winner-pill {
+/* --- History: heading --- */
+.garras-history-heading {
   font-size: 12px;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-weight: 600;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  padding: 4px 0 10px;
 }
-.garras-winner-pill.masc { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
-.garras-winner-pill.fem { background: rgba(236,72,153,0.15); color: #f472b6; border: 1px solid rgba(236,72,153,0.3); }
-.garras-votes-count { font-weight: 400; opacity: 0.8; }
+
+/* --- History: match card --- */
+.garras-history-match { margin-bottom: 12px; }
+.garras-history-match-head { margin-bottom: 10px; }
+.garras-history-match-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+.garras-history-match-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.garras-badge-cat {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+.garras-badge-cat.masc { background: rgba(59,130,246,0.15); color: #60a5fa; }
+.garras-badge-cat.fem  { background: rgba(236,72,153,0.15); color: #f472b6; }
+
+/* --- History: podium + full list rows --- */
+.garras-hrows { display: flex; flex-direction: column; gap: 3px; }
+.garras-hrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 8px;
+}
+.garras-hrow.rank-gold   { background: rgba(251,191,36,0.12); }
+.garras-hrow.rank-silver { background: rgba(148,163,184,0.08); }
+.garras-hrow.rank-bronze { background: rgba(180,100,40,0.10); }
+.garras-hrow.rank-rest   { padding: 5px 8px; }
+
+.garras-hrow-medal {
+  font-size: 18px;
+  width: 26px;
+  text-align: center;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.garras-hrow.rank-rest .garras-hrow-medal {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.garras-hrow-name {
+  flex: 1;
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.garras-hrow.rank-gold   .garras-hrow-name { font-weight: 700; }
+.garras-hrow.rank-rest   .garras-hrow-name { font-size: 13px; color: var(--text-secondary); font-weight: 400; }
+.garras-hrow-votes {
+  font-size: 12px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.garras-hrow.rank-gold .garras-hrow-votes { color: rgba(251,191,36,0.85); font-weight: 600; }
 
 /* --- Season ranking --- */
 .garras-ranking-grid {

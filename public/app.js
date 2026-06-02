@@ -2481,24 +2481,36 @@ async function loadMvpHistory() {
     const matches = await res.json();
     if (!Array.isArray(matches) || matches.length === 0) { section.innerHTML = ''; return; }
 
-    let html = `<div class="card"><div class="card-header"><h3 class="card-title">📋 Historial de Partidos</h3></div><div class="garras-history-list">`;
-    for (const match of matches) {
+    const MEDALS = ['🥇', '🥈', '🥉'];
+
+    const renderMatch = match => {
       const homeTeam = match.is_home ? match.team : match.opponent;
       const awayTeam = match.is_home ? match.opponent : match.team;
       const label = `${escapeHtml(homeTeam)} vs ${escapeHtml(awayTeam)}`;
       const fecha = parseMatchDate(match.match_date).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
-      const winner = match.results?.[0];
-      const categoryClass = match.team === 'Athletic Club' ? 'masc' : 'fem';
-      html += `
-        <div class="garras-history-item">
-          <div class="garras-history-label">${label} <span style="color:var(--text-secondary);font-weight:400;">(${fecha})</span></div>
-          <div class="garras-history-winners">
-            <div class="garras-winner-pill ${categoryClass}">🏅 ${winner ? escapeHtml(winner.name) + ` <span class="garras-votes-count">(${winner.votes} votos)</span>` : '—'}</div>
-          </div>
+      const isFem = match.team === 'Athletic Femenino';
+      const catBadge = isFem
+        ? '<span class="garras-badge-cat fem">👟 Femenino</span>'
+        : '<span class="garras-badge-cat masc">⚽ Masculino</span>';
+      const rows = (match.results || []).map((p, i) => {
+        const medal = i < 3 ? MEDALS[i] : `${i + 1}.`;
+        const rankClass = i === 0 ? 'rank-gold' : i === 1 ? 'rank-silver' : i === 2 ? 'rank-bronze' : 'rank-rest';
+        return `<div class="garras-hrow ${rankClass}">
+          <span class="garras-hrow-medal">${medal}</span>
+          <span class="garras-hrow-name">${escapeHtml(p.name)}</span>
+          <span class="garras-hrow-votes">${p.votes} voto${parseInt(p.votes) === 1 ? '' : 's'}</span>
         </div>`;
-    }
-    html += '</div></div>';
-    section.innerHTML = html;
+      }).join('');
+      return `<div class="card garras-history-match">
+        <div class="garras-history-match-head">
+          <div class="garras-history-match-title">${label}</div>
+          <div class="garras-history-match-meta">${catBadge}<span>·</span><span>${fecha}</span></div>
+        </div>
+        <div class="garras-hrows">${rows || '<span style="color:var(--text-secondary);font-size:13px;">Sin votos registrados</span>'}</div>
+      </div>`;
+    };
+
+    section.innerHTML = `<div class="garras-history-heading">📋 Historial de Partidos</div>${matches.map(renderMatch).join('')}`;
   } catch (err) {
     section.innerHTML = '<p style="color:var(--text-secondary);text-align:center;padding:16px;font-size:13px;">Error al cargar el historial. Recarga el tab.</p>';
     console.error(err);
