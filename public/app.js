@@ -2579,100 +2579,124 @@ async function loadMvpAdmin() {
             ? '<span class="garras-badge closed">Cerrada</span>'
             : '<span class="garras-badge pending">Sin votación</span>';
         const openBtn = !m.mvp_voting_open
-          ? `<button class="btn btn-primary btn-sm" onclick="mvpOpenVoting(${m.id}, ${isFem})">▶ Abrir</button>` : '';
+          ? `<button class="btn btn-primary btn-sm mvp-btn-abrir" data-match-id="${m.id}" data-is-fem="${isFem}">▶ Abrir</button>` : '';
         const closeBtn = m.mvp_voting_open
-          ? `<button class="btn btn-danger btn-sm" onclick="mvpCloseVoting(${m.id})">■ Cerrar</button>` : '';
+          ? `<button class="btn btn-danger btn-sm mvp-btn-cerrar" data-match-id="${m.id}">■ Cerrar</button>` : '';
         return `
-          <div class="garras-admin-item" id="mvp-admin-item-${m.id}">
+          <div class="garras-admin-item" data-match-id="${m.id}">
             <div class="garras-admin-item-info">
               <span class="garras-admin-label">${label}</span>
               ${statusBadge}
               <span class="garras-admin-votes">${fecha} · ${m.vote_count} votos</span>
             </div>
             <div class="garras-admin-item-actions">${openBtn}${closeBtn}</div>
-          </div>
-          <div id="mvp-fem-selector-${m.id}" style="display:none;"></div>`;
+          </div>`;
       }).join('')}
-    </div>`;
+    </div>
+    <div id="mvp-fem-panel" style="display:none;" class="mvp-fem-selector"></div>`;
+
+    // Event delegation — un solo listener, no onclick en HTML
+    container.addEventListener('click', _mvpAdminClick);
+
   } catch (err) {
-    container.innerHTML = `<p class="garras-error">Error: ${escapeHtml(err.message)}</p>`;
+    container.innerHTML = `<p class="garras-error">Error al cargar partidos: ${escapeHtml(err.message)}</p>`;
     console.error('loadMvpAdmin error:', err);
   }
 }
 
-async function mvpOpenVoting(matchId, isFem) {
-  if (!isFem) {
-    const btn = document.querySelector(`#mvp-admin-item-${matchId} .btn-primary`);
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Abriendo...'; }
+async function _mvpAdminClick(e) {
+  const btnAbrir = e.target.closest('.mvp-btn-abrir');
+  const btnCerrar = e.target.closest('.mvp-btn-cerrar');
+  const btnConfirmar = e.target.closest('.mvp-btn-confirmar');
+  const btnCancelar = e.target.closest('.mvp-btn-cancelar');
+
+  if (btnAbrir) {
+    const matchId = parseInt(btnAbrir.dataset.matchId);
+    const isFem = btnAbrir.dataset.isFem === 'true';
+    if (!isFem) {
+      btnAbrir.disabled = true;
+      btnAbrir.textContent = '⏳ Abriendo...';
+      try {
+        const res = await fetchWithRetry(`/api/mvp/admin/${matchId}/open`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({})
+        });
+        const data = await res.json();
+        if (data.success) { showToast('Votación abierta ✅', 'success'); await loadMvpAdmin(); }
+        else { btnAbrir.disabled = false; btnAbrir.textContent = '▶ Abrir'; showToast(data.error || 'Error al abrir', 'error'); }
+      } catch { btnAbrir.disabled = false; btnAbrir.textContent = '▶ Abrir'; showToast('Error de conexión', 'error'); }
+    } else {
+      await _mvpMostrarSelectorFem(matchId);
+    }
+  }
+
+  if (btnCerrar) {
+    const matchId = parseInt(btnCerrar.dataset.matchId);
+    if (!confirm('¿Cerrar la votación de este partido?')) return;
+    btnCerrar.disabled = true;
+    btnCerrar.textContent = '⏳ Cerrando...';
+    try {
+      const res = await fetchWithRetry(`/api/mvp/admin/${matchId}/close`, { method: 'PUT' });
+      const data = await res.json();
+      if (data.success) { showToast('Votación cerrada ✅', 'success'); await loadMvpAdmin(); }
+      else { btnCerrar.disabled = false; btnCerrar.textContent = '■ Cerrar'; showToast(data.error || 'Error', 'error'); }
+    } catch { btnCerrar.disabled = false; btnCerrar.textContent = '■ Cerrar'; showToast('Error de conexión', 'error'); }
+  }
+
+  if (btnConfirmar) {
+    const matchId = parseInt(btnConfirmar.dataset.matchId);
+    const panel = document.getElementById('mvp-fem-panel');
+    const checked = [...panel.querySelectorAll('.mvp-player-check:checked')].map(el => parseInt(el.value));
+    if (checked.length === 0) { showToast('Selecciona al menos una jugadora', 'error'); return; }
+    btnConfirmar.disabled = true;
+    btnConfirmar.textContent = '⏳ Abriendo...';
     try {
       const res = await fetchWithRetry(`/api/mvp/admin/${matchId}/open`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({})
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player_ids: checked })
       });
       const data = await res.json();
       if (data.success) { showToast('Votación abierta ✅', 'success'); await loadMvpAdmin(); }
-      else showToast(data.error || 'Error', 'error');
-    } catch { showToast('Error de conexión', 'error'); }
-    if (btn) { btn.disabled = false; btn.textContent = '▶ Abrir'; }
-    return;
+      else { btnConfirmar.disabled = false; btnConfirmar.textContent = '✅ Abrir votación'; showToast(data.error || 'Error', 'error'); }
+    } catch { btnConfirmar.disabled = false; btnConfirmar.textContent = '✅ Abrir votación'; showToast('Error de conexión', 'error'); }
   }
 
-  const selector = document.getElementById(`mvp-fem-selector-${matchId}`);
-  if (!selector) return;
-  if (selector.style.display !== 'none') { selector.style.display = 'none'; return; }
+  if (btnCancelar) {
+    const panel = document.getElementById('mvp-fem-panel');
+    if (panel) panel.style.display = 'none';
+  }
+}
 
-  selector.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-  selector.style.display = 'block';
-  selector.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+async function _mvpMostrarSelectorFem(matchId) {
+  const panel = document.getElementById('mvp-fem-panel');
+  if (!panel) { showToast('Error interno: panel no encontrado', 'error'); return; }
+
+  panel.style.display = 'block';
+  panel.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
   try {
     const res = await fetchWithRetry('/api/garras/players?category=femenino');
+    if (!res.ok) throw new Error(`Error ${res.status}`);
     const players = await res.json();
-    if (!Array.isArray(players)) throw new Error('Error al cargar jugadoras');
+    if (!Array.isArray(players) || players.length === 0) throw new Error('No hay jugadoras disponibles');
 
-    selector.innerHTML = `
-      <div class="mvp-fem-selector">
-        <div class="mvp-selector-title">Selecciona las jugadoras a votar:</div>
-        <div class="mvp-player-checkboxes">
-          ${players.map(p => `
-            <label class="mvp-checkbox-label">
-              <input type="checkbox" class="mvp-player-check" value="${p.id}">
-              ${escapeHtml(p.name)}${p.dorsal ? ` <span class="mvp-dorsal">#${p.dorsal}</span>` : ''}
-            </label>`).join('')}
-        </div>
-        <div class="mvp-selector-actions">
-          <button class="btn btn-primary btn-sm" onclick="mvpConfirmOpenFem(${matchId})">✅ Abrir votación</button>
-          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('mvp-fem-selector-${matchId}').style.display='none'">Cancelar</button>
-        </div>
+    panel.innerHTML = `
+      <div class="mvp-selector-title">¿Qué jugadoras pueden ser votadas? (partido ${matchId})</div>
+      <div class="mvp-player-checkboxes">
+        ${players.map(p => `
+          <label class="mvp-checkbox-label">
+            <input type="checkbox" class="mvp-player-check" value="${p.id}">
+            ${escapeHtml(p.name)}${p.dorsal ? ` <span class="mvp-dorsal">#${p.dorsal}</span>` : ''}
+          </label>`).join('')}
+      </div>
+      <div class="mvp-selector-actions">
+        <button class="btn btn-primary btn-sm mvp-btn-confirmar" data-match-id="${matchId}">✅ Abrir votación</button>
+        <button class="btn btn-secondary btn-sm mvp-btn-cancelar">Cancelar</button>
       </div>`;
   } catch (err) {
-    selector.innerHTML = `<p class="garras-error">${escapeHtml(err.message)}</p>`;
+    panel.innerHTML = `<p class="garras-error">❌ ${escapeHtml(err.message)}</p>`;
+    showToast('Error al cargar jugadoras', 'error');
   }
-}
-
-async function mvpConfirmOpenFem(matchId) {
-  const selector = document.getElementById(`mvp-fem-selector-${matchId}`);
-  const checked = [...selector.querySelectorAll('.mvp-player-check:checked')].map(el => parseInt(el.value));
-  if (checked.length === 0) { showToast('Selecciona al menos una jugadora', 'error'); return; }
-  try {
-    const res = await fetchWithRetry(`/api/mvp/admin/${matchId}/open`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ player_ids: checked })
-    });
-    const data = await res.json();
-    if (data.success) { showToast('Votación abierta ✅', 'success'); await loadMvpAdmin(); }
-    else showToast(data.error || 'Error', 'error');
-  } catch { showToast('Error de conexión', 'error'); }
-}
-
-async function mvpCloseVoting(matchId) {
-  if (!confirm('¿Cerrar la votación de este partido?')) return;
-  try {
-    const res = await fetchWithRetry(`/api/mvp/admin/${matchId}/close`, { method: 'PUT' });
-    const data = await res.json();
-    if (data.success) { showToast('Votación cerrada ✅', 'success'); await loadMvpAdmin(); }
-    else showToast(data.error || 'Error', 'error');
-  } catch { showToast('Error de conexión', 'error'); }
 }
 
 function escapeHtml(str) {
