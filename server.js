@@ -1561,6 +1561,16 @@ app.get('/api/garras/admin/jornadas', requireAdmin, async (req, res) => {
     }
 });
 
+// GET /api/ping — keep-warm: mantiene Neon y la función serverless activos
+app.get('/api/ping', async (req, res) => {
+    try {
+        if (IS_POSTGRES) await queryOne('SELECT 1 AS ok');
+        res.json({ ok: true, ts: Date.now() });
+    } catch (err) {
+        res.status(500).json({ ok: false, error: err.message });
+    }
+});
+
 // ==================== MVP VOTING (MEJOR JUGADOR DEL PARTIDO) ====================
 
 // GET /api/mvp/active — open matches + available players + user's vote

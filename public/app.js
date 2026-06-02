@@ -2346,6 +2346,16 @@ async function deletePrediction(predId, playerName, matchId) {
   }
 }
 
+// ==================== GARRAS SARIA — CACHE IN-MEMORY (TTL 5 min) ====================
+const _mvpCache = {};
+function _mvpCacheGet(key) {
+  const e = _mvpCache[key];
+  if (!e || Date.now() - e.ts > 5 * 60 * 1000) { delete _mvpCache[key]; return null; }
+  return e.data;
+}
+function _mvpCacheSet(key, data) { _mvpCache[key] = { data, ts: Date.now() }; }
+function _mvpCacheClear(...keys) { keys.forEach(k => delete _mvpCache[k]); }
+
 // ==================== GARRAS SARIA (MVP por partido) ====================
 
 async function loadGarrasSaria() {
@@ -2477,8 +2487,12 @@ async function loadMvpHistory() {
   const section = document.getElementById('garras-history-section');
   if (!section) return;
   try {
-    const res = await fetchWithRetry('/api/mvp/history');
-    const matches = await res.json();
+    let matches = _mvpCacheGet('mvp_history');
+    if (!matches) {
+      const res = await fetchWithRetry('/api/mvp/history');
+      matches = await res.json();
+      if (Array.isArray(matches)) _mvpCacheSet('mvp_history', matches);
+    }
     if (!Array.isArray(matches) || matches.length === 0) { section.innerHTML = ''; return; }
 
     const MEDALS = ['🥇', '🥈', '🥉'];
@@ -2521,8 +2535,13 @@ async function loadMvpRanking() {
   const section = document.getElementById('garras-ranking-section');
   if (!section) return;
   try {
-    const res = await fetchWithRetry('/api/mvp/ranking');
-    const { masculino, femenino } = await res.json();
+    let rankData = _mvpCacheGet('mvp_ranking');
+    if (!rankData) {
+      const res = await fetchWithRetry('/api/mvp/ranking');
+      rankData = await res.json();
+      if (rankData?.masculino) _mvpCacheSet('mvp_ranking', rankData);
+    }
+    const { masculino, femenino } = rankData;
     if (masculino.length === 0 && femenino.length === 0) { section.innerHTML = ''; return; }
 
     const renderTable = (players, title) => {
@@ -2660,7 +2679,7 @@ async function _mvpAdminClick(e) {
     try {
       const res = await fetchWithRetry(`/api/mvp/admin/${matchId}/close`, { method: 'PUT' });
       const data = await res.json();
-      if (data.success) { showToast('Votación cerrada ✅', 'success'); await loadMvpAdmin(); }
+      if (data.success) { _mvpCacheClear('mvp_history', 'mvp_ranking'); showToast('Votación cerrada ✅', 'success'); await loadMvpAdmin(); }
       else { btnCerrar.disabled = false; btnCerrar.textContent = '■ Cerrar'; showToast(data.error || 'Error', 'error'); }
     } catch { btnCerrar.disabled = false; btnCerrar.textContent = '■ Cerrar'; showToast('Error de conexión', 'error'); }
   }
