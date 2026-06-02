@@ -2663,7 +2663,7 @@ async function _mvpAdminClick(e) {
           method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({})
         });
         const data = await res.json();
-        if (data.success) { showToast('Votación abierta ✅', 'success'); await loadMvpAdmin(); }
+        if (data.success) { showToast('Votación abierta ✅', 'success'); await Promise.all([loadMvpAdmin(), loadMvpVoteSection()]); }
         else { btnAbrir.disabled = false; btnAbrir.textContent = '▶ Abrir'; showToast(data.error || 'Error al abrir', 'error'); }
       } catch { btnAbrir.disabled = false; btnAbrir.textContent = '▶ Abrir'; showToast('Error de conexión', 'error'); }
     } else {
@@ -2679,7 +2679,7 @@ async function _mvpAdminClick(e) {
     try {
       const res = await fetchWithRetry(`/api/mvp/admin/${matchId}/close`, { method: 'PUT' });
       const data = await res.json();
-      if (data.success) { _mvpCacheClear('mvp_history', 'mvp_ranking'); showToast('Votación cerrada ✅', 'success'); await loadMvpAdmin(); }
+      if (data.success) { _mvpCacheClear('mvp_history', 'mvp_ranking'); showToast('Votación cerrada ✅', 'success'); await Promise.all([loadMvpAdmin(), loadMvpVoteSection(), loadMvpHistory(), loadMvpRanking()]); }
       else { btnCerrar.disabled = false; btnCerrar.textContent = '■ Cerrar'; showToast(data.error || 'Error', 'error'); }
     } catch { btnCerrar.disabled = false; btnCerrar.textContent = '■ Cerrar'; showToast('Error de conexión', 'error'); }
   }
@@ -2697,7 +2697,7 @@ async function _mvpAdminClick(e) {
         body: JSON.stringify({ player_ids: checked })
       });
       const data = await res.json();
-      if (data.success) { showToast('Votación abierta ✅', 'success'); await loadMvpAdmin(); }
+      if (data.success) { showToast('Votación abierta ✅', 'success'); await Promise.all([loadMvpAdmin(), loadMvpVoteSection()]); }
       else { btnConfirmar.disabled = false; btnConfirmar.textContent = '✅ Abrir votación'; showToast(data.error || 'Error', 'error'); }
     } catch { btnConfirmar.disabled = false; btnConfirmar.textContent = '✅ Abrir votación'; showToast('Error de conexión', 'error'); }
   }
