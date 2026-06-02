@@ -2699,6 +2699,24 @@ body::before {
 
 .garras-empty, .garras-error { font-size: 13px; color: var(--text-secondary); padding: 16px; text-align: center; }
 
+.garras-history-export-btn {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px;
+  min-height: 44px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  touch-action: manipulation;
+  text-align: center;
+}
+.garras-history-export-btn:active { background: rgba(255,255,255,0.08); }
+
 /* MVP voting per match */
 .mvp-match-card { margin-bottom: 16px; }
 .mvp-match-header { margin-bottom: 12px; }

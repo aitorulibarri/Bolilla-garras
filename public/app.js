@@ -2348,6 +2348,7 @@ async function deletePrediction(predId, playerName, matchId) {
 
 // ==================== GARRAS SARIA — CACHE IN-MEMORY (TTL 5 min) ====================
 const _mvpCache = {};
+let _mvpHistoryMatches = [];
 function _mvpCacheGet(key) {
   const e = _mvpCache[key];
   if (!e || Date.now() - e.ts > 5 * 60 * 1000) { delete _mvpCache[key]; return null; }
@@ -2495,9 +2496,10 @@ async function loadMvpHistory() {
     }
     if (!Array.isArray(matches) || matches.length === 0) { section.innerHTML = ''; return; }
 
+    _mvpHistoryMatches = matches;
     const MEDALS = ['🥇', '🥈', '🥉'];
 
-    const renderMatch = match => {
+    const renderMatch = (match, idx) => {
       const homeTeam = match.is_home ? match.team : match.opponent;
       const awayTeam = match.is_home ? match.opponent : match.team;
       const label = `${escapeHtml(homeTeam)} vs ${escapeHtml(awayTeam)}`;
@@ -2515,16 +2517,24 @@ async function loadMvpHistory() {
           <span class="garras-hrow-votes">${p.votes} voto${parseInt(p.votes) === 1 ? '' : 's'}</span>
         </div>`;
       }).join('');
+      const exportBtn = currentUser?.isAdmin
+        ? `<button class="garras-history-export-btn" data-export-idx="${idx}">📤 Exportar resultado</button>`
+        : '';
       return `<div class="card garras-history-match">
         <div class="garras-history-match-head">
           <div class="garras-history-match-title">${label}</div>
           <div class="garras-history-match-meta">${catBadge}<span>·</span><span>${fecha}</span></div>
         </div>
         <div class="garras-hrows">${rows || '<span style="color:var(--text-secondary);font-size:13px;">Sin votos registrados</span>'}</div>
+        ${exportBtn}
       </div>`;
     };
 
-    section.innerHTML = `<div class="garras-history-heading">📋 Historial de Partidos</div>${matches.map(renderMatch).join('')}`;
+    section.innerHTML = `<div class="garras-history-heading">📋 Historial de Partidos</div>${matches.map((m, i) => renderMatch(m, i)).join('')}`;
+    section.addEventListener('click', e => {
+      const btn = e.target.closest('.garras-history-export-btn');
+      if (btn) exportMatchResult(_mvpHistoryMatches[parseInt(btn.dataset.exportIdx)]);
+    });
   } catch (err) {
     section.innerHTML = '<p style="color:var(--text-secondary);text-align:center;padding:16px;font-size:13px;">Error al cargar el historial. Recarga el tab.</p>';
     console.error(err);
@@ -2577,6 +2587,71 @@ async function loadMvpRanking() {
     section.innerHTML = '<p style="color:var(--text-secondary);text-align:center;padding:16px;font-size:13px;">Error al cargar el ranking. Recarga el tab.</p>';
     console.error(err);
   }
+}
+
+// ---- Export: tarjeta de resultados por partido ----
+
+function exportMatchResult(match) {
+  if (!match) return;
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const homeTeam = match.is_home ? match.team : match.opponent;
+  const awayTeam = match.is_home ? match.opponent : match.team;
+  const label = `${esc(homeTeam)} vs ${esc(awayTeam)}`;
+  const fecha = parseMatchDate(match.match_date).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const isFem = match.team === 'Athletic Femenino';
+  const catColor = isFem ? '#f472b6' : '#60a5fa';
+  const catBg = isFem ? 'rgba(236,72,153,0.15)' : 'rgba(59,130,246,0.15)';
+  const catLabel = isFem ? '👟 Athletic Femenino' : '⚽ Athletic Club';
+  const MEDALS = ['🥇','🥈','🥉'];
+  const results = match.results || [];
+
+  const rowsHtml = results.map((p, i) => {
+    const medal = i < 3 ? MEDALS[i] : `${i + 1}.`;
+    const isGold = i === 0;
+    const isTop3 = i < 3;
+    return `<tr>
+      <td style="width:36px;text-align:center;font-size:${isTop3?'22':'13'}px;color:${isTop3?'inherit':'#64748b'};padding:${isTop3?'10':'6'}px 8px;">${medal}</td>
+      <td style="font-size:${isGold?'17':'14'}px;font-weight:${isGold?'700':'500'};color:${isTop3?'#f1f5f9':'#94a3b8'};padding:${isTop3?'10':'6'}px 8px;">${esc(p.name)}</td>
+      <td style="text-align:right;font-size:13px;color:${isGold?'rgba(251,191,36,0.9)':'#64748b'};font-weight:${isGold?'600':'400'};padding:${isTop3?'10':'6'}px 8px;">${p.votes} voto${parseInt(p.votes)===1?'':'s'}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html lang="es"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Garras Saria — ${label}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0f13;color:#f1f5f9;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:32px 16px}
+.card{background:#1a1a2e;border-radius:20px;padding:28px 22px;width:100%;max-width:420px;border:1px solid rgba(255,255,255,0.08);box-shadow:0 8px 32px rgba(0,0,0,0.4)}
+.divider{height:2px;background:linear-gradient(90deg,#e41e26,transparent);margin:16px 0 20px;border-radius:2px}
+.match-title{font-size:20px;font-weight:800;color:#f1f5f9;margin-bottom:6px;line-height:1.2}
+.cat-badge{display:inline-block;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;background:${catBg};color:${catColor};margin-right:6px}
+.fecha{font-size:13px;color:#64748b;margin-bottom:22px;margin-top:6px}
+.section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#64748b;margin-bottom:10px}
+table{width:100%;border-collapse:collapse}
+tr+tr{border-top:1px solid rgba(255,255,255,0.04)}
+tr:first-child td{background:rgba(251,191,36,0.08);border-radius:8px}
+.footer{margin-top:22px;font-size:11px;color:#475569;text-align:center;border-top:1px solid rgba(255,255,255,0.04);padding-top:14px}
+.print-btn{display:block;width:100%;margin-top:16px;padding:12px;background:rgba(228,30,38,0.15);border:1px solid rgba(228,30,38,0.3);border-radius:10px;color:#f87171;font-size:14px;font-weight:600;cursor:pointer;text-align:center}
+.print-btn:hover{background:rgba(228,30,38,0.25)}
+@media print{body{background:white;padding:0}.card{background:white;border:none;box-shadow:none;color:#1a1a2e;max-width:100%}.match-title{color:#1a1a2e}.footer{color:#64748b}.print-btn{display:none}}
+</style></head><body>
+<div class="card">
+  <div style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:#e41e26">🏅 Garras Saria</div>
+  <div style="font-size:11px;color:#64748b;margin-top:2px">Peña Garras Taldea · Sestao</div>
+  <div class="divider"></div>
+  <div class="match-title">${label}</div>
+  <div class="fecha"><span class="cat-badge">${catLabel}</span>${fecha}</div>
+  <div class="section-label">Resultado de la votación</div>
+  <table>${rowsHtml}</table>
+  <div class="footer">Bolilla Garras · garras-taldea.vercel.app</div>
+  <button class="print-btn" onclick="window.print()">🖨️ Guardar / Imprimir PDF</button>
+</div>
+</body></html>`;
+
+  const win = window.open('', '_blank');
+  if (win) { win.document.write(html); win.document.close(); }
+  else showToast('Permite ventanas emergentes para exportar', 'error');
 }
 
 // ---- Admin: MVP voting panel ----
