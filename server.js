@@ -1656,7 +1656,7 @@ app.get('/api/mvp/history', requireAuth, async (req, res) => {
                 JOIN garras_players gp ON mmv.player_id = gp.id
                 WHERE mmv.match_id = $1
                 GROUP BY gp.id, gp.name
-                ORDER BY votes DESC
+                ORDER BY votes DESC, gp.name ASC
             `, [match.id]);
             result.push({ ...match, results });
         }
@@ -1698,7 +1698,7 @@ app.get('/api/mvp/ranking', requireAuth, async (req, res) => {
             FROM garras_players gp
             JOIN totals t ON gp.id = t.player_id
             LEFT JOIN winners w ON gp.id = w.player_id
-            ORDER BY partidos_ganados DESC, total_votes DESC
+            ORDER BY partidos_ganados DESC, total_votes DESC, gp.name ASC
         `);
         res.json({
             masculino: rows.filter(r => r.category === 'masculino'),

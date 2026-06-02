@@ -2500,7 +2500,7 @@ async function loadMvpHistory() {
     html += '</div></div>';
     section.innerHTML = html;
   } catch (err) {
-    section.innerHTML = '';
+    section.innerHTML = '<p style="color:var(--text-secondary);text-align:center;padding:16px;font-size:13px;">Error al cargar el historial. Recarga el tab.</p>';
     console.error(err);
   }
 }
@@ -2543,7 +2543,7 @@ async function loadMvpRanking() {
         </div>
       </div>`;
   } catch (err) {
-    section.innerHTML = '';
+    section.innerHTML = '<p style="color:var(--text-secondary);text-align:center;padding:16px;font-size:13px;">Error al cargar el ranking. Recarga el tab.</p>';
     console.error(err);
   }
 }
