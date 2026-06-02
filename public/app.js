@@ -2602,14 +2602,17 @@ async function loadMvpAdmin() {
 
 async function mvpOpenVoting(matchId, isFem) {
   if (!isFem) {
+    const btn = document.querySelector(`#mvp-admin-item-${matchId} .btn-primary`);
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Abriendo...'; }
     try {
       const res = await fetchWithRetry(`/api/mvp/admin/${matchId}/open`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({})
       });
       const data = await res.json();
-      if (data.success) { showToast('Votación abierta', 'success'); await loadGarrasSaria(); }
+      if (data.success) { showToast('Votación abierta ✅', 'success'); await loadMvpAdmin(); }
       else showToast(data.error || 'Error', 'error');
     } catch { showToast('Error de conexión', 'error'); }
+    if (btn) { btn.disabled = false; btn.textContent = '▶ Abrir'; }
     return;
   }
 
@@ -2619,6 +2622,7 @@ async function mvpOpenVoting(matchId, isFem) {
 
   selector.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
   selector.style.display = 'block';
+  selector.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
   try {
     const res = await fetchWithRetry('/api/garras/players?category=femenino');
@@ -2656,7 +2660,7 @@ async function mvpConfirmOpenFem(matchId) {
       body: JSON.stringify({ player_ids: checked })
     });
     const data = await res.json();
-    if (data.success) { showToast('Votación abierta', 'success'); await loadGarrasSaria(); }
+    if (data.success) { showToast('Votación abierta ✅', 'success'); await loadMvpAdmin(); }
     else showToast(data.error || 'Error', 'error');
   } catch { showToast('Error de conexión', 'error'); }
 }
@@ -2666,7 +2670,7 @@ async function mvpCloseVoting(matchId) {
   try {
     const res = await fetchWithRetry(`/api/mvp/admin/${matchId}/close`, { method: 'PUT' });
     const data = await res.json();
-    if (data.success) { showToast('Votación cerrada', 'success'); await loadGarrasSaria(); }
+    if (data.success) { showToast('Votación cerrada ✅', 'success'); await loadMvpAdmin(); }
     else showToast(data.error || 'Error', 'error');
   } catch { showToast('Error de conexión', 'error'); }
 }
