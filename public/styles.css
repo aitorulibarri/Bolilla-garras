@@ -2479,15 +2479,24 @@ body::before {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 8px;
-  padding: 8px 10px;
+  padding: 10px 8px;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  touch-action: manipulation;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
   text-align: center;
 }
 .garras-player-card:hover:not(.voted-lock) {
   background: rgba(228,30,38,0.15);
   border-color: var(--neon-red);
-  transform: translateY(-1px);
+}
+.garras-player-card:active:not(.voted-lock) {
+  background: rgba(228,30,38,0.25);
+  border-color: var(--neon-red);
+  transform: scale(0.97);
 }
 .garras-player-card.selected {
   background: rgba(228,30,38,0.25);
@@ -2522,7 +2531,9 @@ body::before {
 /* --- Vote button --- */
 .garras-vote-btn {
   width: 100%;
-  padding: 10px;
+  padding: 14px 10px;
+  min-height: 48px;
+  touch-action: manipulation;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 700;
@@ -2609,6 +2620,17 @@ body::before {
 .garras-admin-label { font-size: 14px; font-weight: 600; color: var(--text-primary); }
 .garras-admin-votes { font-size: 12px; color: var(--text-secondary); }
 .garras-admin-item-actions { display: flex; gap: 6px; }
+.garras-admin-group-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  padding: 6px 0 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 6px;
+}
+.garras-admin-group + .garras-admin-group { margin-top: 14px; }
 
 /* Status badges */
 .garras-badge {
@@ -2634,7 +2656,7 @@ body::before {
 .mvp-fem-selector { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px; margin: 8px 0 4px; }
 .mvp-selector-title { font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; font-weight: 500; }
 .mvp-player-checkboxes { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 4px; margin-bottom: 14px; max-height: 240px; overflow-y: auto; }
-.mvp-checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-primary); cursor: pointer; padding: 6px 8px; border-radius: 8px; }
+.mvp-checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-primary); cursor: pointer; padding: 10px 8px; border-radius: 8px; min-height: 44px; touch-action: manipulation; }
 .mvp-checkbox-label:hover { background: rgba(255,255,255,0.05); }
 .mvp-dorsal { font-size: 11px; color: var(--text-secondary); }
 .mvp-selector-actions { display: flex; gap: 8px; padding-top: 4px; }
@@ -2662,9 +2684,22 @@ body::before {
 }
 .btn-danger:hover { background: rgba(239,68,68,0.25); }
 
-/* --- Responsive: stack columns on mobile --- */
+/* --- Responsive: mobile-first --- */
 @media (max-width: 768px) {
   .garras-vote-grid { grid-template-columns: 1fr; }
   .garras-ranking-grid { grid-template-columns: 1fr; }
-  .garras-players-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); max-height: 260px; }
+  .garras-players-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); max-height: 280px; }
+
+  /* Admin items: stack info + button vertically */
+  .garras-admin-item { flex-direction: column; align-items: stretch; }
+  .garras-admin-item-actions { width: 100%; margin-top: 2px; }
+  .garras-admin-item-actions .btn { width: 100%; min-height: 44px; }
+
+  /* Femenino selector: stack buttons vertically */
+  .mvp-selector-actions { flex-direction: column; }
+  .mvp-selector-actions .btn { width: 100%; min-height: 48px; }
+
+  /* Femenino checkboxes: 1 col on narrow phones */
+  .mvp-player-checkboxes { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .mvp-checkbox-label { min-height: 48px; padding: 12px 8px; }
 }

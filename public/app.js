@@ -2566,32 +2566,43 @@ async function loadMvpAdmin() {
       return;
     }
 
+    const renderAdminItem = m => {
+      const homeTeam = m.is_home ? m.team : m.opponent;
+      const awayTeam = m.is_home ? m.opponent : m.team;
+      const label = `${escapeHtml(homeTeam)} vs ${escapeHtml(awayTeam)}`;
+      const fecha = parseMatchDate(m.match_date).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
+      const isFem = m.team === 'Athletic Femenino';
+      const statusBadge = m.mvp_voting_open
+        ? '<span class="garras-badge open">Abierta</span>'
+        : parseInt(m.vote_count) > 0
+          ? '<span class="garras-badge closed">Cerrada</span>'
+          : '<span class="garras-badge pending">Sin votación</span>';
+      const openBtn = !m.mvp_voting_open
+        ? `<button class="btn btn-primary btn-sm mvp-btn-abrir" data-match-id="${m.id}" data-is-fem="${isFem}">▶ Abrir</button>` : '';
+      const closeBtn = m.mvp_voting_open
+        ? `<button class="btn btn-danger btn-sm mvp-btn-cerrar" data-match-id="${m.id}">■ Cerrar</button>` : '';
+      return `
+        <div class="garras-admin-item" data-match-id="${m.id}">
+          <div class="garras-admin-item-info">
+            <span class="garras-admin-label">${label}</span>
+            ${statusBadge}
+            <span class="garras-admin-votes">${fecha} · ${m.vote_count} votos</span>
+          </div>
+          <div class="garras-admin-item-actions">${openBtn}${closeBtn}</div>
+        </div>`;
+    };
+
+    const masc = matches.filter(m => m.team !== 'Athletic Femenino');
+    const fem = matches.filter(m => m.team === 'Athletic Femenino');
+    const renderGroup = (group, title) => group.length === 0 ? '' : `
+      <div class="garras-admin-group">
+        <div class="garras-admin-group-title">${title}</div>
+        ${group.map(renderAdminItem).join('')}
+      </div>`;
+
     container.innerHTML = `<div class="garras-admin-list">
-      ${matches.map(m => {
-        const homeTeam = m.is_home ? m.team : m.opponent;
-        const awayTeam = m.is_home ? m.opponent : m.team;
-        const label = `${escapeHtml(homeTeam)} vs ${escapeHtml(awayTeam)}`;
-        const fecha = parseMatchDate(m.match_date).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
-        const isFem = m.team === 'Athletic Femenino';
-        const statusBadge = m.mvp_voting_open
-          ? '<span class="garras-badge open">Abierta</span>'
-          : parseInt(m.vote_count) > 0
-            ? '<span class="garras-badge closed">Cerrada</span>'
-            : '<span class="garras-badge pending">Sin votación</span>';
-        const openBtn = !m.mvp_voting_open
-          ? `<button class="btn btn-primary btn-sm mvp-btn-abrir" data-match-id="${m.id}" data-is-fem="${isFem}">▶ Abrir</button>` : '';
-        const closeBtn = m.mvp_voting_open
-          ? `<button class="btn btn-danger btn-sm mvp-btn-cerrar" data-match-id="${m.id}">■ Cerrar</button>` : '';
-        return `
-          <div class="garras-admin-item" data-match-id="${m.id}">
-            <div class="garras-admin-item-info">
-              <span class="garras-admin-label">${label}</span>
-              ${statusBadge}
-              <span class="garras-admin-votes">${fecha} · ${m.vote_count} votos</span>
-            </div>
-            <div class="garras-admin-item-actions">${openBtn}${closeBtn}</div>
-          </div>`;
-      }).join('')}
+      ${renderGroup(masc, '⚽ Masculino')}
+      ${renderGroup(fem, '👟 Femenino')}
     </div>
     <div id="mvp-fem-panel" style="display:none;" class="mvp-fem-selector"></div>`;
 
