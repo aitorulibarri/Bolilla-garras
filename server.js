@@ -1772,6 +1772,21 @@ app.put('/api/mvp/admin/:id/close', requireAdmin, async (req, res) => {
     }
 });
 
+// DELETE /api/mvp/admin/:id/votes — reset all votes for a match (admin)
+app.delete('/api/mvp/admin/:id/votes', requireAdmin, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
+        const matchId = parseInt(req.params.id);
+        if (isNaN(matchId)) return res.status(400).json({ error: 'ID inválido' });
+        const match = await queryOne('SELECT id FROM matches WHERE id = $1', [matchId]);
+        if (!match) return res.status(404).json({ error: 'Partido no encontrado' });
+        const result = await pool.query('DELETE FROM match_mvp_votes WHERE match_id = $1', [matchId]);
+        res.json({ success: true, deleted: result.rowCount });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Serve frontend
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
