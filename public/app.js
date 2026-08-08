@@ -736,6 +736,102 @@ function getShieldUrl(teamName) {
   return null;
 }
 
+// ==================== FOTOS DE JUGADORES (Garras Saria) ====================
+// Mapeo directo: nombre EXACTO como está en garras_players.name -> foto en public/players/
+// Jugadores del seed sin foto en el pendrive (masculino): Unai Vencedor, Iñigo Lekue,
+//   Unai Gómez, Urko Izeta, Asier Hierro, Eder García.
+// Jugadoras del seed sin foto en el pendrive (femenino): Olatz Santana Amado,
+//   Nerea Nevado Gómez, Laida Balerdi Beloki, Irati Alfaro Nagore, Maite Zubieta Aranbarri,
+//   Alejandra Estefanía Díaz, Ane Bordagaray Casado, Daniela Agote Helguera (el pendrive trae
+//   "daniela-agote-aguirre.png", segundo apellido distinto: no se ha dado por buena la
+//   coincidencia), Oihana Agirregomezkorta García.
+// Estos jugadores/as caen al avatar de iniciales vía getPlayerPhotoUrl().
+const PLAYER_PHOTO_MAP = {
+  // ── Masculino ──
+  'Unai Simón':              'players/masculino/unai-simon-mendibil_L.png',
+  'Andoni Gorosabel':        'players/masculino/andoni-gorosabel-espinosa.png',
+  'Dani Vivian':              'players/masculino/daniel-vivian-moreno.png',
+  'Aitor Paredes':            'players/masculino/aitor-paredes-casamichana.png',
+  'Yeray Álvarez':            'players/masculino/yeray-alvarez-lopez_L.png',
+  'Mikel Vesga':              'players/masculino/mikel-vesga-arruti.png',
+  'Alex Berenguer':           'players/masculino/alejandro-berenguer-remiro.png',
+  'Oihan Sancet':             'players/masculino/oihan-sancet-tirapu.png',
+  'Iñaki Williams':           'players/masculino/inaki-williams-arthuer_L.png',
+  'Nico Williams':            'players/masculino/nico-williams-arthuer_L.png',
+  'Gorka Guruzeta':           'players/masculino/gorka-guruzeta-rodriguez.png',
+  'Jesús Areso':              'players/masculino/jesus-areso-blanco.png',
+  'Aymeric Laporte':          'players/masculino/aymeric-laporte.png',
+  'Iñigo R. De Galarreta':    'players/masculino/inigo-ruiz-de-galarreta-etxeberria.png',
+  'Yuri Berchiche':           'players/masculino/yuri-berchiche-izeta.png',
+  'Mikel Jauregizar':         'players/masculino/mikel-jauregizar-alboniga.png',
+  'Adama Boiro':              'players/masculino/adama-boiro-boiro.png',
+  'Maroan Sannadi':           'players/masculino/maroan-sannadi-harrouch.png',
+  'Nico Serrano':             'players/masculino/nicolas-serrano-galdeano.png',
+  'Robert Navarro':           'players/masculino/robert-navarro-munoz.png',
+  'Beñat Prados':             'players/masculino/benat-prados-diaz.png',
+  'Mikel Santos':             'players/masculino/mikel-santos-linares.png',
+  'Alex Padilla':             'players/masculino/alex-padilla-perez.png',
+  'Alejandro Rego':           'players/masculino/alejandro-rego-mora.png',
+  'Selton Sánchez':           'players/masculino/selton-sued-sanchez-camilo.png',
+  'Iker Monreal':             'players/masculino/iker-monreal-agundez.png',
+
+  // ── Femenino ──
+  'Adriana Nanclares Romero':     'players/femenino/1-adriana-nanclares-romero.png',
+  'Ziara Vega Uribarri':          'players/femenino/ziara-vega-uribarri.png',
+  'Maddi Torre Larrañaga':        'players/femenino/maddi-torre-larranaga.png',
+  'Naia Landaluze Marquínez':     'players/femenino/naia-landaluze-marquinez.png',
+  'Bibiane Schulze Solano':       'players/femenino/bibiane-schulze-solano.png',
+  'Ane Elexpuru Añorga':          'players/femenino/ane-elexpuru-anorga.png',
+  'Eider Arana Mugueta':          'players/femenino/eider-arana-mugueta.png',
+  'Nerea Benito Zaldibar':        'players/femenino/nerea-benito-zaldibar.png',
+  'Maite Valero Elía':            'players/femenino/maite-valero-elia.png',
+  'Irene Oguiza Martínez':        'players/femenino/irene-oguiza-martinez.png',
+  'Leire Baños Indakoetxea':      'players/femenino/leire-banos-indakoetxea.png',
+  'Clara Pinedo Castresana':      'players/femenino/clara-pinedo-castresana.png',
+  'Jone Amezaga Martínez':        'players/femenino/jone-amezaga-martinez.png',
+  'Patricia Zugasti Oses':        'players/femenino/patricia-zugasti-oses.png',
+  'Ane Azkona Fuente':            'players/femenino/ane-azkona-fuente.png',
+  'Sara Ortega Ruiz':             'players/femenino/sara-ortega-ruiz.png',
+  'Maitane Vilariño Mendinueta':  'players/femenino/maitane-vilarino-mendinueta.png',
+  'Ane Campos Andueza':           'players/femenino/ane-campos-andueza.png',
+  'Elene Gurtubay Loyo':          'players/femenino/elene-gurtubay-loyo.png',
+};
+
+function getPlayerPhotoUrl(name) {
+  if (!name) return null;
+  if (PLAYER_PHOTO_MAP[name]) return PLAYER_PHOTO_MAP[name];
+  const lower = name.toLowerCase();
+  for (const [key, val] of Object.entries(PLAYER_PHOTO_MAP)) {
+    if (key.toLowerCase() === lower) return val;
+  }
+  return null;
+}
+
+function getInitials(name) {
+  if (!name) return '?';
+  const parts = String(name).trim().split(/\s+/);
+  const first = parts[0]?.[0] || '';
+  const second = parts[1]?.[0] || '';
+  return (first + second).toUpperCase();
+}
+
+function playerAvatarColor(name) {
+  let hash = 0;
+  for (let i = 0; i < (name || '').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue}, 45%, 32%)`;
+}
+
+// Devuelve el HTML de un avatar circular: <img> si hay foto, iniciales si no.
+function renderPlayerAvatar(name, sizeClass) {
+  const photo = getPlayerPhotoUrl(name);
+  const cls = sizeClass ? `garras-avatar ${sizeClass}` : 'garras-avatar';
+  if (photo) {
+    return `<img class="${cls}" src="${photo}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'), {className:'${cls} garras-avatar-fallback', textContent:'${getInitials(name)}', style:'background:${playerAvatarColor(name)}'}))">`;
+  }
+  return `<div class="${cls} garras-avatar-fallback" style="background:${playerAvatarColor(name)}">${getInitials(name)}</div>`;
+}
+
 
 function renderMatchCard(match, userPrediction) {
   const matchDate = new Date(match.match_date);
@@ -2450,6 +2546,7 @@ function renderMvpVoteBlock(match) {
     const lockClass = isLocked ? 'voted-lock' : '';
     const selectedClass = isSelected ? 'selected voted-choice' : '';
     return `<div class="garras-player-card ${lockClass} ${selectedClass}" data-player-id="${p.id}">
+      ${renderPlayerAvatar(p.name, 'garras-avatar-vote')}
       <span class="garras-player-name">${escapeHtml(p.name)}</span>
     </div>`;
   }).join('');
@@ -2507,6 +2604,7 @@ async function loadMvpHistory() {
         const rankClass = i === 0 ? 'rank-gold' : i === 1 ? 'rank-silver' : i === 2 ? 'rank-bronze' : 'rank-rest';
         return `<div class="garras-hrow ${rankClass}">
           <span class="garras-hrow-medal">${medal}</span>
+          ${renderPlayerAvatar(p.name, 'garras-avatar-sm')}
           <span class="garras-hrow-name">${escapeHtml(p.name)}</span>
           <span class="garras-hrow-votes">${p.votes} voto${parseInt(p.votes) === 1 ? '' : 's'}</span>
         </div>`;
@@ -2554,7 +2652,12 @@ async function loadMvpRanking() {
         const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
         return `<tr>
           <td class="garras-rank-pos">${medal}</td>
-          <td class="garras-rank-name">${escapeHtml(p.name)}</td>
+          <td class="garras-rank-name">
+            <div class="garras-rank-name-wrap">
+              ${renderPlayerAvatar(p.name, 'garras-avatar-sm')}
+              <span>${escapeHtml(p.name)}</span>
+            </div>
+          </td>
           <td class="garras-rank-wins">${p.partidos_ganados}</td>
           <td class="garras-rank-votes">${p.total_votes}</td>
         </tr>`;

@@ -2484,10 +2484,43 @@ body::before {
   touch-action: manipulation;
   min-height: 44px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   transition: background 0.15s, border-color 0.15s;
   text-align: center;
+}
+
+/* --- Avatares de jugador/a (foto o iniciales) --- */
+.garras-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: top center;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+.garras-avatar-vote {
+  width: 56px;
+  height: 56px;
+  font-size: 16px;
+  border: 2px solid rgba(255,255,255,0.12);
+}
+.garras-player-card.selected .garras-avatar-vote,
+.garras-player-card.voted-choice .garras-avatar-vote {
+  border-color: var(--neon-red);
+}
+.garras-avatar-sm {
+  width: 26px;
+  height: 26px;
+  font-size: 11px;
 }
 .garras-player-card:hover:not(.voted-lock) {
   background: rgba(228,30,38,0.15);
@@ -2652,6 +2685,7 @@ body::before {
 .garras-rank-table td { padding: 7px 6px; border-bottom: 1px solid rgba(255,255,255,0.04); }
 .garras-rank-pos { font-size: 16px; text-align: center; width: 32px; }
 .garras-rank-name { color: var(--text-primary); font-weight: 500; }
+.garras-rank-name-wrap { display: flex; align-items: center; gap: 8px; }
 .garras-rank-wins { text-align: center; font-weight: 700; color: var(--gold); }
 .garras-rank-votes { text-align: center; color: var(--text-secondary); }
 
