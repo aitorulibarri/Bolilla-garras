@@ -2539,7 +2539,10 @@ async function loadMvpVoteSection() {
 function renderMvpVoteBlock(match) {
   const isLocked = !!match.userVote;
   const lockedMsg = isLocked
-    ? `<div class="garras-voted-msg">✅ Has votado a <strong>${escapeHtml(match.userVote.player_name)}</strong></div>`
+    ? `<div class="garras-voted-msg">
+        ${renderPlayerAvatar(match.userVote.player_name, 'garras-avatar-sm')}
+        <span>✅ Has votado a <strong>${escapeHtml(match.userVote.player_name)}</strong></span>
+      </div>`
     : '';
   const cards = match.players.map(p => {
     const isSelected = match.userVote?.player_id === p.id;
