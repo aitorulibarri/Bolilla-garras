@@ -2468,9 +2468,9 @@ body::before {
 /* --- Player cards grid --- */
 .garras-players-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 6px;
-  max-height: 320px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px;
+  max-height: 420px;
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -2494,24 +2494,24 @@ body::before {
 
 /* --- Avatares de jugador/a (foto tipo carnet/DNI o iniciales) --- */
 .garras-avatar {
-  width: 50px;
-  height: 64px;
-  border-radius: 6px;
+  width: 64px;
+  height: 82px;
+  border-radius: 8px;
   object-fit: cover;
   object-position: top center;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 700;
   color: #fff;
 }
 .garras-avatar-vote {
-  width: 84px;
-  height: 108px;
-  border-radius: 8px;
-  font-size: 20px;
+  width: 120px;
+  height: 154px;
+  border-radius: 10px;
+  font-size: 26px;
   border: 2px solid rgba(255,255,255,0.12);
 }
 .garras-player-card.selected .garras-avatar-vote,
@@ -2519,9 +2519,9 @@ body::before {
   border-color: var(--neon-red);
 }
 .garras-avatar-sm {
-  width: 34px;
-  height: 44px;
-  border-radius: 4px;
+  width: 44px;
+  height: 56px;
+  border-radius: 5px;
   font-size: 10px;
 }
 .garras-player-card:hover:not(.voted-lock) {
@@ -2797,7 +2797,7 @@ body::before {
 @media (max-width: 768px) {
   .garras-vote-grid { grid-template-columns: 1fr; }
   .garras-ranking-grid { grid-template-columns: 1fr; }
-  .garras-players-grid { grid-template-columns: repeat(auto-fill, minmax(125px, 1fr)); max-height: 360px; }
+  .garras-players-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); max-height: 480px; }
 
   /* Admin items: stack info + button vertically */
   .garras-admin-item { flex-direction: column; align-items: stretch; }
