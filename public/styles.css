@@ -2492,38 +2492,54 @@ body::before {
   text-align: center;
 }
 
-/* --- Avatares de jugador/a (foto tipo carnet/DNI o iniciales) --- */
-.garras-avatar {
+/* --- Avatares de jugador/a: frame recorta a "pecho para arriba", foto o iniciales --- */
+.garras-avatar-frame {
   width: 64px;
   height: 82px;
   border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+}
+.garras-avatar {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   object-position: top center;
-  flex-shrink: 0;
+  /* Las fotos oficiales son de cuerpo entero (torso); las ampliamos y anclamos
+     arriba para que solo se vea de pecho para arriba (ver /autothink: scale 2.0
+     verificado visualmente contra el crop real). */
+  transform: scale(2.0);
+  transform-origin: 50% 0%;
+  display: block;
+}
+.garras-avatar-fallback {
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 17px;
   font-weight: 700;
   color: #fff;
+  font-size: 17px;
 }
-.garras-avatar-vote {
+.garras-avatar-frame-vote {
   width: 120px;
   height: 154px;
   border-radius: 10px;
-  font-size: 26px;
   border: 2px solid rgba(255,255,255,0.12);
 }
-.garras-player-card.selected .garras-avatar-vote,
-.garras-player-card.voted-choice .garras-avatar-vote {
+.garras-avatar-frame-vote .garras-avatar-fallback { font-size: 30px; }
+.garras-player-card.selected .garras-avatar-frame-vote,
+.garras-player-card.voted-choice .garras-avatar-frame-vote {
   border-color: var(--neon-red);
 }
-.garras-avatar-sm {
+.garras-avatar-frame-sm {
   width: 44px;
   height: 56px;
   border-radius: 5px;
-  font-size: 10px;
 }
+.garras-avatar-frame-sm .garras-avatar-fallback { font-size: 12px; }
 .garras-player-card:hover:not(.voted-lock) {
   background: rgba(228,30,38,0.15);
   border-color: var(--neon-red);

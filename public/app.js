@@ -822,14 +822,15 @@ function playerAvatarColor(name) {
   return `hsl(${hue}, 45%, 32%)`;
 }
 
-// Devuelve el HTML de un avatar circular: <img> si hay foto, iniciales si no.
-function renderPlayerAvatar(name, sizeClass) {
+// Devuelve el HTML de un avatar (frame recortado a pecho-arriba): <img> ampliada
+// si hay foto, iniciales si no. sizeFrameClass: 'garras-avatar-frame-vote' | 'garras-avatar-frame-sm' | '' (base).
+function renderPlayerAvatar(name, sizeFrameClass) {
   const photo = getPlayerPhotoUrl(name);
-  const cls = sizeClass ? `garras-avatar ${sizeClass}` : 'garras-avatar';
+  const frameCls = `garras-avatar-frame ${sizeFrameClass || ''}`.trim();
   if (photo) {
-    return `<img class="${cls}" src="${photo}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'), {className:'${cls} garras-avatar-fallback', textContent:'${getInitials(name)}', style:'background:${playerAvatarColor(name)}'}))">`;
+    return `<div class="${frameCls}"><img class="garras-avatar" src="${photo}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'), {className:'garras-avatar-fallback', textContent:'${getInitials(name)}', style:'background:${playerAvatarColor(name)}'}))"></div>`;
   }
-  return `<div class="${cls} garras-avatar-fallback" style="background:${playerAvatarColor(name)}">${getInitials(name)}</div>`;
+  return `<div class="${frameCls}"><div class="garras-avatar-fallback" style="background:${playerAvatarColor(name)}">${getInitials(name)}</div></div>`;
 }
 
 
@@ -2540,7 +2541,7 @@ function renderMvpVoteBlock(match) {
   const isLocked = !!match.userVote;
   const lockedMsg = isLocked
     ? `<div class="garras-voted-msg">
-        ${renderPlayerAvatar(match.userVote.player_name, 'garras-avatar-sm')}
+        ${renderPlayerAvatar(match.userVote.player_name, 'garras-avatar-frame-sm')}
         <span>✅ Has votado a <strong>${escapeHtml(match.userVote.player_name)}</strong></span>
       </div>`
     : '';
@@ -2549,7 +2550,7 @@ function renderMvpVoteBlock(match) {
     const lockClass = isLocked ? 'voted-lock' : '';
     const selectedClass = isSelected ? 'selected voted-choice' : '';
     return `<div class="garras-player-card ${lockClass} ${selectedClass}" data-player-id="${p.id}">
-      ${renderPlayerAvatar(p.name, 'garras-avatar-vote')}
+      ${renderPlayerAvatar(p.name, 'garras-avatar-frame-vote')}
       <span class="garras-player-name">${escapeHtml(p.name)}</span>
     </div>`;
   }).join('');
@@ -2607,7 +2608,7 @@ async function loadMvpHistory() {
         const rankClass = i === 0 ? 'rank-gold' : i === 1 ? 'rank-silver' : i === 2 ? 'rank-bronze' : 'rank-rest';
         return `<div class="garras-hrow ${rankClass}">
           <span class="garras-hrow-medal">${medal}</span>
-          ${renderPlayerAvatar(p.name, 'garras-avatar-sm')}
+          ${renderPlayerAvatar(p.name, 'garras-avatar-frame-sm')}
           <span class="garras-hrow-name">${escapeHtml(p.name)}</span>
           <span class="garras-hrow-votes">${p.votes} voto${parseInt(p.votes) === 1 ? '' : 's'}</span>
         </div>`;
@@ -2657,7 +2658,7 @@ async function loadMvpRanking() {
           <td class="garras-rank-pos">${medal}</td>
           <td class="garras-rank-name">
             <div class="garras-rank-name-wrap">
-              ${renderPlayerAvatar(p.name, 'garras-avatar-sm')}
+              ${renderPlayerAvatar(p.name, 'garras-avatar-frame-sm')}
               <span>${escapeHtml(p.name)}</span>
             </div>
           </td>
