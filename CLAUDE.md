@@ -108,6 +108,8 @@ JWT stateless, token en **`sessionStorage`** como `bolilla_token`. Duración: 24
 - Resultado exacto: **5 puntos**
 - Parcial (máximo 3): signo correcto +1, diferencia de goles +1, goles de un equipo +2
 
+Verificado contra "NORMAS BOLILLA GARRAS 26/27" (documento de la peña, no versionado en el repo): el baremo no cambió respecto a temporadas anteriores — no hace falta tocar `calculatePoints()` al empezar temporada nueva, solo resetear datos (ver `POST /api/admin/reset-full-season`).
+
 ## GARRAS SARIA — Módulo de votación MVP
 
 Tab activo en producción. El sistema MVP por partido (`/api/mvp/*`) es el único expuesto en frontend. El sistema por jornada (`/api/garras/*`) existe en server.js pero sin UI.
@@ -205,6 +207,7 @@ Primera subpestaña "Por jornada": `renderByWeek()` agrupa por semana lunes-domi
 - **Borrar partidos**: `DELETE /api/matches/:id` rechaza con 400 si `is_finished = 1`.
 - **Orden fijo por liga**: Athletic Club → Athletic Femenino → Bilbao Athletic, luego fecha ASC.
 - **Event delegation en admin MVP**: `container.addEventListener('click', _mvpAdminClick)` — nunca usar `onclick` en strings de `innerHTML` para botones del panel admin.
+- **Confirmación de acciones destructivas**: usar SIEMPRE un modal in-page (patrón `#rules-modal` / `#reset-season-modal`: `.modal` + `.modal-overlay` + `.modal-content`, toggle vía `style.display` + clase `.show`), nunca `window.confirm()`/`window.prompt()`/`window.alert()`. Los diálogos nativos del navegador no se disparan de forma fiable en la PWA instalada (Edge en escritorio) — un botón que llama a `confirm()` puede no hacer nada visible al pulsarlo.
 
 ## Performance
 
@@ -218,7 +221,7 @@ Primera subpestaña "Por jornada": `renderByWeek()` agrupa por semana lunes-domi
 | Ruta | Descripción |
 |---|---|
 | `POST /api/admin/reset-season` | Borra pronósticos de partidos finalizados, conserva pendientes. |
-| `POST /api/admin/reset-full-season` | Reset de temporada completo (botón 🗑️ en tab Admin): borra `matches`, `predictions`, `match_mvp_votes`, `match_mvp_players`. Conserva `users` y `garras_players`. Confirmación doble en frontend (confirm + texto "RESETEAR"). Loguea en consola quién lo ejecuta. |
+| `POST /api/admin/reset-full-season` | Reset de temporada completo (botón 🗑️ en tab Admin): borra `matches`, `predictions`, `match_mvp_votes`, `match_mvp_players`. Conserva `users` y `garras_players`. Confirmación vía modal `#reset-season-modal` (hay que escribir "RESETEAR" para habilitar el botón). Loguea en consola quién lo ejecuta. |
 | `GET /api/admin/open-predictions` | Tracker: quién ha pronosticado y quién falta por partido abierto |
 | `GET /api/admin/users` | Lista usuarios (sin password_hash) |
 | `GET /api/admin/users/:id/password` | Ver contraseña en claro (solo si tiene `password_encrypted`) |
