@@ -406,6 +406,48 @@ function setupEventListeners() {
     modalOverlay?.addEventListener('click', closeModal);
   }
 
+  // Reset full season modal
+  const openResetBtn = document.getElementById('open-reset-season-btn');
+  const resetModal = document.getElementById('reset-season-modal');
+  const closeResetBtn = document.getElementById('close-reset-season');
+  const cancelResetBtn = document.getElementById('cancel-reset-season');
+  const confirmResetBtn = document.getElementById('confirm-reset-season');
+  const resetInput = document.getElementById('reset-season-confirm-input');
+  const resetOverlay = resetModal?.querySelector('.modal-overlay');
+
+  if (openResetBtn && resetModal) {
+    const closeResetModal = () => {
+      resetModal.classList.remove('show');
+      setTimeout(() => resetModal.style.display = 'none', 300);
+      resetInput.value = '';
+      confirmResetBtn.disabled = true;
+    };
+
+    openResetBtn.addEventListener('click', () => {
+      resetModal.style.display = 'flex';
+      setTimeout(() => resetModal.classList.add('show'), 10);
+      resetInput.value = '';
+      confirmResetBtn.disabled = true;
+      resetInput.focus();
+    });
+
+    closeResetBtn?.addEventListener('click', closeResetModal);
+    cancelResetBtn?.addEventListener('click', closeResetModal);
+    resetOverlay?.addEventListener('click', closeResetModal);
+
+    resetInput?.addEventListener('input', () => {
+      confirmResetBtn.disabled = resetInput.value !== 'RESETEAR';
+    });
+
+    confirmResetBtn?.addEventListener('click', async () => {
+      confirmResetBtn.disabled = true;
+      confirmResetBtn.textContent = 'Reseteando...';
+      await executeFullSeasonReset();
+      confirmResetBtn.textContent = '🗑️ Resetear';
+      closeResetModal();
+    });
+  }
+
 
   // Tab navigation
   navTabs.forEach(tab => {
@@ -2173,15 +2215,7 @@ async function deleteMatch(matchId) {
   }
 }
 
-async function resetFullSeason() {
-  if (!confirm('¿Seguro que quieres RESETEAR LA TEMPORADA COMPLETA?\n\nSe borrarán TODOS los partidos, pronósticos y votaciones de Garras Saria (historial, MVP, clasificación quedan a cero).\n\nLos usuarios y el roster de jugadores/as NO se borran.\n\nEsta acción no se puede deshacer.')) return;
-
-  const confirmText = prompt('Para confirmar, escribe RESETEAR en mayúsculas:');
-  if (confirmText !== 'RESETEAR') {
-    if (confirmText !== null) showToast('Reset cancelado: texto de confirmación incorrecto', 'warning');
-    return;
-  }
-
+async function executeFullSeasonReset() {
   try {
     const res = await fetchWithRetry('/api/admin/reset-full-season', { method: 'POST' });
     const data = await res.json().catch(() => ({}));

@@ -327,7 +327,7 @@
                         Borra <strong>todos los partidos, pronósticos y votaciones de Garras Saria</strong> (historial, MVP, clasificación queda a cero).
                         <strong>No borra usuarios ni el roster de jugadores/as.</strong> Usar solo al empezar una temporada nueva. Esta acción no se puede deshacer.
                     </p>
-                    <button type="button" class="btn btn-danger" onclick="resetFullSeason()" style="min-height: 44px; touch-action: manipulation;">
+                    <button type="button" class="btn btn-danger" id="open-reset-season-btn" style="min-height: 44px; touch-action: manipulation;">
                         🗑️ Resetear Temporada Completa
                     </button>
                 </div>
@@ -442,11 +442,33 @@
         </div>
     </div>
 
+    <!-- Reset Full Season Modal -->
+    <div id="reset-season-modal" class="modal" style="display: none;">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🗑️ Resetear Temporada</h2>
+                <button class="modal-close" id="close-reset-season">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 12px;">Se borrarán <strong>todos los partidos, pronósticos y votaciones de Garras Saria</strong> (historial, MVP, clasificación quedan a cero).</p>
+                <p style="margin-bottom: 20px;"><strong>No se borran</strong> usuarios ni el roster de jugadores/as.</p>
+                <p style="margin-bottom: 20px; color: var(--neon-red); font-weight: 700;">Esta acción no se puede deshacer.</p>
+                <p style="margin-bottom: 8px; font-size: 0.9em; opacity: 0.85;">Para confirmar, escribe <strong>RESETEAR</strong> abajo:</p>
+                <input type="text" id="reset-season-confirm-input" placeholder="Escribe RESETEAR" autocomplete="off" style="width: 100%; box-sizing: border-box; padding: 12px; margin-bottom: 16px; background: var(--bg-tertiary); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: var(--text-primary); font-size: 15px;">
+                <div style="display: flex; gap: 12px;">
+                    <button type="button" class="btn btn-secondary" id="cancel-reset-season" style="flex:1; min-height:44px; touch-action: manipulation;">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="confirm-reset-season" disabled style="flex:1; min-height:44px; touch-action: manipulation;">🗑️ Resetear</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notifications -->
     <div class="toast-container" id="toast-container" aria-live="polite"></div>
 
     <script src="podium.js?v=6.4"></script>
-    <script src="app.js?v=8.22"></script>
+    <script src="app.js?v=8.23"></script>
 </body>
 
 </html>
