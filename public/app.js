@@ -2173,6 +2173,36 @@ async function deleteMatch(matchId) {
   }
 }
 
+async function resetFullSeason() {
+  if (!confirm('¿Seguro que quieres RESETEAR LA TEMPORADA COMPLETA?\n\nSe borrarán TODOS los partidos, pronósticos y votaciones de Garras Saria (historial, MVP, clasificación quedan a cero).\n\nLos usuarios y el roster de jugadores/as NO se borran.\n\nEsta acción no se puede deshacer.')) return;
+
+  const confirmText = prompt('Para confirmar, escribe RESETEAR en mayúsculas:');
+  if (confirmText !== 'RESETEAR') {
+    if (confirmText !== null) showToast('Reset cancelado: texto de confirmación incorrecto', 'warning');
+    return;
+  }
+
+  try {
+    const res = await fetchWithRetry('/api/admin/reset-full-season', { method: 'POST' });
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok && data.success) {
+      const d = data.deleted || {};
+      showToast(`Temporada reseteada: ${d.matches ?? 0} partidos, ${d.predictions ?? 0} pronósticos, ${d.mvp_votes ?? 0} votos MVP eliminados`, 'success');
+      _mvpCacheClear('mvp_history', 'mvp_ranking');
+      await Promise.all([
+        loadAdminStats(),
+        loadAdminMatches(),
+        currentUser?.isAdmin ? loadGarrasSaria() : Promise.resolve()
+      ]);
+    } else {
+      showToast(data.error || 'Error al resetear la temporada', 'error');
+    }
+  } catch (err) {
+    showToast('Error al resetear la temporada', 'error');
+  }
+}
+
 // ==================== UTILS ====================
 
 function showAuthError(message) {

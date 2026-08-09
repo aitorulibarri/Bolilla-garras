@@ -642,6 +642,35 @@ app.get('/api/admin/clear-matches', requireAdmin, async (req, res) => {
     }
 });
 
+// Reset completo de temporada: borra partidos, pronósticos y MVP para empezar de cero
+// (admin only). A diferencia de reset-season (solo pronósticos de partidos finalizados)
+// y clear-matches (partidos+pronósticos), este también limpia Garras Saria.
+// Users y garras_players (roster) se conservan intactos.
+app.post('/api/admin/reset-full-season', requireAdmin, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
+        await dbInit();
+        const mvpVotes = await pool.query('DELETE FROM match_mvp_votes');
+        const mvpPlayers = await pool.query('DELETE FROM match_mvp_players');
+        const predictions = await pool.query('DELETE FROM predictions');
+        const matches = await pool.query('DELETE FROM matches');
+        console.log(`Reset full season ejecutado por ${req.user.username} — matches: ${matches.rowCount}, predictions: ${predictions.rowCount}, mvp_votes: ${mvpVotes.rowCount}, mvp_players: ${mvpPlayers.rowCount}`);
+        res.json({
+            success: true,
+            deleted: {
+                matches: matches.rowCount,
+                predictions: predictions.rowCount,
+                mvp_votes: mvpVotes.rowCount,
+                mvp_players: mvpPlayers.rowCount
+            },
+            message: 'Temporada reseteada: partidos, pronósticos y votaciones de Garras Saria eliminados. Usuarios y jugadores conservados.'
+        });
+    } catch (err) {
+        console.error('Reset full season error:', err);
+        res.status(500).json({ error: 'Error al resetear la temporada' });
+    }
+});
+
 // Emergency: keep only GARRAS admin (admin only)
 app.get('/api/admin/clean-users', requireAdmin, async (req, res) => {
     try {
