@@ -144,7 +144,7 @@ Tab activo en producción. El sistema MVP por partido (`/api/mvp/*`) es el únic
 - `loadMvpAdmin()` — panel admin; partidos agrupados por categoría (⚽ Masculino / 👟 Femenino)
 - `_mvpAdminClick(e)` — event delegation para todos los botones del panel admin
 - `_mvpMostrarSelectorFem(matchId)` — carga jugadoras y muestra selector en `#mvp-fem-panel`
-- `exportMatchResult(match)` — genera PNG 900px con Canvas API: logo, podio, lista; descarga directa en Android/desktop, abre en nueva pestaña en iOS
+- `exportMatchResult(match)` — genera PNG 900px con Canvas API, solo el podio top 3 (ver detalle completo en la sección Exports); descarga directa en Android/desktop, abre en nueva pestaña en iOS
 - `_rrPath(ctx, x, y, w, h, r)` — helper: rounded rect path para canvas
 
 **Cache in-memory**: `_mvpCache` (TTL 5 min) para `mvp_history` y `mvp_ranking`. Se invalida en `_mvpAdminClick` al cerrar votación. Funciones: `_mvpCacheGet(key)`, `_mvpCacheSet(key, data)`, `_mvpCacheClear(...keys)`.
@@ -254,3 +254,4 @@ Primera subpestaña "Por jornada": `renderByWeek()` agrupa por semana lunes-domi
 - **JWT_SECRET fallback público**: si `JWT_SECRET` no está en Vercel, usa `'bolilla-garras-secret-2026-seguro'` (visible en repo). Configurar en Vercel → Settings → Environment Variables.
 - **Registro concede admin por nombre**: username `admin` o `garras` recibe `is_admin=1`. Por diseño.
 - **`saveAllPredictions`** usa `fetch()` nativo, no `fetchWithRetry` — sin retry en cold start de Neon.
+- **Fotos descentradas fuera del podio**: `Alex Padilla`, `Maroan Sannadi`, `Unai Simón` y `Nerea Benito Zaldibar` tienen el recorte corregido (`PLAYER_PHOTO_CROP_OFFSET`) solo en `exportMatchResult` (podio PNG). En `renderPlayerAvatar` (tarjetas de voto y de historial en la web) siguen viéndose ligeramente descentrados — pendiente de decidir si se extiende el mismo offset ahí.
