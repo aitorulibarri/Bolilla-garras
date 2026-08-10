@@ -2560,24 +2560,28 @@ async function loadMvpVoteSection() {
     }
     section.innerHTML = html;
 
+    const pendingMatchIds = [];
     matches.forEach(match => {
       if (match.userVote) return;
+      pendingMatchIds.push(match.id);
       const card = section.querySelector(`[data-match-id="${match.id}"]`);
       if (!card) return;
       card.querySelectorAll('.garras-player-card').forEach(playerCard => {
         playerCard.addEventListener('click', () => {
           card.querySelectorAll('.garras-player-card').forEach(c => c.classList.remove('selected'));
           playerCard.classList.add('selected');
-          card.querySelector('.garras-vote-btn').disabled = false;
         });
       });
-      card.querySelector('.garras-vote-btn')?.addEventListener('click', async () => {
-        const selected = card.querySelector('.garras-player-card.selected');
-        if (!selected) return;
-        await submitMvpVote(match.id, parseInt(selected.dataset.playerId));
-        await loadMvpVoteSection();
-      });
     });
+
+    if (pendingMatchIds.length > 0) {
+      const voteAllBtn = document.createElement('button');
+      voteAllBtn.className = 'garras-vote-btn';
+      voteAllBtn.style.cssText = 'margin-top:16px;';
+      voteAllBtn.textContent = 'VOTAR';
+      voteAllBtn.addEventListener('click', () => submitAllMvpVotes(pendingMatchIds));
+      section.appendChild(voteAllBtn);
+    }
 
   } catch (err) {
     console.error('loadMvpVoteSection error:', err);
@@ -2612,13 +2616,10 @@ function renderMvpVoteBlock(match) {
       <span class="garras-player-name">${escapeHtml(p.name)}</span>
     </div>`;
   }).join('');
-  const btnLabel = isLocked ? '✅ Votado' : 'Votar';
-  const btnClass = isLocked ? 'garras-vote-btn garras-voted-btn' : 'garras-vote-btn';
   return `
     <div class="mvp-vote-block">
       ${lockedMsg}
       <div class="garras-players-grid">${cards}</div>
-      <button class="${btnClass}" ${isLocked ? '' : 'disabled'}>${btnLabel}</button>
     </div>`;
 }
 
@@ -2630,11 +2631,36 @@ async function submitMvpVote(matchId, playerId) {
       body: JSON.stringify({ player_id: playerId })
     });
     const data = await res.json();
-    if (data.success) showToast('¡Voto registrado!', 'success');
-    else showToast(data.error || 'Error al votar', 'error');
+    return data.success;
   } catch (err) {
-    showToast('Error de conexión', 'error');
+    return false;
   }
+}
+
+async function submitAllMvpVotes(matchIds) {
+  const votes = matchIds
+    .map(matchId => {
+      const card = document.querySelector(`[data-match-id="${matchId}"]`);
+      const selected = card?.querySelector('.garras-player-card.selected');
+      return selected ? { matchId, playerId: parseInt(selected.dataset.playerId) } : null;
+    })
+    .filter(Boolean);
+
+  if (votes.length === 0) {
+    showToast('Selecciona al menos un jugador', 'error');
+    return;
+  }
+
+  let saved = 0;
+  let errors = 0;
+  for (const { matchId, playerId } of votes) {
+    if (await submitMvpVote(matchId, playerId)) saved++;
+    else errors++;
+  }
+
+  if (saved > 0) showToast(`${saved} voto${saved > 1 ? 's' : ''} registrado${saved > 1 ? 's' : ''}`, 'success');
+  if (errors > 0) showToast(`Error registrando ${errors} voto${errors > 1 ? 's' : ''}`, 'error');
+  await loadMvpVoteSection();
 }
 
 async function loadMvpHistory() {

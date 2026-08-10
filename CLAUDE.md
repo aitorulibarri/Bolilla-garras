@@ -138,7 +138,7 @@ Tab activo en producción. El sistema MVP por partido (`/api/mvp/*`) es el únic
 ### Frontend Garras Saria (app.js)
 
 - `loadGarrasSaria()` — punto de entrada del tab; llama a admin (si admin) + vote + history + ranking en paralelo
-- `loadMvpVoteSection()` — partidos abiertos para votar; click en player card → `submitMvpVote()`
+- `loadMvpVoteSection()` — partidos abiertos para votar; click en player card solo marca selección (una por partido). Botón único "VOTAR" al final envía todas las selecciones a la vez vía `submitAllMvpVotes()` (mismo patrón que `saveAllPredictions`), que llama a `submitMvpVote()` por partido
 - `loadMvpHistory()` — historial con podio (🥇🥈🥉) + lista completa; guarda array en `_mvpHistoryMatches[]`
 - `loadMvpRanking()` — tabla ranking con medallas top 3
 - `loadMvpAdmin()` — panel admin; partidos agrupados por categoría (⚽ Masculino / 👟 Femenino)
