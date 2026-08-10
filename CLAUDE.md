@@ -89,7 +89,7 @@ La conexión solo se activa si `DATABASE_URL` está presente (`IS_POSTGRES` flag
 
 **Leaderboard query**: arranca desde `users` con LEFT JOIN a `predictions` para que todos los usuarios registrados aparezcan aunque tengan 0 puntos.
 
-**Seed automático**: en `dbInit()`, si `garras_players` está vacía se insertan 32 jugadores masculinos y 28 femeninas. Usar `pool.query` directamente dentro de `dbInit()` — NO usar `query()`/`queryOne()` (deadlock).
+**Seed automático**: en `dbInit()`, si `garras_players` está vacía se insertan 26 jugadores masculinos y 28 femeninas. Usar `pool.query` directamente dentro de `dbInit()` — NO usar `query()`/`queryOne()` (deadlock).
 
 **`match_mvp_votes.username`** es TEXT (no FK a `users`). Borrar un usuario no elimina sus votos MVP en cascada — usar `DELETE /api/mvp/admin/:id/votes` para limpiar si es necesario.
 
@@ -178,7 +178,7 @@ Todos los datos de la API insertados en `innerHTML` deben pasar por `escapeHtml(
 
 ### Guardar pronósticos
 
-Un único botón "GUARDAR PRONÓSTICOS" al final del container. Handler: `saveAllPredictions(matchIds[])`. Los pronósticos no son modificables una vez enviados.
+Un único botón "GUARDAR PRONÓSTICOS" al final del container. Handler: `saveAllPredictions(matchIds[])`. Los pronósticos son modificables (UPDATE) hasta que pasa el `deadline` del partido; a partir de ahí quedan bloqueados en modo solo lectura. `saveAllPredictions` reenvía todos los partidos abiertos (incluidos los ya pronosticados) cada vez que se pulsa el botón — sin dirty-checking, aceptable dado el volumen bajo de la app.
 
 ### Historial (`loadHistory`)
 

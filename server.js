@@ -322,11 +322,11 @@ async function dbInit() {
                     'Unai Simón', 'Andoni Gorosabel', 'Dani Vivian', 'Aitor Paredes',
                     'Yeray Álvarez', 'Mikel Vesga', 'Alex Berenguer', 'Oihan Sancet',
                     'Iñaki Williams', 'Nico Williams', 'Gorka Guruzeta', 'Jesús Areso',
-                    'Unai Vencedor', 'Aymeric Laporte', 'Iñigo Lekue', 'Iñigo R. De Galarreta',
-                    'Yuri Berchiche', 'Mikel Jauregizar', 'Adama Boiro', 'Unai Gómez',
+                    'Aymeric Laporte', 'Iñigo R. De Galarreta',
+                    'Yuri Berchiche', 'Mikel Jauregizar', 'Adama Boiro',
                     'Maroan Sannadi', 'Nico Serrano', 'Robert Navarro', 'Beñat Prados',
-                    'Urko Izeta', 'Mikel Santos', 'Alex Padilla', 'Alejandro Rego',
-                    'Asier Hierro', 'Selton Sánchez', 'Iker Monreal', 'Eder García'
+                    'Mikel Santos', 'Alex Padilla', 'Alejandro Rego',
+                    'Selton Sánchez', 'Iker Monreal'
                 ];
                 for (const name of masculinoPlayers) {
                     await pool.query('INSERT INTO garras_players (name, category) VALUES ($1, $2)', [name, 'masculino']);
@@ -965,7 +965,10 @@ app.post('/api/predictions', requireAuth, async (req, res) => {
         );
 
         if (existing) {
-            return res.status(400).json({ error: 'Ya has enviado tu pronóstico para este partido y no puede modificarse' });
+            await pool.query(
+                'UPDATE predictions SET home_goals = $1, away_goals = $2 WHERE id = $3',
+                [homeGoalsNum, awayGoalsNum, existing.id]
+            );
         } else {
             // Include user_id for legacy DB schemas that have this column
             try {

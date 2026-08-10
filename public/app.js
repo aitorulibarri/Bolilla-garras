@@ -626,7 +626,7 @@ async function loadMatches() {
 
     // Single save-all button if there are pending predictions
     const pendingIds = matches
-      .filter(m => new Date() < new Date(m.deadline) && !m.userPrediction)
+      .filter(m => new Date() < new Date(m.deadline))
       .map(m => m.id);
 
     if (pendingIds.length > 0) {
@@ -939,19 +939,19 @@ function renderMatchCard(match, userPrediction) {
 
         <!-- Score / Inputs -->
         <div class="score-container">
-            ${hasPrediction
-      ? `<div class="score-box" style="border-color: #00F5A0; color:#00F5A0;">${userHomeGoals}</div>`
-      : (canPredict
-        ? `<input type="number" id="home-${match.id}" class="score-box" min="0" max="15" placeholder="-">`
+            ${canPredict
+      ? `<input type="number" id="home-${match.id}" class="score-box" min="0" max="15" placeholder="-" value="${userHomeGoals}">`
+      : (hasPrediction
+        ? `<div class="score-box" style="border-color: #00F5A0; color:#00F5A0;">${userHomeGoals}</div>`
         : `<div class="score-box" style="opacity:0.5">-</div>`)
     }
-            
+
             <span class="score-separator">-</span>
-            
-            ${hasPrediction
-      ? `<div class="score-box" style="border-color: #00F5A0; color:#00F5A0;">${userAwayGoals}</div>`
-      : (canPredict
-        ? `<input type="number" id="away-${match.id}" class="score-box" min="0" max="15" placeholder="-">`
+
+            ${canPredict
+      ? `<input type="number" id="away-${match.id}" class="score-box" min="0" max="15" placeholder="-" value="${userAwayGoals}">`
+      : (hasPrediction
+        ? `<div class="score-box" style="border-color: #00F5A0; color:#00F5A0;">${userAwayGoals}</div>`
         : `<div class="score-box" style="opacity:0.5">-</div>`)
     }
         </div>
@@ -964,15 +964,15 @@ function renderMatchCard(match, userPrediction) {
       </div>
 
       <!-- Action Button -->
-      ${hasPrediction
-      ? `<button class="save-btn-gemini" style="background: rgba(0, 245, 160, 0.1); border: 1px solid #00F5A0; color: #00F5A0; cursor: default;">
+      ${!canPredict
+      ? (hasPrediction
+        ? `<button class="save-btn-gemini" style="background: rgba(0, 245, 160, 0.1); border: 1px solid #00F5A0; color: #00F5A0; cursor: default;">
              ✅ PRONÓSTICO GUARDADO
            </button>`
-      : (!canPredict
-        ? `<button class="save-btn-gemini" style="background: #333; cursor: not-allowed; opacity: 0.7;">
+        : `<button class="save-btn-gemini" style="background: #333; cursor: not-allowed; opacity: 0.7;">
                  PLAZO CERRADO
-               </button>`
-        : '')
+               </button>`)
+      : ''
     }
     </div>
   `;
@@ -1035,12 +1035,6 @@ async function saveAllPredictions(matchIds) {
     showToast('Introduce al menos un pronóstico', 'error');
     return;
   }
-
-  const summary = predictions.map(p => `${p.homeGoals}-${p.awayGoals}`).join(' / ');
-  const confirmed = confirm(
-    `⚠️ ¿Confirmas tus pronósticos?\n${summary}\n\nUna vez guardados NO podrás modificarlos.`
-  );
-  if (!confirmed) return;
 
   let saved = 0;
   let errors = 0;
