@@ -239,7 +239,7 @@ Primera subpestaña "Por jornada": `renderByWeek()` agrupa por semana lunes-domi
 
 **Formato Excel** (`.xls`): se genera como HTML con namespace Office. Usar MIME `application/vnd.ms-excel` y BOM `﻿`.
 
-**Canvas PNG** (`exportMatchResult`): 900px ancho, alto dinámico según nº de votados. Logo `/assets/garras-logo.png` cargado con `crossOrigin='anonymous'`. En iOS abre nueva pestaña (el usuario guarda manualmente); en Android/desktop descarga directa.
+**Canvas PNG** (`exportMatchResult`): 900px ancho, alto dinámico según nº de votados. Logo `/assets/garras-logo.png` cargado con `crossOrigin='anonymous'` vía helper `_loadImage(src)`. El top 3 se dibuja como podio real (plata izq. más bajo, oro centro más alto, bronce der.), con la foto de cada jugador/a recortada a un círculo (mismo criterio "pecho arriba" que `renderPlayerAvatar`: se toma del source un recorte `iw × iw/2` desde la esquina superior) o, si no tiene foto en `PLAYER_PHOTO_MAP`, un círculo de color (`playerAvatarColor`) con sus iniciales. La insignia de puesto sobre el avatar es un círculo sólido con el número (no un emoji de medalla — en algunos entornos sin fuente de emoji instalada un `fillText('🥇', ...)` en canvas cae a un glifo roto). En iOS abre nueva pestaña (el usuario guarda manualmente); en Android/desktop descarga directa.
 
 ## Env Vars (Vercel)
 

@@ -2787,15 +2787,12 @@ async function exportMatchResult(match) {
   const isFem = match.team === 'Athletic Femenino';
   const catLabel = isFem ? '👟 Athletic Femenino' : '⚽ Athletic Club';
   const results = match.results || [];
-  const MEDALS = ['🥇', '🥈', '🥉'];
   const restCount = Math.max(results.length - 3, 0);
 
   // Canvas dimensions
   const W = 900;
   let H = 300
-    + (results.length > 0 ? 112 : 40)
-    + (results.length > 1 ? 66 : 0)
-    + (results.length > 2 ? 66 : 0)
+    + (results.length > 0 ? 296 : 40)
     + (restCount > 0 ? 54 + restCount * 48 : 0)
     + 80;
 
@@ -2821,13 +2818,7 @@ async function exportMatchResult(match) {
   // Club logo
   let y = 42;
   try {
-    const logo = await new Promise((res, rej) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => res(img);
-      img.onerror = rej;
-      img.src = '/assets/garras-logo.png';
-    });
+    const logo = await _loadImage('/assets/garras-logo.png');
     const sz = 72;
     ctx.globalAlpha = 0.95;
     ctx.drawImage(logo, (W - sz) / 2, y, sz, sz);
@@ -2882,51 +2873,114 @@ async function exportMatchResult(match) {
     ctx.fillText('Sin votos registrados', W / 2, y + 40);
     y += 60;
   } else {
-    // Gold row
-    const winner = results[0];
-    ctx.fillStyle = 'rgba(251,191,36,0.08)';
-    _rrPath(ctx, pad, y, rowW, 100, 12); ctx.fill();
-    ctx.strokeStyle = 'rgba(251,191,36,0.22)'; ctx.lineWidth = 1;
-    _rrPath(ctx, pad, y, rowW, 100, 12); ctx.stroke();
+    // Podio (top 3, con foto) — plata izq, oro centro (más alto), bronce der
+    const PODIUM = [
+      { idx: 1, col: 0, avatarSize: 92, pedestalH: 64, color: '#cbd5e1', barBg: 'rgba(203,213,225,0.10)', barBorder: 'rgba(203,213,225,0.28)' },
+      { idx: 0, col: 1, avatarSize: 124, pedestalH: 92, color: '#fbbf24', barBg: 'rgba(251,191,36,0.12)', barBorder: 'rgba(251,191,36,0.32)' },
+      { idx: 2, col: 2, avatarSize: 84, pedestalH: 50, color: '#d97706', barBg: 'rgba(217,119,6,0.12)', barBorder: 'rgba(217,119,6,0.30)' },
+    ].filter(r => results[r.idx]);
 
-    ctx.font = '46px serif';
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#fbbf24';
-    ctx.fillText('🥇', pad + 14, y + 64);
+    const colW = rowW / 3;
+    const textToPedestalGap = 44; // hueco fijo (nombre + votos) igual en las 3 columnas
+    const baseY = y + 280; // línea base común donde asientan los podios
 
-    let nFont = 30;
-    ctx.font = `bold ${nFont}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
-    while (ctx.measureText(winner.name).width > rowW - 100 && nFont > 14) {
-      nFont--; ctx.font = `bold ${nFont}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
-    }
-    ctx.fillStyle = '#fde68a';
-    ctx.fillText(winner.name, pad + 76, y + 50);
-    ctx.font = '14px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
-    ctx.fillStyle = 'rgba(251,191,36,0.55)';
-    ctx.fillText(`${winner.votes} voto${parseInt(winner.votes) === 1 ? '' : 's'}`, pad + 76, y + 72);
-    ctx.textAlign = 'center';
-    y += 112;
+    for (const rank of PODIUM) {
+      const p = results[rank.idx];
+      const cx = pad + colW * (rank.col + 0.5);
+      const pedestalTop = baseY - rank.pedestalH;
+      const barW = colW - 24;
 
-    // Silver + Bronze
-    const podiumColors = ['#cbd5e1', '#d97706'];
-    for (let i = 1; i < Math.min(3, results.length); i++) {
-      const p = results[i];
-      ctx.font = '32px serif';
-      ctx.textAlign = 'left';
-      ctx.fillText(MEDALS[i], pad + 14, y + 40);
-      let pFont = 20;
-      ctx.font = `600 ${pFont}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
-      while (ctx.measureText(p.name).width > rowW - 110 && pFont > 13) {
-        pFont--; ctx.font = `600 ${pFont}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
-      }
-      ctx.fillStyle = podiumColors[i - 1];
-      ctx.fillText(p.name, pad + 72, y + 33);
-      ctx.font = '13px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
-      ctx.fillStyle = '#475569';
-      ctx.fillText(`${p.votes} voto${parseInt(p.votes) === 1 ? '' : 's'}`, pad + 72, y + 51);
+      // Pedestal
+      ctx.fillStyle = rank.barBg;
+      _rrPath(ctx, cx - barW / 2, pedestalTop, barW, rank.pedestalH, 10); ctx.fill();
+      ctx.strokeStyle = rank.barBorder; ctx.lineWidth = 1.5;
+      _rrPath(ctx, cx - barW / 2, pedestalTop, barW, rank.pedestalH, 10); ctx.stroke();
+
+      // Número de puesto
       ctx.textAlign = 'center';
-      y += 66;
+      ctx.textBaseline = 'middle';
+      ctx.font = `bold ${Math.round(rank.pedestalH * 0.5)}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
+      ctx.fillStyle = rank.color;
+      ctx.fillText(String(rank.idx + 1), cx, pedestalTop + rank.pedestalH / 2 + 2);
+      ctx.textBaseline = 'alphabetic';
+
+      // Votos
+      ctx.font = '13px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.fillText(`${p.votes} voto${parseInt(p.votes) === 1 ? '' : 's'}`, cx, pedestalTop - 8);
+
+      // Nombre (auto-shrink)
+      let pFont = rank.idx === 0 ? 19 : 15;
+      ctx.font = `bold ${pFont}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
+      const maxNameW = colW - 12;
+      while (ctx.measureText(p.name).width > maxNameW && pFont > 10) {
+        pFont--; ctx.font = `bold ${pFont}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
+      }
+      ctx.fillStyle = rank.color;
+      ctx.fillText(p.name, cx, pedestalTop - 26);
+
+      // Avatar (foto real recortada "pecho arriba", o iniciales si no hay foto)
+      const avSize = rank.avatarSize;
+      const avBottom = pedestalTop - textToPedestalGap;
+      const avY = avBottom - avSize;
+      const avCy = avY + avSize / 2;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, avCy, avSize / 2, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      let drewPhoto = false;
+      const photoRel = getPlayerPhotoUrl(p.name);
+      if (photoRel) {
+        try {
+          const img = await _loadImage('/' + photoRel);
+          const iw = img.naturalWidth;
+          const ih = iw / 2; // mismo recorte "pecho para arriba" que en la web
+          ctx.drawImage(img, 0, 0, iw, ih, cx - avSize / 2, avY, avSize, avSize);
+          drewPhoto = true;
+        } catch { /* si falla la carga, cae al fallback de iniciales */ }
+      }
+      if (!drewPhoto) {
+        ctx.fillStyle = playerAvatarColor(p.name);
+        ctx.fillRect(cx - avSize / 2, avY, avSize, avSize);
+        ctx.font = `bold ${Math.round(avSize * 0.4)}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(getInitials(p.name), cx, avCy + 1);
+        ctx.textBaseline = 'alphabetic';
+      }
+      ctx.restore();
+
+      // Anillo del avatar
+      ctx.beginPath();
+      ctx.arc(cx, avCy, avSize / 2, 0, Math.PI * 2);
+      ctx.strokeStyle = rank.color;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Insignia de puesto (círculo sólido, no depende de fuente emoji del sistema)
+      const badgeR = avSize * 0.19;
+      const badgeCx = cx + avSize * 0.36;
+      const badgeCy = avY + avSize * 0.14;
+      ctx.beginPath();
+      ctx.arc(badgeCx, badgeCy, badgeR, 0, Math.PI * 2);
+      ctx.fillStyle = rank.color;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#0d0d18';
+      ctx.stroke();
+      ctx.font = `bold ${Math.round(badgeR * 1.15)}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
+      ctx.fillStyle = '#0d0d18';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(rank.idx + 1), badgeCx, badgeCy + 1);
+      ctx.textBaseline = 'alphabetic';
     }
+
+    ctx.textAlign = 'center';
+    y = baseY + 16;
 
     // Rest of players
     if (restCount > 0) {
@@ -2990,6 +3044,16 @@ async function exportMatchResult(match) {
     a.click();
     showToast('Imagen descargada ✅', 'success');
   }
+}
+
+function _loadImage(src) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => res(img);
+    img.onerror = rej;
+    img.src = src;
+  });
 }
 
 function _rrPath(ctx, x, y, w, h, r) {
