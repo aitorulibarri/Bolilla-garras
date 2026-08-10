@@ -2787,14 +2787,22 @@ async function exportMatchResult(match) {
   const isFem = match.team === 'Athletic Femenino';
   const catLabel = isFem ? '👟 Athletic Femenino' : '⚽ Athletic Club';
   const results = match.results || [];
-  const restCount = Math.max(results.length - 3, 0);
 
-  // Canvas dimensions
+  // Config del podio (tamaños fijos; se usan tanto para calcular el alto del
+  // canvas como para dibujar, así no se pueden desincronizar)
+  const PODIUM_CONFIG = [
+    { idx: 1, col: 0, frameW: 150, frameH: 193, pedestalH: 70, color: '#cbd5e1', barBg: 'rgba(203,213,225,0.10)', barBorder: 'rgba(203,213,225,0.28)' },
+    { idx: 0, col: 1, frameW: 190, frameH: 244, pedestalH: 104, color: '#fbbf24', barBg: 'rgba(251,191,36,0.12)', barBorder: 'rgba(251,191,36,0.32)' },
+    { idx: 2, col: 2, frameW: 128, frameH: 164, pedestalH: 54, color: '#d97706', barBg: 'rgba(217,119,6,0.12)', barBorder: 'rgba(217,119,6,0.30)' },
+  ];
+  const TROPHY_H = 58, TROPHY_GAP = 18, TEXT_TO_PEDESTAL_GAP = 46, BADGE_OVERHANG = 16;
+  const podiumBlockH = TROPHY_H + TROPHY_GAP
+    + Math.max(...PODIUM_CONFIG.map(r => r.frameH)) + TEXT_TO_PEDESTAL_GAP + Math.max(...PODIUM_CONFIG.map(r => r.pedestalH))
+    + BADGE_OVERHANG + 16;
+
+  // Canvas dimensions — formato vertical (tipo post de móvil), solo podio, sin lista
   const W = 900;
-  let H = 300
-    + (results.length > 0 ? 296 : 40)
-    + (restCount > 0 ? 54 + restCount * 48 : 0)
-    + 80;
+  let H = 300 + (results.length > 0 ? podiumBlockH : 40) + 80;
 
   const canvas = document.createElement('canvas');
   canvas.width = W;
@@ -2814,6 +2822,20 @@ async function exportMatchResult(match) {
   glow.addColorStop(1, 'transparent');
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, W, H);
+
+  // Marca de agua del garra/zarpa de la peña, muy sutil, detrás del podio
+  if (results.length > 0) {
+    try {
+      const paw = await _loadImage('/assets/lion-paw.png');
+      const pw = 360, ph = pw * (paw.naturalHeight / paw.naturalWidth);
+      ctx.save();
+      ctx.globalAlpha = 0.05;
+      ctx.translate(W / 2, H - podiumBlockH / 2 - 20);
+      ctx.rotate(-0.1);
+      ctx.drawImage(paw, -pw / 2, -ph / 2, pw, ph);
+      ctx.restore();
+    } catch { /* decorativo, se omite si falla */ }
+  }
 
   // Club logo
   let y = 42;
@@ -2873,22 +2895,28 @@ async function exportMatchResult(match) {
     ctx.fillText('Sin votos registrados', W / 2, y + 40);
     y += 60;
   } else {
-    // Podio (top 3, con foto) — plata izq, oro centro (más alto), bronce der
-    const PODIUM = [
-      { idx: 1, col: 0, avatarSize: 92, pedestalH: 64, color: '#cbd5e1', barBg: 'rgba(203,213,225,0.10)', barBorder: 'rgba(203,213,225,0.28)' },
-      { idx: 0, col: 1, avatarSize: 124, pedestalH: 92, color: '#fbbf24', barBg: 'rgba(251,191,36,0.12)', barBorder: 'rgba(251,191,36,0.32)' },
-      { idx: 2, col: 2, avatarSize: 84, pedestalH: 50, color: '#d97706', barBg: 'rgba(217,119,6,0.12)', barBorder: 'rgba(217,119,6,0.30)' },
-    ].filter(r => results[r.idx]);
-
+    // Podio (top 3, con foto) — plata izq, oro centro (más alto), bronce der.
+    // Solo el podio: no se listan más jugadores (4º, 5º...).
+    const PODIUM = PODIUM_CONFIG.filter(r => results[r.idx]);
     const colW = rowW / 3;
-    const textToPedestalGap = 44; // hueco fijo (nombre + votos) igual en las 3 columnas
-    const baseY = y + 280; // línea base común donde asientan los podios
+
+    // Trofeo sobre el ganador — toque visual de la peña
+    const goldColX = pad + colW * 1.5;
+    try {
+      const trophy = await _loadImage('/assets/trofeo-v2.png');
+      const tw = TROPHY_H * (trophy.naturalWidth / trophy.naturalHeight);
+      ctx.drawImage(trophy, goldColX - tw / 2, y, tw, TROPHY_H);
+    } catch { /* decorativo, se omite si falla */ }
+    y += TROPHY_H + TROPHY_GAP;
+
+    const baseY = y + BADGE_OVERHANG
+      + Math.max(...PODIUM.map(r => r.frameH)) + TEXT_TO_PEDESTAL_GAP + Math.max(...PODIUM.map(r => r.pedestalH));
 
     for (const rank of PODIUM) {
       const p = results[rank.idx];
       const cx = pad + colW * (rank.col + 0.5);
       const pedestalTop = baseY - rank.pedestalH;
-      const barW = colW - 24;
+      const barW = colW - 20;
 
       // Pedestal
       ctx.fillStyle = rank.barBg;
@@ -2899,7 +2927,7 @@ async function exportMatchResult(match) {
       // Número de puesto
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.font = `bold ${Math.round(rank.pedestalH * 0.5)}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
+      ctx.font = `bold ${Math.round(rank.pedestalH * 0.46)}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
       ctx.fillStyle = rank.color;
       ctx.fillText(String(rank.idx + 1), cx, pedestalTop + rank.pedestalH / 2 + 2);
       ctx.textBaseline = 'alphabetic';
@@ -2910,25 +2938,24 @@ async function exportMatchResult(match) {
       ctx.fillText(`${p.votes} voto${parseInt(p.votes) === 1 ? '' : 's'}`, cx, pedestalTop - 8);
 
       // Nombre (auto-shrink)
-      let pFont = rank.idx === 0 ? 19 : 15;
+      let pFont = rank.idx === 0 ? 20 : 15;
       ctx.font = `bold ${pFont}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
-      const maxNameW = colW - 12;
+      const maxNameW = colW - 8;
       while (ctx.measureText(p.name).width > maxNameW && pFont > 10) {
         pFont--; ctx.font = `bold ${pFont}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
       }
       ctx.fillStyle = rank.color;
-      ctx.fillText(p.name, cx, pedestalTop - 26);
+      ctx.fillText(p.name, cx, pedestalTop - 28);
 
-      // Avatar (foto real recortada "pecho arriba", o iniciales si no hay foto)
-      const avSize = rank.avatarSize;
-      const avBottom = pedestalTop - textToPedestalGap;
-      const avY = avBottom - avSize;
-      const avCy = avY + avSize / 2;
+      // Foto (recorte "pecho arriba": centro del 50% del ancho, 0-64% del alto,
+      // igual proporción que el frame para que no se deforme) o iniciales si no hay foto
+      const fW = rank.frameW, fH = rank.frameH;
+      const frameBottom = pedestalTop - TEXT_TO_PEDESTAL_GAP;
+      const frameTop = frameBottom - fH;
+      const frameLeft = cx - fW / 2;
 
       ctx.save();
-      ctx.beginPath();
-      ctx.arc(cx, avCy, avSize / 2, 0, Math.PI * 2);
-      ctx.closePath();
+      _rrPath(ctx, frameLeft, frameTop, fW, fH, 14);
       ctx.clip();
       let drewPhoto = false;
       const photoRel = getPlayerPhotoUrl(p.name);
@@ -2936,42 +2963,41 @@ async function exportMatchResult(match) {
         try {
           const img = await _loadImage('/' + photoRel);
           const iw = img.naturalWidth;
-          const ih = iw / 2; // mismo recorte "pecho para arriba" que en la web
-          ctx.drawImage(img, 0, 0, iw, ih, cx - avSize / 2, avY, avSize, avSize);
+          const sWidth = iw * 0.5;
+          const sHeight = sWidth * (fH / fW);
+          ctx.drawImage(img, iw * 0.25, 0, sWidth, sHeight, frameLeft, frameTop, fW, fH);
           drewPhoto = true;
         } catch { /* si falla la carga, cae al fallback de iniciales */ }
       }
       if (!drewPhoto) {
         ctx.fillStyle = playerAvatarColor(p.name);
-        ctx.fillRect(cx - avSize / 2, avY, avSize, avSize);
-        ctx.font = `bold ${Math.round(avSize * 0.4)}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
+        ctx.fillRect(frameLeft, frameTop, fW, fH);
+        ctx.font = `bold ${Math.round(fW * 0.34)}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
         ctx.fillStyle = '#fff';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(getInitials(p.name), cx, avCy + 1);
+        ctx.fillText(getInitials(p.name), cx, frameTop + fH / 2 + 1);
         ctx.textBaseline = 'alphabetic';
       }
       ctx.restore();
 
-      // Anillo del avatar
-      ctx.beginPath();
-      ctx.arc(cx, avCy, avSize / 2, 0, Math.PI * 2);
+      // Borde del marco
       ctx.strokeStyle = rank.color;
       ctx.lineWidth = 3;
-      ctx.stroke();
+      _rrPath(ctx, frameLeft, frameTop, fW, fH, 14); ctx.stroke();
 
       // Insignia de puesto (círculo sólido, no depende de fuente emoji del sistema)
-      const badgeR = avSize * 0.19;
-      const badgeCx = cx + avSize * 0.36;
-      const badgeCy = avY + avSize * 0.14;
+      const badgeR = 19;
+      const badgeCx = frameLeft + fW - 6;
+      const badgeCy = frameTop + 6;
       ctx.beginPath();
       ctx.arc(badgeCx, badgeCy, badgeR, 0, Math.PI * 2);
       ctx.fillStyle = rank.color;
       ctx.fill();
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.5;
       ctx.strokeStyle = '#0d0d18';
       ctx.stroke();
-      ctx.font = `bold ${Math.round(badgeR * 1.15)}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
+      ctx.font = `bold ${Math.round(badgeR * 1.1)}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
       ctx.fillStyle = '#0d0d18';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -2981,40 +3007,6 @@ async function exportMatchResult(match) {
 
     ctx.textAlign = 'center';
     y = baseY + 16;
-
-    // Rest of players
-    if (restCount > 0) {
-      y += 8;
-      ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - pad, y);
-      ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 1; ctx.stroke();
-      y += 14;
-      ctx.font = '10px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
-      ctx.fillStyle = '#334155';
-      ctx.textAlign = 'center';
-      ctx.fillText('VOTACIÓN COMPLETA', W / 2, y);
-      y += 22;
-
-      for (let i = 3; i < results.length; i++) {
-        const p = results[i];
-        ctx.font = '13px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillStyle = '#475569';
-        ctx.fillText(`${i + 1}.`, pad + 4, y + 16);
-        ctx.fillStyle = '#94a3b8';
-        let dn = p.name;
-        const maxNW = W - pad * 2 - 70 - 70;
-        ctx.font = '14px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
-        while (ctx.measureText(dn).width > maxNW && dn.length > 3) dn = dn.slice(0, -1);
-        if (dn !== p.name) dn += '…';
-        ctx.fillText(dn, pad + 30, y + 16);
-        ctx.textAlign = 'right';
-        ctx.fillStyle = '#475569';
-        ctx.font = '13px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
-        ctx.fillText(`${p.votes}v`, W - pad, y + 16);
-        ctx.textAlign = 'center';
-        y += 48;
-      }
-    }
   }
 
   // Footer
