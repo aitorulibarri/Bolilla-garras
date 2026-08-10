@@ -671,6 +671,24 @@ app.post('/api/admin/reset-full-season', requireAdmin, async (req, res) => {
     }
 });
 
+// One-off: desactivar jugadores del roster masculino que ya no están en la plantilla
+// (no se puede DELETE por FK desde match_mvp_votes/match_mvp_players). Borrar esta
+// ruta tras ejecutarla una vez en producción.
+app.get('/api/admin/deactivate-legacy-players', requireAdmin, async (req, res) => {
+    try {
+        if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
+        const names = ['Unai Gómez', 'Unai Vencedor', 'Urko Izeta', 'Iñigo Lekue', 'Eder García', 'Asier Hierro'];
+        const result = await pool.query(
+            'UPDATE garras_players SET active = 0 WHERE name = ANY($1) RETURNING name, active',
+            [names]
+        );
+        res.json({ success: true, updated: result.rows });
+    } catch (err) {
+        console.error('Deactivate legacy players error:', err);
+        res.status(500).json({ error: 'Error al desactivar jugadores' });
+    }
+});
+
 // Emergency: keep only GARRAS admin (admin only)
 app.get('/api/admin/clean-users', requireAdmin, async (req, res) => {
     try {
