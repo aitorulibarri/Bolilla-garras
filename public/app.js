@@ -839,6 +839,23 @@ const PLAYER_PHOTO_MAP = {
   'Elene Gurtubay Loyo':          'players/femenino/elene-gurtubay-loyo.png',
 };
 
+// Algunas fotos del pendrive no tienen al jugador/a centrado en el encuadre
+// original (la pose/el recorte de esa foto concreta lo desplaza). El recorte
+// "pecho arriba" (ver getPlayerCropOffsetX) asume centrado por defecto; para
+// estos casos puntuales se corrige con un desplazamiento manual, verificado
+// visualmente uno a uno (fracción de iw a sumar a sx: negativo mueve el
+// recorte hacia la izquierda de la foto → la cara aparece más a la derecha).
+const PLAYER_PHOTO_CROP_OFFSET = {
+  'Alex Padilla': -0.05,
+  'Maroan Sannadi': -0.06,
+  'Unai Simón': -0.11,
+  'Nerea Benito Zaldibar': -0.04,
+};
+
+function getPlayerCropOffsetX(name) {
+  return PLAYER_PHOTO_CROP_OFFSET[name] || 0;
+}
+
 function getPlayerPhotoUrl(name) {
   if (!name) return null;
   if (PLAYER_PHOTO_MAP[name]) return PLAYER_PHOTO_MAP[name];
@@ -2965,7 +2982,8 @@ async function exportMatchResult(match) {
           const iw = img.naturalWidth;
           const sWidth = iw * 0.5;
           const sHeight = sWidth * (fH / fW);
-          ctx.drawImage(img, iw * 0.25, 0, sWidth, sHeight, frameLeft, frameTop, fW, fH);
+          const sx = iw * 0.25 + iw * getPlayerCropOffsetX(p.name);
+          ctx.drawImage(img, sx, 0, sWidth, sHeight, frameLeft, frameTop, fW, fH);
           drewPhoto = true;
         } catch { /* si falla la carga, cae al fallback de iniciales */ }
       }
