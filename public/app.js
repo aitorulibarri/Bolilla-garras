@@ -780,8 +780,10 @@ function getShieldUrl(teamName) {
 
 // ==================== FOTOS DE JUGADORES (Garras Saria) ====================
 // Mapeo directo: nombre EXACTO como está en garras_players.name -> foto en public/players/
-// Jugadores del seed sin foto en el pendrive (masculino): Unai Vencedor, Iñigo Lekue,
-//   Unai Gómez, Urko Izeta, Eder García.
+// Roster masculino (MASCULINO_ROSTER en server.js, 33 jugadores): todos tienen foto.
+// Si se añade un jugador nuevo al roster, comprobar que el nº de claves masculino de
+// este mapa cuadra con el nº de jugadores de MASCULINO_ROSTER (se perdió una entrada
+// -Alex Padilla- al reordenar este bloque a mano y pasó desapercibido varios commits).
 // Jugadoras del seed sin foto en el pendrive (femenino): Olatz Santana Amado,
 //   Nerea Nevado Gómez, Laida Balerdi Beloki, Irati Alfaro Nagore, Maite Zubieta Aranbarri,
 //   Alejandra Estefanía Díaz, Ane Bordagaray Casado, Daniela Agote Helguera (el pendrive trae

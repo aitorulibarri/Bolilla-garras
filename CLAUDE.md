@@ -89,7 +89,9 @@ La conexión solo se activa si `DATABASE_URL` está presente (`IS_POSTGRES` flag
 
 **Leaderboard query**: arranca desde `users` con LEFT JOIN a `predictions` para que todos los usuarios registrados aparezcan aunque tengan 0 puntos.
 
-**Seed automático**: en `dbInit()`, si `garras_players` está vacía se insertan el roster masculino (`MASCULINO_ROSTER`, con dorsal) y 28 femeninas. Usar `pool.query` directamente dentro de `dbInit()` — NO usar `query()`/`queryOne()` (deadlock).
+**Seed automático**: en `dbInit()`, si `garras_players` está vacía se insertan el roster masculino (`MASCULINO_ROSTER`, 33 jugadores con dorsal, temporada 2026-27) y 28 femeninas. Usar `pool.query` directamente dentro de `dbInit()` — NO usar `query()`/`queryOne()` (deadlock).
+
+**Dorsales verificados en fuente oficial**: "Dorsales del Athletic Club para la temporada 2026/27" (athletic-club.eus, 17/08/2026) — incluye tanto el primer equipo como los jugadores del Bilbao Athletic inscritos en LaLiga con ficha del primer equipo (Mikel Santos, Elijah Gift, Asier Hierro, Iker Monreal, Johaneko Louis-Jean, Selton Sánchez). Ante cualquier duda de dorsal, esa nota es la fuente de verdad — no la página de plantilla genérica (`/equipos/athletic-club/.../plantilla/`), que no lista a los jugadores duales.
 
 **No hay CRUD admin para `garras_players`** — la única forma de editar el roster (altas, bajas, dorsales) es tocar `MASCULINO_ROSTER` en `server.js` y desplegar. Si la tabla ya está poblada (producción), el branch `else` de ese mismo bloque en `dbInit()` sincroniza el array en cada arranque: UPSERT por `LOWER(name)` (dorsal + `active=1`) para cada entrada, y baja con soft-delete (`active=0`, nunca `DELETE`, por la FK de `match_mvp_votes`/`match_mvp_players`) para jugadores retirados del array a mano (ver Mikel Vesga). Para dar de baja a alguien: quitarlo de `MASCULINO_ROSTER` y añadir su `UPDATE ... SET active = 0` junto al de Vesga.
 
@@ -137,6 +139,8 @@ Tab activo en producción. El sistema MVP por partido (`/api/mvp/*`) es el únic
 
 **Ranking de temporada**: CTE con 4 pasos — vote_counts → match_max → winners (jugadores que igualaron el máximo; si empate, ambos suman +1) → totals. Orden: `partidos_ganados DESC, total_votes DESC, name ASC`.
 
+**Dorsal en el frontend**: `gp.dorsal` se selecciona explícitamente en `/api/mvp/active` (players + `userVote`), `/api/mvp/history` (`results[]`) y `/api/mvp/ranking` — si se añade una query nueva que devuelva jugadores, añadir `dorsal` a mano (no hay `SELECT *`). Se pinta como `<span class="mvp-dorsal">#{dorsal}</span>` justo después del nombre (tarjetas de voto, mensaje "has votado a", historial, ranking) — se omite si `dorsal` es `null`. Mismo patrón de sufijo `" #dorsal"` en gris claro se usa en el podio PNG de `exportMatchResult` (ver Exports).
+
 ### Frontend Garras Saria (app.js)
 
 - `loadGarrasSaria()` — punto de entrada del tab; llama a admin (si admin) + vote + history + ranking en paralelo
@@ -168,7 +172,19 @@ Los jugadores/as votables en el MVP (`garras_players`) pueden tener foto. `PLAYE
 
 **Recorte "pecho para arriba"**: las fotos oficiales del club son de cuerpo entero (torso, manos en la cintura), con un lienzo de **altura idéntica (900px) en las ~60 fotos** — solo cambia el ancho (600-676px) según la complexión del jugador/a. Para mostrar solo cabeza+hombros+pecho sin recortar los ficheros, `renderPlayerAvatar` envuelve la `<img>` en `.garras-avatar-frame` (tamaño fijo, `overflow:hidden`) y aplica `transform: scale(2.0); transform-origin: 50% 0%` sobre la imagen (que ya usa `object-fit:cover; object-position:top center`). Al ser la altura de lienzo uniforme, un único factor de zoom funciona para toda la plantilla — si se cambia, verificarlo visualmente contra 3-4 fotos distintas (hay variación de encuadre horizontal, no vertical).
 
-**Jugadores del seed sin foto / fotos sin jugador conocido**: no todos los nombres del seed de `garras_players` (server.js, dentro de `dbInit()`) tienen foto en el pendrive de origen, y viceversa (fotos de altas nuevas de temporada sin fila todavía en la DB). Ambos casos están documentados en el comentario que precede a `PLAYER_PHOTO_MAP` en `app.js`.
+**Jugadores del seed sin foto / fotos sin jugador conocido**: el roster masculino (33) tiene foto completa. En femenino, 9 de las 28 del seed no tienen foto en el pendrive de origen (nombres exactos en el comentario que precede a `PLAYER_PHOTO_MAP` en `app.js`) — caen al avatar de iniciales.
+
+**Verificación tras editar `PLAYER_PHOTO_MAP`**: comprobar que el nº de claves masculino del mapa coincide con el nº de entradas de `MASCULINO_ROSTER` (server.js) — un reordenado a mano del bloque hizo desaparecer la entrada de `Alex Padilla` sin que saltara ningún error (JS sigue funcionando en silencio, el jugador solo cae al avatar de iniciales). Chequeo rápido:
+```bash
+node -e "
+const fs = require('fs');
+const src = fs.readFileSync('server.js','utf8');
+const start = src.indexOf('const MASCULINO_ROSTER');
+const roster = [...src.slice(start, src.indexOf('];', start)).matchAll(/name:\s*'([^']+)'/g)].map(m=>m[1]);
+const keys = [...fs.readFileSync('public/app.js','utf8').matchAll(/'([^']+)':\s*'players\/masculino\//g)].map(m=>m[1]);
+console.log('faltan en el mapa:', roster.filter(n => !keys.includes(n)));
+"
+```
 
 ## Frontend: UI Patterns clave
 
