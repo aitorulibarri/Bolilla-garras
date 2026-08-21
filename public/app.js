@@ -3027,6 +3027,29 @@ async function exportMatchResult(match) {
       ctx.textBaseline = 'middle';
       ctx.fillText(String(rank.idx + 1), badgeCx, badgeCy + 1);
       ctx.textBaseline = 'alphabetic';
+
+      // Insignia de dorsal (pill), esquina superior-izquierda — espejo de la insignia
+      // de puesto, mismo eje vertical (frameTop+6), mismo color de rango. Convención
+      // de "tarjeta de jugador" (número de camiseta superpuesto a la foto).
+      if (p.dorsal) {
+        const dorsalText = `Nº${p.dorsal}`;
+        ctx.font = 'bold 14px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
+        const pillH = 25;
+        const pillW = ctx.measureText(dorsalText).width + 18;
+        const pillCx = frameLeft + 6 - pillW / 2;
+        const pillCy = frameTop + 6;
+        _rrPath(ctx, pillCx - pillW / 2, pillCy - pillH / 2, pillW, pillH, pillH / 2);
+        ctx.fillStyle = '#0d0d18';
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = rank.color;
+        ctx.stroke();
+        ctx.fillStyle = rank.color;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(dorsalText, pillCx, pillCy + 1);
+        ctx.textBaseline = 'alphabetic';
+      }
     }
 
     ctx.textAlign = 'center';
