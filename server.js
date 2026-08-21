@@ -345,12 +345,13 @@ async function dbInit() {
                 { name: 'Beñat Gerenabarrena', dorsal: 24 },
                 { name: 'Álvaro Djaló', dorsal: 25 },
                 { name: 'Peio Canales', dorsal: 28 },
-                { name: 'Johaneko Louis-Jean', dorsal: 29 },
-                { name: 'Asier Hierro', dorsal: 31 },
-                // Sin dorsal oficial de primer equipo confirmado todavía
-                { name: 'Mikel Santos', dorsal: null },
-                { name: 'Selton Sánchez', dorsal: null },
-                { name: 'Iker Monreal', dorsal: null }
+                // Jugadores del Bilbao Athletic inscritos en LaLiga con el primer equipo
+                // (dorsales oficiales: ver "Dorsales del Athletic Club 2026/27", athletic-club.eus 17/08/2026)
+                { name: 'Mikel Santos', dorsal: 26 },
+                { name: 'Asier Hierro', dorsal: 29 },
+                { name: 'Iker Monreal', dorsal: 30 },
+                { name: 'Johaneko Louis-Jean', dorsal: 31 },
+                { name: 'Selton Sánchez', dorsal: 44 }
             ];
 
             // Seed players if table is empty (use pool.query directly — queryOne calls dbInit which would deadlock)
