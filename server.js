@@ -345,9 +345,13 @@ async function dbInit() {
                 { name: 'Beñat Gerenabarrena', dorsal: 24 },
                 { name: 'Álvaro Djaló', dorsal: 25 },
                 { name: 'Peio Canales', dorsal: 28 },
+                // Central del primer equipo, de baja por lesión de rodilla — sin dorsal asignado
+                // en este tramo de temporada (ver nota oficial citada abajo)
+                { name: 'Unai Egiluz', dorsal: null },
                 // Jugadores del Bilbao Athletic inscritos en LaLiga con el primer equipo
                 // (dorsales oficiales: ver "Dorsales del Athletic Club 2026/27", athletic-club.eus 17/08/2026)
                 { name: 'Mikel Santos', dorsal: 26 },
+                { name: 'Elijah Gift', dorsal: 27 },
                 { name: 'Asier Hierro', dorsal: 29 },
                 { name: 'Iker Monreal', dorsal: 30 },
                 { name: 'Johaneko Louis-Jean', dorsal: 31 },

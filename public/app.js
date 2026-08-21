@@ -816,6 +816,8 @@ const PLAYER_PHOTO_MAP = {
   'Peio Canales':             'players/masculino/peio-canales-urtasun.png',
   'Johaneko Louis-Jean':      'players/masculino/johaneko-louis-jean_L.png',
   'Asier Hierro':             'players/masculino/asier-hierro-campo_L.png',
+  'Elijah Gift':              'players/masculino/elijah-gift.png',
+  'Unai Egiluz':              'players/masculino/unai-egiluz-arroyo_L.png',
   'Beñat Prados':             'players/masculino/benat-prados-diaz.png',
   'Mikel Santos':             'players/masculino/mikel-santos-linares.png',
   'Selton Sánchez':           'players/masculino/selton-sued-sanchez-camilo.png',
