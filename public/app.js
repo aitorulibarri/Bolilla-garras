@@ -2960,15 +2960,35 @@ async function exportMatchResult(match) {
       ctx.fillStyle = 'rgba(255,255,255,0.5)';
       ctx.fillText(`${p.votes} voto${parseInt(p.votes) === 1 ? '' : 's'}`, cx, pedestalTop - 8);
 
-      // Nombre (auto-shrink)
+      // Nombre + dorsal (auto-shrink) — "Nombre #9", mismo patrón visual que el
+      // badge .mvp-dorsal ya usado en las tarjetas de voto/historial/ranking de la web
       let pFont = rank.idx === 0 ? 20 : 15;
-      ctx.font = `bold ${pFont}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
+      const dorsalSuffix = p.dorsal ? ` #${p.dorsal}` : '';
+      const fontMain = () => `bold ${pFont}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
+      const fontSuffix = () => `${Math.round(pFont * 0.7)}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
       const maxNameW = colW - 8;
-      while (ctx.measureText(p.name).width > maxNameW && pFont > 10) {
-        pFont--; ctx.font = `bold ${pFont}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
+      const measure = () => {
+        ctx.font = fontMain();
+        const nameW = ctx.measureText(p.name).width;
+        ctx.font = fontSuffix();
+        const suffixW = ctx.measureText(dorsalSuffix).width;
+        return { nameW, suffixW, total: nameW + suffixW };
+      };
+      let m = measure();
+      while (m.total > maxNameW && pFont > 10) {
+        pFont--; m = measure();
       }
+      const nameStartX = cx - m.total / 2;
+      ctx.textAlign = 'left';
+      ctx.font = fontMain();
       ctx.fillStyle = rank.color;
-      ctx.fillText(p.name, cx, pedestalTop - 28);
+      ctx.fillText(p.name, nameStartX, pedestalTop - 28);
+      if (dorsalSuffix) {
+        ctx.font = fontSuffix();
+        ctx.fillStyle = 'rgba(255,255,255,0.45)';
+        ctx.fillText(dorsalSuffix, nameStartX + m.nameW, pedestalTop - 28);
+      }
+      ctx.textAlign = 'center';
 
       // Foto (recorte "pecho arriba": centro del 50% del ancho, 0-64% del alto,
       // igual proporción que el frame para que no se deforme) o iniciales si no hay foto
@@ -3027,29 +3047,6 @@ async function exportMatchResult(match) {
       ctx.textBaseline = 'middle';
       ctx.fillText(String(rank.idx + 1), badgeCx, badgeCy + 1);
       ctx.textBaseline = 'alphabetic';
-
-      // Insignia de dorsal (pill), esquina superior-izquierda — espejo de la insignia
-      // de puesto, mismo eje vertical (frameTop+6), mismo color de rango. Convención
-      // de "tarjeta de jugador" (número de camiseta superpuesto a la foto).
-      if (p.dorsal) {
-        const dorsalText = `Nº${p.dorsal}`;
-        ctx.font = 'bold 14px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
-        const pillH = 25;
-        const pillW = ctx.measureText(dorsalText).width + 18;
-        const pillCx = frameLeft + 6 - pillW / 2;
-        const pillCy = frameTop + 6;
-        _rrPath(ctx, pillCx - pillW / 2, pillCy - pillH / 2, pillW, pillH, pillH / 2);
-        ctx.fillStyle = '#0d0d18';
-        ctx.fill();
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = rank.color;
-        ctx.stroke();
-        ctx.fillStyle = rank.color;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(dorsalText, pillCx, pillCy + 1);
-        ctx.textBaseline = 'alphabetic';
-      }
     }
 
     ctx.textAlign = 'center';
