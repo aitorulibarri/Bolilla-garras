@@ -315,21 +315,49 @@ async function dbInit() {
                 await pool.query(`ALTER TABLE matches ADD COLUMN IF NOT EXISTS mvp_voting_open INTEGER DEFAULT 0`);
             } catch (e) { /* ignore if exists */ }
 
+            // Roster masculino canónico (dorsales verificados en athletic-club.eus, temporada 2026-27).
+            // Usado tanto para el seed inicial (tabla vacía) como para el sync idempotente de abajo
+            // (que corrige dorsales/altas/bajas en una DB ya poblada, ya que no hay CRUD admin para garras_players).
+            const MASCULINO_ROSTER = [
+                { name: 'Unai Simón', dorsal: 1 },
+                { name: 'Andoni Gorosabel', dorsal: 2 },
+                { name: 'Dani Vivian', dorsal: 3 },
+                { name: 'Aitor Paredes', dorsal: 4 },
+                { name: 'Yeray Álvarez', dorsal: 5 },
+                { name: 'Beñat Prados', dorsal: 6 },
+                { name: 'Alex Berenguer', dorsal: 7 },
+                { name: 'Oihan Sancet', dorsal: 8 },
+                { name: 'Iñaki Williams', dorsal: 9 },
+                { name: 'Nico Williams', dorsal: 10 },
+                { name: 'Gorka Guruzeta', dorsal: 11 },
+                { name: 'Jesús Areso', dorsal: 12 },
+                { name: 'Alex Padilla', dorsal: 13 },
+                { name: 'Aymeric Laporte', dorsal: 14 },
+                { name: 'Hugo Rincón', dorsal: 15 },
+                { name: 'Iñigo R. De Galarreta', dorsal: 16 },
+                { name: 'Yuri Berchiche', dorsal: 17 },
+                { name: 'Mikel Jauregizar', dorsal: 18 },
+                { name: 'Adama Boiro', dorsal: 19 },
+                { name: 'Alejandro Rego', dorsal: 20 },
+                { name: 'Maroan Sannadi', dorsal: 21 },
+                { name: 'Nico Serrano', dorsal: 22 },
+                { name: 'Robert Navarro', dorsal: 23 },
+                { name: 'Beñat Gerenabarrena', dorsal: 24 },
+                { name: 'Álvaro Djaló', dorsal: 25 },
+                { name: 'Peio Canales', dorsal: 28 },
+                { name: 'Johaneko Louis-Jean', dorsal: 29 },
+                { name: 'Asier Hierro', dorsal: 31 },
+                // Sin dorsal oficial de primer equipo confirmado todavía
+                { name: 'Mikel Santos', dorsal: null },
+                { name: 'Selton Sánchez', dorsal: null },
+                { name: 'Iker Monreal', dorsal: null }
+            ];
+
             // Seed players if table is empty (use pool.query directly — queryOne calls dbInit which would deadlock)
             const playerCountResult = await pool.query('SELECT COUNT(*) as count FROM garras_players');
             if (parseInt(playerCountResult.rows[0].count) === 0) {
-                const masculinoPlayers = [
-                    'Unai Simón', 'Andoni Gorosabel', 'Dani Vivian', 'Aitor Paredes',
-                    'Yeray Álvarez', 'Mikel Vesga', 'Alex Berenguer', 'Oihan Sancet',
-                    'Iñaki Williams', 'Nico Williams', 'Gorka Guruzeta', 'Jesús Areso',
-                    'Aymeric Laporte', 'Iñigo R. De Galarreta',
-                    'Yuri Berchiche', 'Mikel Jauregizar', 'Adama Boiro',
-                    'Maroan Sannadi', 'Nico Serrano', 'Robert Navarro', 'Beñat Prados',
-                    'Mikel Santos', 'Alex Padilla', 'Alejandro Rego',
-                    'Selton Sánchez', 'Iker Monreal'
-                ];
-                for (const name of masculinoPlayers) {
-                    await pool.query('INSERT INTO garras_players (name, category) VALUES ($1, $2)', [name, 'masculino']);
+                for (const p of MASCULINO_ROSTER) {
+                    await pool.query('INSERT INTO garras_players (name, category, dorsal) VALUES ($1, $2, $3)', [p.name, 'masculino', p.dorsal]);
                 }
                 const femeninoPlayers = [
                     { name: 'Olatz Santana Amado', dorsal: 1 },
@@ -365,6 +393,31 @@ async function dbInit() {
                     await pool.query('INSERT INTO garras_players (name, category, dorsal) VALUES ($1, $2, $3)', [p.name, 'femenino', p.dorsal]);
                 }
                 console.log('✅ Garras players seeded');
+            } else {
+                // Tabla ya poblada (producción): sincroniza altas/bajas/dorsales del roster masculino
+                // en cada arranque. Idempotente — no hay endpoint admin para editar garras_players a mano.
+                for (const p of MASCULINO_ROSTER) {
+                    const existing = await pool.query(
+                        'SELECT id FROM garras_players WHERE category = $1 AND LOWER(name) = LOWER($2)',
+                        ['masculino', p.name]
+                    );
+                    if (existing.rows.length > 0) {
+                        await pool.query(
+                            'UPDATE garras_players SET dorsal = $1, active = 1 WHERE id = $2',
+                            [p.dorsal, existing.rows[0].id]
+                        );
+                    } else {
+                        await pool.query(
+                            'INSERT INTO garras_players (name, category, dorsal, active) VALUES ($1, $2, $3, 1)',
+                            [p.name, 'masculino', p.dorsal]
+                        );
+                    }
+                }
+                // Baja: Mikel Vesga ya no está en la plantilla. Soft-delete (active=0) para conservar
+                // su histórico en match_mvp_votes / match_mvp_players (FK a garras_players.id).
+                await pool.query(
+                    `UPDATE garras_players SET active = 0 WHERE category = 'masculino' AND LOWER(name) = LOWER('Mikel Vesga')`
+                );
             }
 
             dbReady = true;

@@ -781,7 +781,7 @@ function getShieldUrl(teamName) {
 // ==================== FOTOS DE JUGADORES (Garras Saria) ====================
 // Mapeo directo: nombre EXACTO como está en garras_players.name -> foto en public/players/
 // Jugadores del seed sin foto en el pendrive (masculino): Unai Vencedor, Iñigo Lekue,
-//   Unai Gómez, Urko Izeta, Asier Hierro, Eder García.
+//   Unai Gómez, Urko Izeta, Eder García.
 // Jugadoras del seed sin foto en el pendrive (femenino): Olatz Santana Amado,
 //   Nerea Nevado Gómez, Laida Balerdi Beloki, Irati Alfaro Nagore, Maite Zubieta Aranbarri,
 //   Alejandra Estefanía Díaz, Ane Bordagaray Casado, Daniela Agote Helguera (el pendrive trae
@@ -795,7 +795,6 @@ const PLAYER_PHOTO_MAP = {
   'Dani Vivian':              'players/masculino/daniel-vivian-moreno.png',
   'Aitor Paredes':            'players/masculino/aitor-paredes-casamichana.png',
   'Yeray Álvarez':            'players/masculino/yeray-alvarez-lopez_L.png',
-  'Mikel Vesga':              'players/masculino/mikel-vesga-arruti.png',
   'Alex Berenguer':           'players/masculino/alejandro-berenguer-remiro.png',
   'Oihan Sancet':             'players/masculino/oihan-sancet-tirapu.png',
   'Iñaki Williams':           'players/masculino/inaki-williams-arthuer_L.png',
@@ -803,17 +802,22 @@ const PLAYER_PHOTO_MAP = {
   'Gorka Guruzeta':           'players/masculino/gorka-guruzeta-rodriguez.png',
   'Jesús Areso':              'players/masculino/jesus-areso-blanco.png',
   'Aymeric Laporte':          'players/masculino/aymeric-laporte.png',
+  'Hugo Rincón':              'players/masculino/hugo-rincon-lumbreras.png',
   'Iñigo R. De Galarreta':    'players/masculino/inigo-ruiz-de-galarreta-etxeberria.png',
   'Yuri Berchiche':           'players/masculino/yuri-berchiche-izeta.png',
   'Mikel Jauregizar':         'players/masculino/mikel-jauregizar-alboniga.png',
   'Adama Boiro':              'players/masculino/adama-boiro-boiro.png',
+  'Alejandro Rego':           'players/masculino/alejandro-rego-mora.png',
   'Maroan Sannadi':           'players/masculino/maroan-sannadi-harrouch.png',
   'Nico Serrano':             'players/masculino/nicolas-serrano-galdeano.png',
   'Robert Navarro':           'players/masculino/robert-navarro-munoz.png',
+  'Beñat Gerenabarrena':      'players/masculino/benat-gerenabarrena-zendoia.png',
+  'Álvaro Djaló':             'players/masculino/alvaro-djalo-dias-fernandes.png',
+  'Peio Canales':             'players/masculino/peio-canales-urtasun.png',
+  'Johaneko Louis-Jean':      'players/masculino/johaneko-louis-jean_L.png',
+  'Asier Hierro':             'players/masculino/asier-hierro-campo_L.png',
   'Beñat Prados':             'players/masculino/benat-prados-diaz.png',
   'Mikel Santos':             'players/masculino/mikel-santos-linares.png',
-  'Alex Padilla':             'players/masculino/alex-padilla-perez.png',
-  'Alejandro Rego':           'players/masculino/alejandro-rego-mora.png',
   'Selton Sánchez':           'players/masculino/selton-sued-sanchez-camilo.png',
   'Iker Monreal':             'players/masculino/iker-monreal-agundez.png',
 

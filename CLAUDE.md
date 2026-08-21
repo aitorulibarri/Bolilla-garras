@@ -89,7 +89,9 @@ La conexión solo se activa si `DATABASE_URL` está presente (`IS_POSTGRES` flag
 
 **Leaderboard query**: arranca desde `users` con LEFT JOIN a `predictions` para que todos los usuarios registrados aparezcan aunque tengan 0 puntos.
 
-**Seed automático**: en `dbInit()`, si `garras_players` está vacía se insertan 26 jugadores masculinos y 28 femeninas. Usar `pool.query` directamente dentro de `dbInit()` — NO usar `query()`/`queryOne()` (deadlock).
+**Seed automático**: en `dbInit()`, si `garras_players` está vacía se insertan el roster masculino (`MASCULINO_ROSTER`, con dorsal) y 28 femeninas. Usar `pool.query` directamente dentro de `dbInit()` — NO usar `query()`/`queryOne()` (deadlock).
+
+**No hay CRUD admin para `garras_players`** — la única forma de editar el roster (altas, bajas, dorsales) es tocar `MASCULINO_ROSTER` en `server.js` y desplegar. Si la tabla ya está poblada (producción), el branch `else` de ese mismo bloque en `dbInit()` sincroniza el array en cada arranque: UPSERT por `LOWER(name)` (dorsal + `active=1`) para cada entrada, y baja con soft-delete (`active=0`, nunca `DELETE`, por la FK de `match_mvp_votes`/`match_mvp_players`) para jugadores retirados del array a mano (ver Mikel Vesga). Para dar de baja a alguien: quitarlo de `MASCULINO_ROSTER` y añadir su `UPDATE ... SET active = 0` junto al de Vesga.
 
 **`match_mvp_votes.username`** es TEXT (no FK a `users`). Borrar un usuario no elimina sus votos MVP en cascada — usar `DELETE /api/mvp/admin/:id/votes` para limpiar si es necesario.
 
