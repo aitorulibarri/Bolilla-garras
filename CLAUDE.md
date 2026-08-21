@@ -105,6 +105,8 @@ JWT stateless, token en **`sessionStorage`** como `bolilla_token`. Duración: 24
 - JWT payload: `{ id, username, displayName, isAdmin }`. En frontend: `currentUser.isAdmin`.
 - **Token en sessionStorage**: se borra al cerrar el navegador. Los usuarios deben hacer login cada vez que abren una nueva sesión.
 
+**Dos comprobaciones de admin distintas, mantenerlas en sync**: `checkAdmin()` (middleware, server.js) tiene su propio array hardcodeado `['garras', 'admin']` — duplicado de `ADMIN_USERNAMES`, no lo reutiliza — más `req.user.isAdmin` (claim del JWT). El JWT se firma en login/registro leyendo **directamente** `user.is_admin` de la fila de la DB (`isUserAdmin = !!user.is_admin`), no llama a la función `isAdmin()` que sí mira la lista estática. Por eso añadir un username a `ADMIN_USERNAMES` solo afecta a **registros nuevos** — para dar admin a un usuario ya registrado hay que tocar su fila (`PUT /api/admin/users/:id/admin`, panel Admin → botón "⭐ Hacer admin"), y ese usuario tiene que volver a hacer login para que el nuevo JWT lleve `isAdmin: true` (dura hasta 24h con el rol viejo si no).
+
 **Contraseñas**: guardadas DOS veces — `password_hash` (bcrypt) y `password_encrypted` (AES-256-GCM). Clave: env `PASSWORD_ENCRYPTION_KEY`; si falta, se deriva de `JWT_SECRET`.
 
 ## Points System (`calculatePoints()` en server.js)
@@ -244,6 +246,8 @@ Primera subpestaña "Por jornada": `renderByWeek()` agrupa por semana lunes-domi
 | `GET /api/admin/users` | Lista usuarios (sin password_hash) |
 | `GET /api/admin/users/:id/password` | Ver contraseña en claro (solo si tiene `password_encrypted`) |
 | `PUT /api/admin/users/:id/password` | Resetear contraseña de un usuario |
+| `PUT /api/admin/users/:id/display-name` | Cambiar el nombre visible de un usuario |
+| `PUT /api/admin/users/:id/admin` | Conceder/quitar admin (`{ isAdmin: true\|false }`) — hace `UPDATE users SET is_admin` |
 | `DELETE /api/admin/users/:id` | Borrar usuario y sus predicciones |
 
 ## Exports

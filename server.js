@@ -1338,6 +1338,30 @@ app.put('/api/admin/users/:id/display-name', requireAdmin, async (req, res) => {
     }
 });
 
+// Conceder o quitar admin a un usuario (admin only)
+app.put('/api/admin/users/:id/admin', requireAdmin, async (req, res) => {
+    try {
+        const userId = parseInt(req.params.id);
+        const { isAdmin } = req.body;
+
+        if (typeof isAdmin !== 'boolean') {
+            return res.status(400).json({ error: 'isAdmin debe ser true o false' });
+        }
+
+        if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
+
+        const target = await queryOne('SELECT id, username FROM users WHERE id = $1', [userId]);
+        if (!target) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+        await pool.query('UPDATE users SET is_admin = $1 WHERE id = $2', [isAdmin ? 1 : 0, userId]);
+
+        res.json({ success: true, username: target.username, isAdmin });
+    } catch (err) {
+        console.error('Toggle admin error:', err);
+        res.status(500).json({ error: 'Error al cambiar el rol de administrador' });
+    }
+});
+
 // Reset a user's password (admin only) — el admin escribe la nueva contraseña
 app.put('/api/admin/users/:id/password', requireAdmin, async (req, res) => {
     try {

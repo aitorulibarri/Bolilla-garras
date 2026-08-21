@@ -1950,6 +1950,18 @@ async function loadAdminUsers() {
       const safeUsername = escapeHtml(String(u.username));
       const safeDisplay = escapeHtml(String(u.display_name));
       const adminBadge = u.is_admin ? '<span class="user-badge-admin">ADMIN</span>' : '';
+      // 'garras'/'admin' son admin fijo por username (checkAdmin en server.js) — el
+      // toggle de is_admin no cambia nada real para ellos, así que no se ofrece.
+      const isFixedAdmin = ['garras', 'admin'].includes(String(u.username).toLowerCase());
+      const adminToggleBtn = isFixedAdmin ? '' : (u.is_admin
+        ? `<button class="btn btn-secondary btn-sm" data-action="revoke-admin"
+             data-user-id="${u.id}" data-display="${safeDisplay}">
+             🚫 Quitar admin
+           </button>`
+        : `<button class="btn btn-secondary btn-sm" data-action="grant-admin"
+             data-user-id="${u.id}" data-display="${safeDisplay}">
+             ⭐ Hacer admin
+           </button>`);
       return `
         <tr data-user-id="${u.id}">
           <td data-label="Usuario">
@@ -1972,6 +1984,7 @@ async function loadAdminUsers() {
               data-user-id="${u.id}" data-username="${safeUsername}" data-display="${safeDisplay}">
               🔑 Resetear
             </button>
+            ${adminToggleBtn}
             <button class="btn btn-danger btn-sm" data-action="delete-user"
               data-user-id="${u.id}" data-username="${safeUsername}" data-display="${safeDisplay}">
               🗑️ Borrar
@@ -2025,9 +2038,42 @@ async function loadAdminUsers() {
         );
       });
     });
+
+    container.querySelectorAll('button[data-action="grant-admin"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        toggleUserAdmin(parseInt(btn.dataset.userId), btn.dataset.display, true);
+      });
+    });
+
+    container.querySelectorAll('button[data-action="revoke-admin"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        toggleUserAdmin(parseInt(btn.dataset.userId), btn.dataset.display, false);
+      });
+    });
   } catch (err) {
     console.error(err);
     container.innerHTML = '<p>Error al cargar usuarios</p>';
+  }
+}
+
+async function toggleUserAdmin(userId, displayName, makeAdmin) {
+  try {
+    const res = await fetchWithRetry(`/api/admin/users/${userId}/admin`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isAdmin: makeAdmin })
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok) {
+      showToast(makeAdmin ? `${displayName} ahora es admin` : `${displayName} ya no es admin`, 'success');
+      loadAdminUsers();
+    } else {
+      showToast(data.error || 'Error al cambiar el rol', 'error');
+    }
+  } catch (err) {
+    console.error(err);
+    showToast('Error de conexión', 'error');
   }
 }
 
