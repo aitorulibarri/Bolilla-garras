@@ -1691,7 +1691,7 @@ app.get('/api/mvp/active', requireAuth, async (req, res) => {
                 `, [match.id]);
             }
             const userVote = await queryOne(`
-                SELECT mmv.player_id, gp.name AS player_name
+                SELECT mmv.player_id, gp.name AS player_name, gp.dorsal
                 FROM match_mvp_votes mmv
                 JOIN garras_players gp ON mmv.player_id = gp.id
                 WHERE mmv.match_id = $1 AND mmv.username = $2
@@ -1751,11 +1751,11 @@ app.get('/api/mvp/history', requireAuth, async (req, res) => {
         const result = [];
         for (const match of matches) {
             const results = await query(`
-                SELECT gp.id, gp.name, COUNT(mmv.id) AS votes
+                SELECT gp.id, gp.name, gp.dorsal, COUNT(mmv.id) AS votes
                 FROM match_mvp_votes mmv
                 JOIN garras_players gp ON mmv.player_id = gp.id
                 WHERE mmv.match_id = $1
-                GROUP BY gp.id, gp.name
+                GROUP BY gp.id, gp.name, gp.dorsal
                 ORDER BY votes DESC, gp.name ASC
             `, [match.id]);
             result.push({ ...match, results });
@@ -1792,7 +1792,7 @@ app.get('/api/mvp/ranking', requireAuth, async (req, res) => {
                 SELECT player_id, SUM(votes) AS total_votes
                 FROM vote_counts GROUP BY player_id
             )
-            SELECT gp.id, gp.name, gp.category,
+            SELECT gp.id, gp.name, gp.category, gp.dorsal,
                    COALESCE(w.partidos_ganados, 0) AS partidos_ganados,
                    COALESCE(t.total_votes, 0) AS total_votes
             FROM garras_players gp

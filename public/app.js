@@ -2627,7 +2627,7 @@ function renderMvpVoteBlock(match) {
   const lockedMsg = isLocked
     ? `<div class="garras-voted-msg">
         ${renderPlayerAvatar(match.userVote.player_name, 'garras-avatar-frame-sm')}
-        <span>✅ Has votado a <strong>${escapeHtml(match.userVote.player_name)}</strong></span>
+        <span>✅ Has votado a <strong>${escapeHtml(match.userVote.player_name)}</strong>${match.userVote.dorsal ? ` <span class="mvp-dorsal">#${match.userVote.dorsal}</span>` : ''}</span>
       </div>`
     : '';
   const cards = match.players.map(p => {
@@ -2636,7 +2636,7 @@ function renderMvpVoteBlock(match) {
     const selectedClass = isSelected ? 'selected voted-choice' : '';
     return `<div class="garras-player-card ${lockClass} ${selectedClass}" data-player-id="${p.id}">
       ${renderPlayerAvatar(p.name, 'garras-avatar-frame-vote')}
-      <span class="garras-player-name">${escapeHtml(p.name)}</span>
+      <span class="garras-player-name">${escapeHtml(p.name)}${p.dorsal ? ` <span class="mvp-dorsal">#${p.dorsal}</span>` : ''}</span>
     </div>`;
   }).join('');
   return `
@@ -2716,7 +2716,7 @@ async function loadMvpHistory() {
         return `<div class="garras-hrow ${rankClass}">
           <span class="garras-hrow-medal">${medal}</span>
           ${renderPlayerAvatar(p.name, 'garras-avatar-frame-sm')}
-          <span class="garras-hrow-name">${escapeHtml(p.name)}</span>
+          <span class="garras-hrow-name">${escapeHtml(p.name)}${p.dorsal ? ` <span class="mvp-dorsal">#${p.dorsal}</span>` : ''}</span>
           <span class="garras-hrow-votes">${p.votes} voto${parseInt(p.votes) === 1 ? '' : 's'}</span>
         </div>`;
       }).join('');
@@ -2766,7 +2766,7 @@ async function loadMvpRanking() {
           <td class="garras-rank-name">
             <div class="garras-rank-name-wrap">
               ${renderPlayerAvatar(p.name, 'garras-avatar-frame-sm')}
-              <span>${escapeHtml(p.name)}</span>
+              <span>${escapeHtml(p.name)}${p.dorsal ? ` <span class="mvp-dorsal">#${p.dorsal}</span>` : ''}</span>
             </div>
           </td>
           <td class="garras-rank-wins">${p.partidos_ganados}</td>
