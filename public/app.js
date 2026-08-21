@@ -820,6 +820,7 @@ const PLAYER_PHOTO_MAP = {
   'Unai Egiluz':              'players/masculino/unai-egiluz-arroyo_L.png',
   'Beñat Prados':             'players/masculino/benat-prados-diaz.png',
   'Mikel Santos':             'players/masculino/mikel-santos-linares.png',
+  'Alex Padilla':             'players/masculino/alex-padilla-perez.png',
   'Selton Sánchez':           'players/masculino/selton-sued-sanchez-camilo.png',
   'Iker Monreal':             'players/masculino/iker-monreal-agundez.png',
 
