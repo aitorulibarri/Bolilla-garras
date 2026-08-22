@@ -2654,7 +2654,7 @@ async function loadMvpVoteSection() {
       voteAllBtn.className = 'garras-vote-btn';
       voteAllBtn.style.cssText = 'margin-top:16px;';
       voteAllBtn.textContent = 'VOTAR';
-      voteAllBtn.addEventListener('click', () => submitAllMvpVotes(pendingMatchIds));
+      voteAllBtn.addEventListener('click', () => submitAllMvpVotes(pendingMatchIds, voteAllBtn));
       section.appendChild(voteAllBtn);
     }
 
@@ -2715,7 +2715,7 @@ async function submitMvpVote(matchId, playerId) {
   }
 }
 
-async function submitAllMvpVotes(matchIds) {
+async function submitAllMvpVotes(matchIds, btn) {
   const votes = matchIds
     .filter(matchId => _mvpSelections.has(matchId))
     .map(matchId => ({ matchId, playerId: _mvpSelections.get(matchId) }));
@@ -2724,6 +2724,8 @@ async function submitAllMvpVotes(matchIds) {
     showToast('Selecciona al menos un jugador', 'error');
     return;
   }
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Votando…'; }
 
   let saved = 0;
   const errorMsgs = new Set();
