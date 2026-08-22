@@ -28,7 +28,7 @@ No hay tests ni linter configurados.
 
 **Backend único**: `server.js` (Express + PostgreSQL via Neon).  
 **Frontend SPA**: Vanilla JS en `public/` — sin build step, sin framework.  
-**Backend legacy**: `app.py` (Flask) — NO se usa en producción, ignorar.
+**Backend legacy**: `app.py` (Flask) — NO se usa en producción, ignorar. Tampoco se usan `database.js` (capa SQLite pre-Neon, no lo importa `server.js`), `bolilla.db`, ni los scripts de migración de raíz (`migrate_to_neon.py`, `import_points.py`, `import_standings.py`, `stress_test.py`) — son artefactos de la migración a Postgres, no tocar salvo que se pida explícitamente revivir ese flujo.
 
 ```
 server.js             Express: JWT auth, rutas API, lógica de puntos, MVP voting API
@@ -146,7 +146,7 @@ Tab activo en producción. El sistema MVP por partido (`/api/mvp/*`) es el únic
 ### Frontend Garras Saria (app.js)
 
 - `loadGarrasSaria()` — punto de entrada del tab; llama a admin (si admin) + vote + history + ranking en paralelo
-- `loadMvpVoteSection()` — partidos abiertos para votar; click en player card solo marca selección (una por partido). Botón único "VOTAR" al final envía todas las selecciones a la vez vía `submitAllMvpVotes()` (mismo patrón que `saveAllPredictions`), que llama a `submitMvpVote()` por partido
+- `loadMvpVoteSection()` — partidos abiertos para votar; click en player card marca selección (una por partido) y la guarda en `_mvpSelections` (Map `matchId -> playerId`, se limpia en cada render) — es la fuente de verdad, **no** releer la clase CSS `.selected` del DOM al votar (era frágil: si el DOM se re-renderizaba entre seleccionar y pulsar VOTAR, la selección se perdía en silencio). Botón único "VOTAR" al final se desactiva y muestra "Votando…" mientras envía todas las selecciones vía `submitAllMvpVotes()` (mismo patrón que `saveAllPredictions`), que llama a `submitMvpVote()` por partido — este devuelve `{ success, error }` (no un booleano) para mostrar en el toast el motivo real del fallo (401 sesión caducada / error del servidor / sin conexión) en vez de un mensaje genérico
 - `loadMvpHistory()` — historial con podio (🥇🥈🥉) + lista completa; guarda array en `_mvpHistoryMatches[]`
 - `loadMvpRanking()` — tabla ranking con medallas top 3
 - `loadMvpAdmin()` — panel admin; partidos agrupados por categoría (⚽ Masculino / 👟 Femenino)
