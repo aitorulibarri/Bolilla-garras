@@ -2570,6 +2570,7 @@ async function deletePrediction(predId, playerName, matchId) {
 // ==================== GARRAS SARIA — CACHE IN-MEMORY (TTL 5 min) ====================
 const _mvpCache = {};
 let _mvpHistoryMatches = [];
+let _mvpSelections = new Map(); // matchId -> playerId — fuente de verdad de la selección (no la clase CSS .selected)
 function _mvpCacheGet(key) {
   const e = _mvpCache[key];
   if (!e || Date.now() - e.ts > 5 * 60 * 1000) { delete _mvpCache[key]; return null; }
@@ -2631,6 +2632,7 @@ async function loadMvpVoteSection() {
         </div>`;
     }
     section.innerHTML = html;
+    _mvpSelections.clear();
 
     const pendingMatchIds = [];
     matches.forEach(match => {
@@ -2642,6 +2644,7 @@ async function loadMvpVoteSection() {
         playerCard.addEventListener('click', () => {
           card.querySelectorAll('.garras-player-card').forEach(c => c.classList.remove('selected'));
           playerCard.classList.add('selected');
+          _mvpSelections.set(match.id, parseInt(playerCard.dataset.playerId));
         });
       });
     });
@@ -2702,21 +2705,20 @@ async function submitMvpVote(matchId, playerId) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ player_id: playerId })
     });
-    const data = await res.json();
-    return data.success;
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401) return { success: false, error: 'Sesión caducada — cierra sesión y vuelve a entrar' };
+    if (!res.ok) return { success: false, error: data.error || `Error del servidor (${res.status})` };
+    return { success: !!data.success, error: data.success ? null : (data.error || 'Respuesta inesperada del servidor') };
   } catch (err) {
-    return false;
+    console.error('submitMvpVote error:', matchId, playerId, err);
+    return { success: false, error: 'Sin conexión — revisa tu internet' };
   }
 }
 
 async function submitAllMvpVotes(matchIds) {
   const votes = matchIds
-    .map(matchId => {
-      const card = document.querySelector(`[data-match-id="${matchId}"]`);
-      const selected = card?.querySelector('.garras-player-card.selected');
-      return selected ? { matchId, playerId: parseInt(selected.dataset.playerId) } : null;
-    })
-    .filter(Boolean);
+    .filter(matchId => _mvpSelections.has(matchId))
+    .map(matchId => ({ matchId, playerId: _mvpSelections.get(matchId) }));
 
   if (votes.length === 0) {
     showToast('Selecciona al menos un jugador', 'error');
@@ -2724,14 +2726,15 @@ async function submitAllMvpVotes(matchIds) {
   }
 
   let saved = 0;
-  let errors = 0;
+  const errorMsgs = new Set();
   for (const { matchId, playerId } of votes) {
-    if (await submitMvpVote(matchId, playerId)) saved++;
-    else errors++;
+    const result = await submitMvpVote(matchId, playerId);
+    if (result.success) saved++;
+    else errorMsgs.add(result.error);
   }
 
   if (saved > 0) showToast(`${saved} voto${saved > 1 ? 's' : ''} registrado${saved > 1 ? 's' : ''}`, 'success');
-  if (errors > 0) showToast(`Error registrando ${errors} voto${errors > 1 ? 's' : ''}`, 'error');
+  if (errorMsgs.size > 0) showToast([...errorMsgs].join(' · '), 'error');
   await loadMvpVoteSection();
 }
 
