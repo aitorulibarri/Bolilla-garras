@@ -2888,6 +2888,23 @@ async function loadMvpRanking() {
 
 // ---- Export: tarjeta de resultados por partido ----
 
+// Plantilla fija del podio Garras Saria (public/assets/garras-saria-podio-template.png,
+// 1402x1122): fondo de estadio + header con escudo/texto de la peña + trofeo + tarjetas
+// (rectángulo negro sólido con borde oro/plata/bronce) + insignia numerada + pedestales
+// con laurel, todo genérico y ya dibujado en la imagen — plantilla en blanco, sin ningún
+// dato de ejemplo (ni fotos, ni título, ni fecha, ni nombres/dorsales/votos), así que no
+// hay nada que tapar: solo dibujar encima. Cada tarjeta es UN rectángulo negro continuo;
+// `photoH` marca dónde termina la zona de foto (arriba) y empieza la de nombre/dorsal/
+// votos (abajo), dentro del mismo marco. Coordenadas medidas a píxel sobre la plantilla
+// (no se recalculan por proporción — si se cambia la imagen, remedir con el mismo método:
+// dibujar una rejilla de 50px sobre un <canvas> y leer los bordes de color de cada tarjeta).
+const PODIUM_TEMPLATE_W = 1402, PODIUM_TEMPLATE_H = 1122;
+const PODIUM_TEMPLATE_SLOTS = [
+  { idx: 0, frame: { x: 548, y: 424, w: 302, h: 479 }, photoH: 384, nameY: 838, votesY: 880, nameColor: '#fbbf24' },  // oro (ganador)
+  { idx: 1, frame: { x: 194, y: 548, w: 260, h: 390 }, photoH: 300, nameY: 878, votesY: 915, nameColor: '#f1f5f9' },  // plata
+  { idx: 2, frame: { x: 958, y: 562, w: 236, h: 375 }, photoH: 288, nameY: 880, votesY: 917, nameColor: '#f59e0b' },  // bronce
+];
+
 async function exportMatchResult(match) {
   if (!match) return;
   showToast('Generando imagen...', 'success');
@@ -2897,165 +2914,106 @@ async function exportMatchResult(match) {
   const matchLabel = `${homeTeam} vs ${awayTeam}`;
   const fecha = parseMatchDate(match.match_date).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const isFem = match.team === 'Athletic Femenino';
-  const catLabel = isFem ? '👟 Athletic Femenino' : '⚽ Athletic Club';
+  const catLabel = isFem ? 'Athletic Femenino' : 'Athletic Club';
   const results = match.results || [];
 
-  // Config del podio (tamaños fijos; se usan tanto para calcular el alto del
-  // canvas como para dibujar, así no se pueden desincronizar)
-  const PODIUM_CONFIG = [
-    { idx: 1, col: 0, frameW: 150, frameH: 193, pedestalH: 70, color: '#cbd5e1', barBg: 'rgba(203,213,225,0.10)', barBorder: 'rgba(203,213,225,0.28)' },
-    { idx: 0, col: 1, frameW: 190, frameH: 244, pedestalH: 104, color: '#fbbf24', barBg: 'rgba(251,191,36,0.12)', barBorder: 'rgba(251,191,36,0.32)' },
-    { idx: 2, col: 2, frameW: 128, frameH: 164, pedestalH: 54, color: '#d97706', barBg: 'rgba(217,119,6,0.12)', barBorder: 'rgba(217,119,6,0.30)' },
-  ];
-  const TROPHY_H = 58, TROPHY_GAP = 18, TEXT_TO_PEDESTAL_GAP = 46, BADGE_OVERHANG = 16;
-  const podiumBlockH = TROPHY_H + TROPHY_GAP
-    + Math.max(...PODIUM_CONFIG.map(r => r.frameH)) + TEXT_TO_PEDESTAL_GAP + Math.max(...PODIUM_CONFIG.map(r => r.pedestalH))
-    + BADGE_OVERHANG + 16;
-
-  // Canvas dimensions — formato vertical (tipo post de móvil), solo podio, sin lista
-  const W = 900;
-  let H = 300 + (results.length > 0 ? podiumBlockH : 40) + 80;
-
+  const W = PODIUM_TEMPLATE_W, H = PODIUM_TEMPLATE_H;
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext('2d');
 
-  // Background gradient
-  const bg = ctx.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, '#0d0d18');
-  bg.addColorStop(1, '#180808');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, W, H);
-
-  // Subtle red glow top-right
-  const glow = ctx.createRadialGradient(W * 0.82, 0, 0, W * 0.82, 0, W * 0.55);
-  glow.addColorStop(0, 'rgba(228,30,38,0.14)');
-  glow.addColorStop(1, 'transparent');
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, W, H);
-
-  // Marca de agua del garra/zarpa de la peña, muy sutil, detrás del podio
-  if (results.length > 0) {
-    try {
-      const paw = await _loadImage('/assets/lion-paw.png');
-      const pw = 360, ph = pw * (paw.naturalHeight / paw.naturalWidth);
-      ctx.save();
-      ctx.globalAlpha = 0.05;
-      ctx.translate(W / 2, H - podiumBlockH / 2 - 20);
-      ctx.rotate(-0.1);
-      ctx.drawImage(paw, -pw / 2, -ph / 2, pw, ph);
-      ctx.restore();
-    } catch { /* decorativo, se omite si falla */ }
-  }
-
-  // Club logo
-  let y = 42;
-  try {
-    const logo = await _loadImage('/assets/garras-logo.png');
-    const sz = 72;
-    ctx.globalAlpha = 0.95;
-    ctx.drawImage(logo, (W - sz) / 2, y, sz, sz);
-    ctx.globalAlpha = 1;
-    y += sz + 10;
-  } catch { y += 16; }
-
-  // Club name
-  ctx.textAlign = 'center';
-  ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
-  ctx.fillStyle = '#e41e26';
-  ctx.fillText('PEÑA GARRAS TALDEA · SESTAO', W / 2, y);
-  y += 15;
-  ctx.font = '11px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
-  ctx.fillStyle = '#475569';
-  ctx.fillText('GARRAS SARIA — MVP DEL PARTIDO', W / 2, y);
-  y += 26;
-
-  // Red divider
-  const dg = ctx.createLinearGradient(60, 0, W - 60, 0);
-  dg.addColorStop(0, 'transparent');
-  dg.addColorStop(0.15, '#e41e26');
-  dg.addColorStop(0.85, '#e41e26');
-  dg.addColorStop(1, 'transparent');
-  ctx.beginPath(); ctx.moveTo(60, y); ctx.lineTo(W - 60, y);
-  ctx.strokeStyle = dg; ctx.lineWidth = 2; ctx.stroke();
-  y += 24;
-
-  // Match title (auto-shrink)
-  let mFont = 28;
-  ctx.font = `bold ${mFont}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
-  while (ctx.measureText(matchLabel).width > W - 80 && mFont > 14) {
-    mFont--;
-    ctx.font = `bold ${mFont}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
-  }
-  ctx.fillStyle = '#f1f5f9';
-  ctx.fillText(matchLabel, W / 2, y);
-  y += mFont + 10;
-
-  // Category + date
-  ctx.font = '14px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
-  ctx.fillStyle = '#64748b';
-  ctx.fillText(`${catLabel}  ·  ${fecha}`, W / 2, y);
-  y += 36;
-
-  const pad = 48;
-  const rowW = W - pad * 2;
-
   if (results.length === 0) {
-    ctx.font = '18px -apple-system, sans-serif';
-    ctx.fillStyle = '#475569';
-    ctx.fillText('Sin votos registrados', W / 2, y + 40);
-    y += 60;
-  } else {
-    // Podio (top 3, con foto) — plata izq, oro centro (más alto), bronce der.
-    // Solo el podio: no se listan más jugadores (4º, 5º...).
-    const PODIUM = PODIUM_CONFIG.filter(r => results[r.idx]);
-    const colW = rowW / 3;
-
-    // Trofeo sobre el ganador — toque visual de la peña
-    const goldColX = pad + colW * 1.5;
+    // Sin votos: no tiene sentido la plantilla del podio (deja 3 huecos vacíos) —
+    // tarjeta simple de aviso en el mismo lenguaje visual (fondo oscuro + logo).
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#0d0d18'); bg.addColorStop(1, '#180808');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center';
     try {
-      const trophy = await _loadImage('/assets/trofeo-v2.png');
-      const tw = TROPHY_H * (trophy.naturalWidth / trophy.naturalHeight);
-      ctx.drawImage(trophy, goldColX - tw / 2, y, tw, TROPHY_H);
-    } catch { /* decorativo, se omite si falla */ }
-    y += TROPHY_H + TROPHY_GAP;
+      const logo = await _loadImage('/assets/garras-logo.png');
+      ctx.drawImage(logo, W / 2 - 60, 120, 120, 120);
+    } catch { /* decorativo */ }
+    ctx.font = 'bold 26px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
+    ctx.fillStyle = '#f1f5f9';
+    ctx.fillText(matchLabel, W / 2, 300);
+    ctx.font = '20px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText(`${catLabel}  ·  ${fecha}`, W / 2, 340);
+    ctx.font = '22px -apple-system, sans-serif';
+    ctx.fillStyle = '#475569';
+    ctx.fillText('Sin votos registrados', W / 2, 420);
+  } else {
+    const template = await _loadImage('/assets/garras-saria-podio-template.png');
+    ctx.drawImage(template, 0, 0, W, H);
 
-    const baseY = y + BADGE_OVERHANG
-      + Math.max(...PODIUM.map(r => r.frameH)) + TEXT_TO_PEDESTAL_GAP + Math.max(...PODIUM.map(r => r.pedestalH));
+    // Título del partido + categoría/fecha — la plantilla no reserva hueco para esto
+    // (está en blanco), así que se dibuja un panel propio, opaco, entre la línea roja
+    // del header y el trofeo.
+    ctx.fillStyle = '#050b16';
+    _rrPath(ctx, W / 2 - 480, 246, 960, 88, 16); ctx.fill();
 
-    for (const rank of PODIUM) {
-      const p = results[rank.idx];
-      const cx = pad + colW * (rank.col + 0.5);
-      const pedestalTop = baseY - rank.pedestalH;
-      const barW = colW - 20;
+    ctx.textAlign = 'center';
+    let mFont = 42;
+    ctx.font = `bold ${mFont}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
+    while (ctx.measureText(matchLabel).width > 780 && mFont > 20) {
+      mFont--;
+      ctx.font = `bold ${mFont}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
+    }
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillText(matchLabel, W / 2, 288);
 
-      // Pedestal
-      ctx.fillStyle = rank.barBg;
-      _rrPath(ctx, cx - barW / 2, pedestalTop, barW, rank.pedestalH, 10); ctx.fill();
-      ctx.strokeStyle = rank.barBorder; ctx.lineWidth = 1.5;
-      _rrPath(ctx, cx - barW / 2, pedestalTop, barW, rank.pedestalH, 10); ctx.stroke();
+    ctx.font = '20px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillText(`${catLabel}  ·  ${fecha}`, W / 2, 320);
 
-      // Número de puesto
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.font = `bold ${Math.round(rank.pedestalH * 0.46)}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
-      ctx.fillStyle = rank.color;
-      ctx.fillText(String(rank.idx + 1), cx, pedestalTop + rank.pedestalH / 2 + 2);
-      ctx.textBaseline = 'alphabetic';
+    for (const slot of PODIUM_TEMPLATE_SLOTS) {
+      const p = results[slot.idx];
+      const f = slot.frame;
 
-      // Votos
-      ctx.font = '13px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.5)';
-      ctx.fillText(`${p.votes} voto${parseInt(p.votes) === 1 ? '' : 's'}`, cx, pedestalTop - 8);
+      if (!p) {
+        // Puesto sin datos (menos de 3 votantes): la plantilla ya deja esa tarjeta en
+        // negro sólido y el panel de texto vacío, así que no hace falta dibujar nada.
+        continue;
+      }
 
-      // Nombre + dorsal (auto-shrink) — "Nombre #9", mismo patrón visual que el
-      // badge .mvp-dorsal ya usado en las tarjetas de voto/historial/ranking de la web
-      let pFont = rank.idx === 0 ? 20 : 15;
+      // Foto (mismo recorte "pecho arriba" que el resto de la app) — solo ocupa la zona
+      // superior del marco (photoH); el resto queda para nombre/dorsal/votos.
+      const photoH = slot.photoH;
+      ctx.save();
+      ctx.beginPath(); ctx.rect(f.x, f.y, f.w, photoH); ctx.clip();
+      let drewPhoto = false;
+      const photoRel = getPlayerPhotoUrl(p.name);
+      if (photoRel) {
+        try {
+          const img = await _loadImage('/' + photoRel);
+          const iw = img.naturalWidth;
+          const sWidth = iw * 0.5;
+          const sHeight = sWidth * (photoH / f.w);
+          const sx = iw * 0.25 + iw * getPlayerCropOffsetX(p.name);
+          ctx.drawImage(img, sx, 0, sWidth, sHeight, f.x, f.y, f.w, photoH);
+          drewPhoto = true;
+        } catch { /* si falla la carga, cae al fallback de iniciales */ }
+      }
+      if (!drewPhoto) {
+        ctx.fillStyle = playerAvatarColor(p.name);
+        ctx.fillRect(f.x, f.y, f.w, photoH);
+        ctx.font = `bold ${Math.round(f.w * 0.34)}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(getInitials(p.name), f.x + f.w / 2, f.y + photoH / 2 + 1);
+        ctx.textBaseline = 'alphabetic';
+      }
+      ctx.restore();
+
+      // Nombre + dorsal (auto-shrink) — "Nombre #9", sobre el panel oscuro ya horneado
+      const cx = f.x + f.w / 2;
+      let pFont = slot.idx === 0 ? 26 : 20;
       const dorsalSuffix = p.dorsal ? ` #${p.dorsal}` : '';
       const fontMain = () => `bold ${pFont}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
-      const fontSuffix = () => `${Math.round(pFont * 0.7)}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
-      const maxNameW = colW - 8;
+      const fontSuffix = () => `${Math.round(pFont * 0.65)}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
+      const maxNameW = f.w - 10;
       const measure = () => {
         ctx.font = fontMain();
         const nameW = ctx.measureText(p.name).width;
@@ -3064,93 +3022,33 @@ async function exportMatchResult(match) {
         return { nameW, suffixW, total: nameW + suffixW };
       };
       let m = measure();
-      while (m.total > maxNameW && pFont > 10) {
+      while (m.total > maxNameW && pFont > 11) {
         pFont--; m = measure();
       }
       const nameStartX = cx - m.total / 2;
       ctx.textAlign = 'left';
       ctx.font = fontMain();
-      ctx.fillStyle = rank.color;
-      ctx.fillText(p.name, nameStartX, pedestalTop - 28);
+      ctx.fillStyle = slot.nameColor;
+      ctx.fillText(p.name, nameStartX, slot.nameY);
       if (dorsalSuffix) {
         ctx.font = fontSuffix();
-        ctx.fillStyle = 'rgba(255,255,255,0.45)';
-        ctx.fillText(dorsalSuffix, nameStartX + m.nameW, pedestalTop - 28);
+        ctx.fillStyle = 'rgba(255,255,255,0.55)';
+        ctx.fillText(dorsalSuffix, nameStartX + m.nameW, slot.nameY);
       }
+
+      // Votos
       ctx.textAlign = 'center';
-
-      // Foto (recorte "pecho arriba": centro del 50% del ancho, 0-64% del alto,
-      // igual proporción que el frame para que no se deforme) o iniciales si no hay foto
-      const fW = rank.frameW, fH = rank.frameH;
-      const frameBottom = pedestalTop - TEXT_TO_PEDESTAL_GAP;
-      const frameTop = frameBottom - fH;
-      const frameLeft = cx - fW / 2;
-
-      ctx.save();
-      _rrPath(ctx, frameLeft, frameTop, fW, fH, 14);
-      ctx.clip();
-      let drewPhoto = false;
-      const photoRel = getPlayerPhotoUrl(p.name);
-      if (photoRel) {
-        try {
-          const img = await _loadImage('/' + photoRel);
-          const iw = img.naturalWidth;
-          const sWidth = iw * 0.5;
-          const sHeight = sWidth * (fH / fW);
-          const sx = iw * 0.25 + iw * getPlayerCropOffsetX(p.name);
-          ctx.drawImage(img, sx, 0, sWidth, sHeight, frameLeft, frameTop, fW, fH);
-          drewPhoto = true;
-        } catch { /* si falla la carga, cae al fallback de iniciales */ }
-      }
-      if (!drewPhoto) {
-        ctx.fillStyle = playerAvatarColor(p.name);
-        ctx.fillRect(frameLeft, frameTop, fW, fH);
-        ctx.font = `bold ${Math.round(fW * 0.34)}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
-        ctx.fillStyle = '#fff';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(getInitials(p.name), cx, frameTop + fH / 2 + 1);
-        ctx.textBaseline = 'alphabetic';
-      }
-      ctx.restore();
-
-      // Borde del marco
-      ctx.strokeStyle = rank.color;
-      ctx.lineWidth = 3;
-      _rrPath(ctx, frameLeft, frameTop, fW, fH, 14); ctx.stroke();
-
-      // Insignia de puesto (círculo sólido, no depende de fuente emoji del sistema)
-      const badgeR = 19;
-      const badgeCx = frameLeft + fW - 6;
-      const badgeCy = frameTop + 6;
-      ctx.beginPath();
-      ctx.arc(badgeCx, badgeCy, badgeR, 0, Math.PI * 2);
-      ctx.fillStyle = rank.color;
-      ctx.fill();
-      ctx.lineWidth = 2.5;
-      ctx.strokeStyle = '#0d0d18';
-      ctx.stroke();
-      ctx.font = `bold ${Math.round(badgeR * 1.1)}px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif`;
-      ctx.fillStyle = '#0d0d18';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(String(rank.idx + 1), badgeCx, badgeCy + 1);
-      ctx.textBaseline = 'alphabetic';
+      ctx.font = '18px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.fillText(`${p.votes} voto${parseInt(p.votes) === 1 ? '' : 's'}`, cx, slot.votesY);
     }
 
+    // Footer — la plantilla no trae URL de pie, se añade aquí
     ctx.textAlign = 'center';
-    y = baseY + 16;
+    ctx.font = '13px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillText('bolilla-garras-kwz7.vercel.app', W / 2, H - 22);
   }
-
-  // Footer
-  y += 18;
-  ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - pad, y);
-  ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth = 1; ctx.stroke();
-  y += 16;
-  ctx.font = '11px -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif';
-  ctx.fillStyle = '#1e293b';
-  ctx.textAlign = 'center';
-  ctx.fillText('bolilla-garras-kwz7.vercel.app', W / 2, y);
 
   // Download or open (iOS vs rest)
   const dataURL = canvas.toDataURL('image/png');
