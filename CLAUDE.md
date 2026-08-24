@@ -38,7 +38,7 @@ public/podium.js      Componente podio para la clasificación (top 3 con imágen
 public/styles.css     Estilos (incluye módulo Garras Saria al final)
 public/sw.js          Service Worker pass-through (no cache)
 public/manifest.json  PWA manifest (iconos en public/icons/)
-public/assets/        trofeo-v2.png, garras-lion.png, lion-paw.png, garras-logo.png
+public/assets/        trofeo-v2.png, garras-lion.png, lion-paw.png, garras-logo.png, garras-saria-podio-template.png
 public/logos/         Escudos de equipos rivales por competición: laliga/, segunda/, ligaf/, rfef/
 public/players/       Fotos oficiales de jugadores/as del primer equipo: masculino/, femenino/
 vercel.json           Config deploy: rutas, headers, builds
@@ -122,7 +122,7 @@ Verificado contra "NORMAS BOLILLA GARRAS 26/27" (documento de la peña, no versi
 
 Columna `INTEGER DEFAULT 1` en `users` (migración vía `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` en `dbInit()`, mismo patrón que `password_encrypted`). Marca si un usuario sale en la clasificación de pronósticos. Gestión **manual desde Admin → Usuarios** (botón "🙈 No participa en pronósticos" / "👁️ Sí participa"), sin heurística automática — se decidió así a propósito: con ~20-30 usuarios cualquier detección automática por partidos fallados genera falsos positivos (alguien que se olvida un par de veces no debe desaparecer de la clasificación).
 
-- `PUT /api/admin/users/:id/predictions-participation` (`{ participates: true|false }`) — mismo patrón que `PUT /api/admin/users/:id/admin`.
+- `PUT /api/admin/users/:id/predictions-participation` (`{ participates: true|false }`) — mismo patrón que `PUT /api/admin/users/:id/admin`. Frontend: `toggleUserPredictionsParticipation()` en `app.js`, botón "🙈 No participa" / "👁️ Sí participa" en Admin → Usuarios (badge "SOLO GARRAS SARIA" junto al nombre cuando está desactivado).
 - `GET /api/leaderboard` filtra `WHERE u.participates_predictions = 1`.
 - `GET /api/admin/open-predictions` (tracker de Seguimiento) también filtra a solo participantes, para no mostrar como "falta por pronosticar" a quien no participa.
 - **No afecta a Garras Saria**: `match_mvp_votes.username` es independiente de este flag — quien no participa en pronósticos sigue votando MVP con normalidad.
