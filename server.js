@@ -365,48 +365,55 @@ async function dbInit() {
                 { name: 'Selton Sánchez', dorsal: 44 }
             ];
 
+            // Roster femenino canónico, temporada 2026-27 (nombres y altas/bajas verificados en
+            // athletic-club.eus/equipos/athletic-club-femenino/2026-27/plantilla/, 24/08/2026).
+            // OJO dorsales: a diferencia del masculino, esta plantilla NO publica el dorsal en ningún
+            // sitio (ni en la ficha de cada jugadora ni como número visible sobre la camiseta en las
+            // fotos). Los dorsales de abajo son los que ya había en el seed anterior (sin fuente oficial
+            // verificada para 2026-27) — se conservan tal cual para no perder el dato, pero pueden estar
+            // desactualizados. Las 6 altas nuevas de esta temporada quedan con dorsal null a propósito
+            // (el frontend ya omite el badge de dorsal si es null) en vez de inventar un número.
+            const FEMENINO_ROSTER = [
+                { name: 'Adriana Nanclares Romero', dorsal: 1 },
+                { name: 'Eunate Astralaga Aranguren', dorsal: null },
+                { name: 'Elene Aldekoa Arrue', dorsal: null },
+                { name: 'Ziara Vega Uribarri', dorsal: 26 },
+                { name: 'Maddi Torre Larrañaga', dorsal: 2 },
+                { name: 'Naia Landaluze Marquínez', dorsal: 3 },
+                { name: 'Bibiane Schulze Solano', dorsal: 4 },
+                { name: 'Ane Elexpuru Añorga', dorsal: 20 },
+                { name: 'Eider Arana Mugueta', dorsal: 23 },
+                { name: 'Garazi Fácila Giralte', dorsal: null },
+                { name: 'Amaia Martínez De la Peña', dorsal: null },
+                { name: 'Nerea Benito Zaldibar', dorsal: 27 },
+                { name: 'Maite Valero Elía', dorsal: 5 },
+                { name: 'Irene Oguiza Martínez', dorsal: 6 },
+                { name: 'Leire Baños Indakoetxea', dorsal: 14 },
+                { name: 'Clara Pinedo Castresana', dorsal: 15 },
+                { name: 'Amaia Iribarren Arteta', dorsal: null },
+                { name: 'Marina Artero Moreno', dorsal: null },
+                { name: 'Elene Gurtubay Loyo', dorsal: 33 },
+                { name: 'Jone Amezaga Martínez', dorsal: 7 },
+                { name: 'Patricia Zugasti Oses', dorsal: 10 },
+                { name: 'Ane Azkona Fuente', dorsal: 11 },
+                { name: 'Sara Ortega Ruiz', dorsal: 18 },
+                { name: 'Maitane Vilariño Mendinueta', dorsal: 19 },
+                { name: 'Ane Campos Andueza', dorsal: 21 },
+                { name: 'Daniela Agote Aguirre', dorsal: 22 }
+            ];
+
             // Seed players if table is empty (use pool.query directly — queryOne calls dbInit which would deadlock)
             const playerCountResult = await pool.query('SELECT COUNT(*) as count FROM garras_players');
             if (parseInt(playerCountResult.rows[0].count) === 0) {
                 for (const p of MASCULINO_ROSTER) {
                     await pool.query('INSERT INTO garras_players (name, category, dorsal) VALUES ($1, $2, $3)', [p.name, 'masculino', p.dorsal]);
                 }
-                const femeninoPlayers = [
-                    { name: 'Olatz Santana Amado', dorsal: 1 },
-                    { name: 'Adriana Nanclares Romero', dorsal: 13 },
-                    { name: 'Ziara Vega Uribarri', dorsal: 26 },
-                    { name: 'Maddi Torre Larrañaga', dorsal: 2 },
-                    { name: 'Naia Landaluze Marquínez', dorsal: 3 },
-                    { name: 'Bibiane Schulze Solano', dorsal: 4 },
-                    { name: 'Nerea Nevado Gómez', dorsal: 17 },
-                    { name: 'Ane Elexpuru Añorga', dorsal: 20 },
-                    { name: 'Eider Arana Mugueta', dorsal: 23 },
-                    { name: 'Nerea Benito Zaldibar', dorsal: 27 },
-                    { name: 'Laida Balerdi Beloki', dorsal: 28 },
-                    { name: 'Irati Alfaro Nagore', dorsal: 32 },
-                    { name: 'Maite Valero Elía', dorsal: 5 },
-                    { name: 'Irene Oguiza Martínez', dorsal: 6 },
-                    { name: 'Maite Zubieta Aranbarri', dorsal: 8 },
-                    { name: 'Leire Baños Indakoetxea', dorsal: 14 },
-                    { name: 'Clara Pinedo Castresana', dorsal: 15 },
-                    { name: 'Alejandra Estefanía Díaz', dorsal: 16 },
-                    { name: 'Ane Bordagaray Casado', dorsal: 34 },
-                    { name: 'Jone Amezaga Martínez', dorsal: 7 },
-                    { name: 'Patricia Zugasti Oses', dorsal: 10 },
-                    { name: 'Ane Azkona Fuente', dorsal: 11 },
-                    { name: 'Sara Ortega Ruiz', dorsal: 18 },
-                    { name: 'Maitane Vilariño Mendinueta', dorsal: 19 },
-                    { name: 'Ane Campos Andueza', dorsal: 21 },
-                    { name: 'Daniela Agote Helguera', dorsal: 22 },
-                    { name: 'Oihana Agirregomezkorta García', dorsal: 29 },
-                    { name: 'Elene Gurtubay Loyo', dorsal: 33 }
-                ];
-                for (const p of femeninoPlayers) {
+                for (const p of FEMENINO_ROSTER) {
                     await pool.query('INSERT INTO garras_players (name, category, dorsal) VALUES ($1, $2, $3)', [p.name, 'femenino', p.dorsal]);
                 }
                 console.log('✅ Garras players seeded');
             } else {
-                // Tabla ya poblada (producción): sincroniza altas/bajas/dorsales del roster masculino
+                // Tabla ya poblada (producción): sincroniza altas/bajas/dorsales de ambos rosters
                 // en cada arranque. Idempotente — no hay endpoint admin para editar garras_players a mano.
                 for (const p of MASCULINO_ROSTER) {
                     const existing = await pool.query(
@@ -430,6 +437,47 @@ async function dbInit() {
                 await pool.query(
                     `UPDATE garras_players SET active = 0 WHERE category = 'masculino' AND LOWER(name) = LOWER('Mikel Vesga')`
                 );
+
+                // Corrección de nombre: "Daniela Agote Helguera" del seed original era un segundo
+                // apellido erróneo — la ficha oficial (temporada 2026-27) confirma "Daniela Agote
+                // Aguirre" para la misma jugadora (mismo dorsal 22, misma delantera). Se renombra ANTES
+                // del bucle de sync de abajo (que hace UPSERT por LOWER(name)) para que actualice la
+                // fila ya existente en vez de insertar una duplicada; renombrar en vez de dar de baja +
+                // alta conserva su histórico de votos MVP bajo el mismo id.
+                await pool.query(
+                    `UPDATE garras_players SET name = 'Daniela Agote Aguirre' WHERE category = 'femenino' AND LOWER(name) = LOWER('Daniela Agote Helguera')`
+                );
+
+                for (const p of FEMENINO_ROSTER) {
+                    const existing = await pool.query(
+                        'SELECT id FROM garras_players WHERE category = $1 AND LOWER(name) = LOWER($2)',
+                        ['femenino', p.name]
+                    );
+                    if (existing.rows.length > 0) {
+                        await pool.query(
+                            'UPDATE garras_players SET dorsal = $1, active = 1 WHERE id = $2',
+                            [p.dorsal, existing.rows[0].id]
+                        );
+                    } else {
+                        await pool.query(
+                            'INSERT INTO garras_players (name, category, dorsal, active) VALUES ($1, $2, $3, 1)',
+                            [p.name, 'femenino', p.dorsal]
+                        );
+                    }
+                }
+                // Bajas femenino: no están en la plantilla 2026-27 (ver comentario de FEMENINO_ROSTER).
+                // Soft-delete para conservar histórico de votos MVP (FK de match_mvp_votes/match_mvp_players).
+                const femeninoBajas = [
+                    'Olatz Santana Amado', 'Nerea Nevado Gómez', 'Laida Balerdi Beloki',
+                    'Irati Alfaro Nagore', 'Maite Zubieta Aranbarri', 'Alejandra Estefanía Díaz',
+                    'Ane Bordagaray Casado', 'Oihana Agirregomezkorta García'
+                ];
+                for (const name of femeninoBajas) {
+                    await pool.query(
+                        `UPDATE garras_players SET active = 0 WHERE category = 'femenino' AND LOWER(name) = LOWER($1)`,
+                        [name]
+                    );
+                }
             }
 
             dbReady = true;
