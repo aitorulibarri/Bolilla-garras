@@ -784,12 +784,13 @@ function getShieldUrl(teamName) {
 // Si se añade un jugador nuevo al roster, comprobar que el nº de claves masculino de
 // este mapa cuadra con el nº de jugadores de MASCULINO_ROSTER (se perdió una entrada
 // -Alex Padilla- al reordenar este bloque a mano y pasó desapercibido varios commits).
-// Jugadoras del seed sin foto en el pendrive (femenino): Olatz Santana Amado,
-//   Nerea Nevado Gómez, Laida Balerdi Beloki, Irati Alfaro Nagore, Maite Zubieta Aranbarri,
-//   Alejandra Estefanía Díaz, Ane Bordagaray Casado, Daniela Agote Helguera (el pendrive trae
-//   "daniela-agote-aguirre.png", segundo apellido distinto: no se ha dado por buena la
-//   coincidencia), Oihana Agirregomezkorta García.
-// Estos jugadores/as caen al avatar de iniciales vía getPlayerPhotoUrl().
+// Roster femenino (FEMENINO_ROSTER en server.js, temporada 2026-27, 26 jugadoras): todas tienen
+// foto. Las jugadoras del seed anterior que ya no están en la plantilla (Olatz Santana Amado,
+// Nerea Nevado Gómez, Laida Balerdi Beloki, Irati Alfaro Nagore, Maite Zubieta Aranbarri,
+// Alejandra Estefanía Díaz, Ane Bordagaray Casado, Oihana Agirregomezkorta García) se dieron de
+// baja (soft-delete) en dbInit() y ya no aparecen aquí. "Daniela Agote Helguera" era un segundo
+// apellido erróneo del seed original — la ficha oficial confirma "Daniela Agote Aguirre" (mismo
+// fichero daniela-agote-aguirre.png que antes no se enlazaba por la duda de la coincidencia).
 const PLAYER_PHOTO_MAP = {
   // ── Masculino ──
   'Unai Simón':              'players/masculino/unai-simon-mendibil_L.png',
@@ -828,24 +829,31 @@ const PLAYER_PHOTO_MAP = {
 
   // ── Femenino ──
   'Adriana Nanclares Romero':     'players/femenino/1-adriana-nanclares-romero.png',
+  'Eunate Astralaga Aranguren':   'players/femenino/eunate-astralaga-aranguren.png',
+  'Elene Aldekoa Arrue':          'players/femenino/elene-aldekoa-arrue.png',
   'Ziara Vega Uribarri':          'players/femenino/ziara-vega-uribarri.png',
   'Maddi Torre Larrañaga':        'players/femenino/maddi-torre-larranaga.png',
   'Naia Landaluze Marquínez':     'players/femenino/naia-landaluze-marquinez.png',
   'Bibiane Schulze Solano':       'players/femenino/bibiane-schulze-solano.png',
   'Ane Elexpuru Añorga':          'players/femenino/ane-elexpuru-anorga.png',
   'Eider Arana Mugueta':          'players/femenino/eider-arana-mugueta.png',
+  'Garazi Fácila Giralte':        'players/femenino/garazi-facila-giralte.png',
+  'Amaia Martínez De la Peña':    'players/femenino/amaia-martinez-de-la-pena.png',
   'Nerea Benito Zaldibar':        'players/femenino/nerea-benito-zaldibar.png',
   'Maite Valero Elía':            'players/femenino/maite-valero-elia.png',
   'Irene Oguiza Martínez':        'players/femenino/irene-oguiza-martinez.png',
   'Leire Baños Indakoetxea':      'players/femenino/leire-banos-indakoetxea.png',
   'Clara Pinedo Castresana':      'players/femenino/clara-pinedo-castresana.png',
+  'Amaia Iribarren Arteta':       'players/femenino/amaia-iribarren-arteta.png',
+  'Marina Artero Moreno':         'players/femenino/marina-artero-moreno.png',
+  'Elene Gurtubay Loyo':          'players/femenino/elene-gurtubay-loyo.png',
   'Jone Amezaga Martínez':        'players/femenino/jone-amezaga-martinez.png',
   'Patricia Zugasti Oses':        'players/femenino/patricia-zugasti-oses.png',
   'Ane Azkona Fuente':            'players/femenino/ane-azkona-fuente.png',
   'Sara Ortega Ruiz':             'players/femenino/sara-ortega-ruiz.png',
   'Maitane Vilariño Mendinueta':  'players/femenino/maitane-vilarino-mendinueta.png',
   'Ane Campos Andueza':           'players/femenino/ane-campos-andueza.png',
-  'Elene Gurtubay Loyo':          'players/femenino/elene-gurtubay-loyo.png',
+  'Daniela Agote Aguirre':        'players/femenino/daniela-agote-aguirre.png',
 };
 
 // Algunas fotos del pendrive no tienen al jugador/a centrado en el encuadre
@@ -1639,7 +1647,7 @@ async function printTrackerReport() {
     const cells = matches.map(m => {
       const p = predMap[ukey]?.[m.id];
       if (p !== undefined) {
-        return `<td style="background:#c8f7c5;color:#155724;border:1px solid #ccc;text-align:center;font-weight:700;font-size:10px;font-family:monospace;">${p.h}-${p.a}</td>`;
+        return `<td style="background:#c8f7c5;color:#155724;border:1px solid #ccc;text-align:center;font-weight:700;font-size:10px;font-family:monospace;mso-number-format:'\\@';">${p.h}-${p.a}</td>`;
       }
       if (m.deadline_passed) {
         return `<td style="background:#fecaca;color:#991b1b;border:1px solid #ccc;text-align:center;font-weight:700;font-size:11px;">✗</td>`;
@@ -1857,8 +1865,8 @@ async function exportLeaderboardCSV() {
     const matchCells = sortedMatches.map(m => {
       const p = preds[m.mk];
       if (!p) return `<td style="${baseTd}text-align:center;font-size:9px;">—</td><td style="${baseTd}text-align:center;font-size:9px;">—</td><td style="${baseTd}text-align:center;font-size:9px;">—</td>`;
-      const s = `${baseTd}text-align:center;font-size:9px;font-weight:700;`;
-      return `<td style="${s}">${p.pred_home}-${p.pred_away}</td><td style="${s}">${p.real_home}-${p.real_away}</td><td style="${s}">${p.points}</td>`;
+      const s = `${baseTd}text-align:center;font-size:9px;font-weight:700;mso-number-format:'\\@';`;
+      return `<td style="${s}">${p.pred_home}-${p.pred_away}</td><td style="${s}">${p.real_home}-${p.real_away}</td><td style="${baseTd}text-align:center;font-size:9px;font-weight:700;">${p.points}</td>`;
     }).join('');
 
     return `<tr>

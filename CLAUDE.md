@@ -272,6 +272,8 @@ Primera subpestaña "Por jornada": `renderByWeek()` agrupa por semana lunes-domi
 
 **Formato Excel** (`.xls`): se genera como HTML con namespace Office. Usar MIME `application/vnd.ms-excel` y BOM `﻿`.
 
+**Celdas `N-N` (pronóstico/resultado) forzadas a texto**: Excel autodetecta el tipo de celda al abrir el HTML como `.xls`, y una celda cuyo contenido es solo `"1-0"`, `"2-1"`, etc. la reinterpreta como fecha (día-mes) en vez de dejarla como texto. Las celdas de pronóstico y resultado en `exportLeaderboardCSV()` y `printTrackerReport()` llevan `mso-number-format:'\@';` en el `style` para forzar formato texto y que Excel muestre el marcador tal cual (`1-0`) en lugar de convertirlo en fecha.
+
 **`exportLeaderboardCSV()` — sin colorines ni medallas**: a petición del usuario, las filas de datos van sin color condicional (ni por puntuación del partido, ni oro/plata/bronce para el top 3) — solo la cabecera (`th`/`thMatch`/`thSub`) conserva su estilo. La posición se pinta como número plano (`i + 1`), nunca con emoji de medalla. `printRankingOnly()` (el PDF, no el Excel) sí conserva medallas y colorines top-3 — no se tocó, el usuario pidió el cambio solo para el Excel.
 
 **`formatMatchDateForPDF(raw)`** (app.js): formatea fechas de partido como `d-m` (día-mes sin ceros a la izquierda, ej. `14-3`, sin hora) — mismo criterio en los dos exports que la usan (`exportLeaderboardCSV` y `printTrackerReport`). Antes mostraba `dd/mm hh:mm`; se simplificó a petición del usuario para que coincida con el formato corto de fecha de Excel.
