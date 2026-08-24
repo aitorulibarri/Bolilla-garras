@@ -939,9 +939,9 @@ function renderMatchCard(match, userPrediction) {
   if (contextTeam === 'Bilbao Athletic') leagueName = '1ª RFEF';
 
   const standingsUrls = {
-    'Athletic Club':     'https://www.athletic-club.eus/equipos/athletic-club/2025-26/clasificacion/',
-    'Athletic Femenino': 'https://www.athletic-club.eus/equipos/athletic-club-femenino/2025-26/clasificacion/',
-    'Bilbao Athletic':   'https://www.athletic-club.eus/equipos/bilbao-athletic/2025-26/clasificacion/',
+    'Athletic Club':     'https://www.athletic-club.eus/equipos/athletic-club/2026-27/clasificacion/',
+    'Athletic Femenino': 'https://www.athletic-club.eus/equipos/athletic-club-femenino/2026-27/clasificacion/',
+    'Bilbao Athletic':   'https://www.athletic-club.eus/equipos/bilbao-athletic/2026-27/clasificacion/',
   };
   const standingsUrl = standingsUrls[contextTeam] || null;
 
@@ -2874,7 +2874,7 @@ async function loadMvpRanking() {
 
     section.innerHTML = `
       <div class="card">
-        <div class="card-header"><h3 class="card-title">🏆 Ranking Temporada 25/26</h3></div>
+        <div class="card-header"><h3 class="card-title">🏆 Ranking Temporada 26/27</h3></div>
         <div class="garras-ranking-grid">
           ${renderTable(masculino, '⚽ Masculino')}
           ${renderTable(femenino, '⚽ Femenino')}
