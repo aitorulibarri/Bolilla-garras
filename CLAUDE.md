@@ -116,6 +116,16 @@ JWT stateless, token en **`sessionStorage`** como `bolilla_token`. Duración: 24
 
 Verificado contra "NORMAS BOLILLA GARRAS 26/27" (documento de la peña, no versionado en el repo): el baremo no cambió respecto a temporadas anteriores — no hace falta tocar `calculatePoints()` al empezar temporada nueva, solo resetear datos (ver `POST /api/admin/reset-full-season`).
 
+### Participación en pronósticos (`users.participates_predictions`)
+
+Columna `INTEGER DEFAULT 1` en `users` (migración vía `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` en `dbInit()`, mismo patrón que `password_encrypted`). Marca si un usuario sale en la clasificación de pronósticos. Gestión **manual desde Admin → Usuarios** (botón "🙈 No participa en pronósticos" / "👁️ Sí participa"), sin heurística automática — se decidió así a propósito: con ~20-30 usuarios cualquier detección automática por partidos fallados genera falsos positivos (alguien que se olvida un par de veces no debe desaparecer de la clasificación).
+
+- `PUT /api/admin/users/:id/predictions-participation` (`{ participates: true|false }`) — mismo patrón que `PUT /api/admin/users/:id/admin`.
+- `GET /api/leaderboard` filtra `WHERE u.participates_predictions = 1`.
+- `GET /api/admin/open-predictions` (tracker de Seguimiento) también filtra a solo participantes, para no mostrar como "falta por pronosticar" a quien no participa.
+- **No afecta a Garras Saria**: `match_mvp_votes.username` es independiente de este flag — quien no participa en pronósticos sigue votando MVP con normalidad.
+- El flag vive en `users`, no en `predictions` — sobrevive a `POST /api/admin/reset-full-season` (que borra `predictions`/`matches` pero conserva `users`), correcto porque es una preferencia estable entre temporadas, no un dato de la temporada.
+
 ## GARRAS SARIA — Módulo de votación MVP
 
 Tab activo en producción. El sistema MVP por partido (`/api/mvp/*`) es el único expuesto en frontend. El sistema por jornada (`/api/garras/*`) existe en server.js pero sin UI.
@@ -207,8 +217,8 @@ Primera subpestaña "Por jornada": `renderByWeek()` agrupa por semana lunes-domi
 ### Clasificación (Leaderboard)
 
 - Iconos: 1º `trofeo-v2.png`, 2º `garras-lion.png`, 3º `lion-paw.png`
-- PDF export (solo admins): `printLeaderboardReport()` y `printRankingOnly()`
-- Todos los usuarios registrados aparecen aunque tengan 0 puntos
+- Export PDF (solo admins): `printRankingOnly()`. Export Excel: `exportLeaderboardCSV()` — ver Exports.
+- Todos los usuarios registrados aparecen aunque tengan 0 puntos, **salvo** los que tengan `users.participates_predictions = 0` (ver Sistema de puntos / Participación en pronósticos) — esos no salen en `/api/leaderboard` ni en el tracker de Seguimiento, pero sí siguen votando en Garras Saria con normalidad.
 
 ## PWA
 
@@ -248,6 +258,7 @@ Primera subpestaña "Por jornada": `renderByWeek()` agrupa por semana lunes-domi
 | `PUT /api/admin/users/:id/password` | Resetear contraseña de un usuario |
 | `PUT /api/admin/users/:id/display-name` | Cambiar el nombre visible de un usuario |
 | `PUT /api/admin/users/:id/admin` | Conceder/quitar admin (`{ isAdmin: true\|false }`) — hace `UPDATE users SET is_admin` |
+| `PUT /api/admin/users/:id/predictions-participation` | Marca si el usuario sale en la clasificación de pronósticos (`{ participates: true\|false }`) — ver Participación en pronósticos |
 | `DELETE /api/admin/users/:id` | Borrar usuario y sus predicciones |
 
 ## Exports
@@ -255,11 +266,15 @@ Primera subpestaña "Por jornada": `renderByWeek()` agrupa por semana lunes-domi
 | Función | Pestaña | Formato | Fuente |
 |---|---|---|---|
 | `printTrackerReport()` | Seguimiento | `.xls` con colores | `/api/admin/open-predictions` |
-| `exportLeaderboardCSV()` | Clasificación | `.xls` con colores | `/api/leaderboard` + `/api/leaderboard/detail` |
+| `exportLeaderboardCSV()` | Clasificación | `.xls` **sin colores** (solo cabecera con estilo) | `/api/leaderboard` + `/api/leaderboard/detail` |
 | `printRankingOnly()` | Clasificación | PDF via `window.print()` | `/api/leaderboard` |
 | `exportMatchResult(match)` | Garras Saria historial | PNG via Canvas API | datos en memoria (`_mvpHistoryMatches`) |
 
 **Formato Excel** (`.xls`): se genera como HTML con namespace Office. Usar MIME `application/vnd.ms-excel` y BOM `﻿`.
+
+**`exportLeaderboardCSV()` — sin colorines ni medallas**: a petición del usuario, las filas de datos van sin color condicional (ni por puntuación del partido, ni oro/plata/bronce para el top 3) — solo la cabecera (`th`/`thMatch`/`thSub`) conserva su estilo. La posición se pinta como número plano (`i + 1`), nunca con emoji de medalla. `printRankingOnly()` (el PDF, no el Excel) sí conserva medallas y colorines top-3 — no se tocó, el usuario pidió el cambio solo para el Excel.
+
+**`formatMatchDateForPDF(raw)`** (app.js): formatea fechas de partido como `d-m` (día-mes sin ceros a la izquierda, ej. `14-3`, sin hora) — mismo criterio en los dos exports que la usan (`exportLeaderboardCSV` y `printTrackerReport`). Antes mostraba `dd/mm hh:mm`; se simplificó a petición del usuario para que coincida con el formato corto de fecha de Excel.
 
 **Canvas PNG** (`exportMatchResult`): 900px ancho, alto fijo según config (no depende del nº de votados — **solo se dibuja el podio top 3, nunca una lista de 4º/5º...**). Logo `/assets/garras-logo.png` y trofeo `/assets/trofeo-v2.png` (sobre el ganador) cargados con `crossOrigin='anonymous'` vía helper `_loadImage(src)`; `/assets/lion-paw.png` de fondo como marca de agua muy sutil (`globalAlpha` 0.05) detrás del podio — toques visuales de la peña. El top 3 se dibuja como podio real (plata izq. más bajo, oro centro más alto, bronce der.), con la foto de cada jugador/a recortada en un marco rectangular redondeado (mismo criterio "pecho arriba" que `renderPlayerAvatar`, pero con la fórmula completa: recorte fuente `x:[iw*0.25, iw*0.75]` centrado, `y:[0, sWidth*(frameH/frameW)]` — replica exacta de lo que hace `object-fit:cover + transform:scale(2.0) origin-top` en CSS, ver comentario en `styles.css:2509`) o, si no tiene foto en `PLAYER_PHOTO_MAP`, un cuadro de color (`playerAvatarColor`) con sus iniciales. **Ojo**: un recorte cuadrado/circular con solo `iw × iw/2` (versión antigua, ya no está) se veía mal porque no recorta los laterales — hay que mantener el recorte centrado al 50% del ancho. Aun así, algunas fotos del pendrive no tienen al jugador/a centrado en su propio encuadre original (pose asimétrica) — verificado renderizando las ~60 fotos en rejilla con una línea de referencia central. Para esos casos puntuales (`Alex Padilla`, `Maroan Sannadi`, `Unai Simón`, `Nerea Benito Zaldibar`) hay un desplazamiento manual en `PLAYER_PHOTO_CROP_OFFSET` (justo debajo de `PLAYER_PHOTO_MAP`), aplicado solo en el recorte del podio — **no** en `renderPlayerAvatar` (tarjetas de voto/historial), que sigue con el recorte por defecto sin corregir para esos mismos jugadores. La insignia de puesto sobre el marco es un círculo sólido con el número (no un emoji de medalla — en algunos entornos sin fuente de emoji instalada un `fillText('🥇', ...)` en canvas cae a un glifo roto). El dorsal se pinta junto al nombre bajo la foto como sufijo `" #9"` en gris claro (mismo patrón que el badge `.mvp-dorsal` de la web), no como insignia sobre la foto — se probó una pill superpuesta a la esquina del marco y no gustó visualmente; se omite si `p.dorsal` es `null`. En iOS abre nueva pestaña (el usuario guarda manualmente); en Android/desktop descarga directa.
 

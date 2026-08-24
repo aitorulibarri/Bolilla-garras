@@ -211,6 +211,7 @@ async function dbInit() {
                     display_name TEXT NOT NULL,
                     password_hash TEXT NOT NULL,
                     is_admin INTEGER DEFAULT 0,
+                    participates_predictions INTEGER DEFAULT 1,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             `);
@@ -252,6 +253,12 @@ async function dbInit() {
             // Add password_encrypted column (para que el admin pueda ver contraseñas)
             try {
                 await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_encrypted TEXT`);
+            } catch (e) { /* ignore if exists */ }
+
+            // Add participates_predictions column (usuarios que solo quieren votar en Garras Saria,
+            // sin salir en la clasificación de pronósticos) — default 1 para no ocultar a nadie existente
+            try {
+                await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS participates_predictions INTEGER DEFAULT 1`);
             } catch (e) { /* ignore if exists */ }
 
             // Ensure UNIQUE constraint exists (required for ON CONFLICT upsert)
@@ -1121,6 +1128,7 @@ app.get('/api/leaderboard', requireAuth, async (req, res) => {
         COUNT(CASE WHEN pr.points IS NOT NULL THEN 1 END) as total_predictions
       FROM users u
       LEFT JOIN predictions pr ON LOWER(pr.player_name) = LOWER(u.username)
+      WHERE u.participates_predictions = 1
       GROUP BY u.username, u.display_name
       ORDER BY total_points DESC, exact_predictions DESC
     `);
@@ -1165,7 +1173,7 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
     try {
         if (!IS_POSTGRES) return res.json([]);
         const users = await query(
-            'SELECT id, username, display_name, is_admin, created_at FROM users ORDER BY display_name ASC'
+            'SELECT id, username, display_name, is_admin, participates_predictions, created_at FROM users ORDER BY display_name ASC'
         );
         res.json(users);
     } catch (err) {
@@ -1229,7 +1237,7 @@ app.get('/api/admin/open-predictions', requireAdmin, async (req, res) => {
                 match_date ASC
         `);
 
-        const allUsers = await query('SELECT username, display_name FROM users ORDER BY display_name ASC');
+        const allUsers = await query('SELECT username, display_name FROM users WHERE participates_predictions = 1 ORDER BY display_name ASC');
 
         const result = [];
         for (const m of matches) {
@@ -1359,6 +1367,31 @@ app.put('/api/admin/users/:id/admin', requireAdmin, async (req, res) => {
     } catch (err) {
         console.error('Toggle admin error:', err);
         res.status(500).json({ error: 'Error al cambiar el rol de administrador' });
+    }
+});
+
+// Marcar si un usuario participa en los pronósticos de la quiniela (admin only).
+// Quien no participa sigue pudiendo votar en Garras Saria — no afecta a match_mvp_votes.
+app.put('/api/admin/users/:id/predictions-participation', requireAdmin, async (req, res) => {
+    try {
+        const userId = parseInt(req.params.id);
+        const { participates } = req.body;
+
+        if (typeof participates !== 'boolean') {
+            return res.status(400).json({ error: 'participates debe ser true o false' });
+        }
+
+        if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
+
+        const target = await queryOne('SELECT id, username FROM users WHERE id = $1', [userId]);
+        if (!target) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+        await pool.query('UPDATE users SET participates_predictions = $1 WHERE id = $2', [participates ? 1 : 0, userId]);
+
+        res.json({ success: true, username: target.username, participates });
+    } catch (err) {
+        console.error('Toggle predictions participation error:', err);
+        res.status(500).json({ error: 'Error al cambiar la participación en pronósticos' });
     }
 });
 

@@ -1492,10 +1492,9 @@ function parseMatchDate(raw) {
 function formatMatchDateForPDF(raw) {
   if (!raw) return '—';
   const s = String(raw).replace(/Z$/, '').replace(/\.\d+$/, '').replace('T', ' ');
-  const [datePart = '', timePart = ''] = s.split(' ');
+  const [datePart = ''] = s.split(' ');
   const [, month = '', day = ''] = datePart.split('-');
-  const [hour = '', min = ''] = timePart.split(':');
-  return `${day}/${month} ${hour}:${min}`;
+  return `${Number(day)}-${Number(month)}`;
 }
 
 let _trackerData = null; // cache para el botón de imprimir
@@ -1841,12 +1840,6 @@ async function exportLeaderboardCSV() {
     byPlayer[key][mk] = row;
   });
 
-  // Color coding by points
-  const ptsBg  = (pts) => { const n = Number(pts); if (n === 5) return '#b7e4b7'; if (n >= 3) return '#fde68a'; if (n >= 1) return '#fcd9a0'; return '#fecaca'; };
-  const ptsFg  = (pts) => { const n = Number(pts); if (n === 5) return '#166534'; if (n >= 3) return '#78350f'; if (n >= 1) return '#92400e'; return '#991b1b'; };
-  const rankBg = (i)   => i === 0 ? '#fef9c3' : i === 1 ? '#f3f4f6' : i === 2 ? '#fff7ed' : '#ffffff';
-  const rankFg = (i)   => i === 0 ? '#854d0e' : i === 1 ? '#374151' : i === 2 ? '#9a3412' : '#111111';
-
   const th = (content, extra = '') => `<th style="background:#1e1e2e;color:#fff;border:1px solid #555;padding:5px 8px;font-size:10px;white-space:nowrap;${extra}">${content}</th>`;
   const thMatch = (content) => `<th colspan="3" style="background:#c00;color:#fff;border:1px solid #900;padding:5px 8px;font-size:10px;text-align:center;">${content}</th>`;
   const thSub   = (content) => `<th style="background:#eee;color:#333;border:1px solid #bbb;padding:3px 6px;font-size:9px;text-align:center;">${content}</th>`;
@@ -1859,24 +1852,20 @@ async function exportLeaderboardCSV() {
   const dataRows = leaderboard.map((user, i) => {
     const pkey = user.name.toLowerCase();
     const preds = byPlayer[pkey] || {};
-    const bg = rankBg(i);
-    const fg = rankFg(i);
-    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1;
     const baseTd = `border:1px solid #ddd;padding:4px 7px;`;
 
     const matchCells = sortedMatches.map(m => {
       const p = preds[m.mk];
-      if (!p) return `<td style="background:#f0f0f0;color:#aaa;${baseTd}text-align:center;font-size:9px;">—</td><td style="background:#f0f0f0;color:#aaa;${baseTd}text-align:center;font-size:9px;">—</td><td style="background:#f0f0f0;color:#aaa;${baseTd}text-align:center;font-size:9px;">—</td>`;
-      const cbg = ptsBg(p.points); const cfg = ptsFg(p.points);
-      const s = `background:${cbg};color:${cfg};${baseTd}text-align:center;font-size:9px;font-weight:700;`;
+      if (!p) return `<td style="${baseTd}text-align:center;font-size:9px;">—</td><td style="${baseTd}text-align:center;font-size:9px;">—</td><td style="${baseTd}text-align:center;font-size:9px;">—</td>`;
+      const s = `${baseTd}text-align:center;font-size:9px;font-weight:700;`;
       return `<td style="${s}">${p.pred_home}-${p.pred_away}</td><td style="${s}">${p.real_home}-${p.real_away}</td><td style="${s}">${p.points}</td>`;
     }).join('');
 
     return `<tr>
-      <td style="background:${bg};color:${fg};${baseTd}text-align:center;font-weight:700;font-size:11px;">${medal}</td>
-      <td style="background:${bg};color:${fg};${baseTd}font-weight:600;font-size:10px;white-space:nowrap;">${esc(user.display_name || user.name)}</td>
-      <td style="background:${bg};color:#c00;${baseTd}text-align:center;font-weight:700;font-size:13px;">${user.total_points}</td>
-      <td style="background:${bg};color:#166534;${baseTd}text-align:center;font-weight:600;font-size:10px;">${user.exact_predictions} 🎯</td>
+      <td style="${baseTd}text-align:center;font-weight:700;font-size:11px;">${i + 1}</td>
+      <td style="${baseTd}font-weight:600;font-size:10px;white-space:nowrap;">${esc(user.display_name || user.name)}</td>
+      <td style="${baseTd}text-align:center;font-weight:700;font-size:13px;">${user.total_points}</td>
+      <td style="${baseTd}text-align:center;font-weight:600;font-size:10px;">${user.exact_predictions} 🎯</td>
       ${matchCells}
     </tr>`;
   }).join('');
@@ -1902,15 +1891,6 @@ async function exportLeaderboardCSV() {
   </thead>
   <tbody>${dataRows}</tbody>
 </table>
-<br>
-<table><tr>
-  <td style="font-size:9px;color:#555;padding:3px 6px;">Leyenda:</td>
-  <td style="background:#b7e4b7;color:#166534;font-size:9px;padding:3px 10px;border:1px solid #aaa;font-weight:700;">5 pts — Pleno exacto 🎯</td>
-  <td style="background:#fde68a;color:#78350f;font-size:9px;padding:3px 10px;border:1px solid #aaa;font-weight:700;">3 pts — Muy bien</td>
-  <td style="background:#fcd9a0;color:#92400e;font-size:9px;padding:3px 10px;border:1px solid #aaa;font-weight:700;">1-2 pts — Parcial</td>
-  <td style="background:#fecaca;color:#991b1b;font-size:9px;padding:3px 10px;border:1px solid #aaa;font-weight:700;">0 pts — Fallo</td>
-  <td style="background:#f0f0f0;color:#888;font-size:9px;padding:3px 10px;border:1px solid #aaa;">— Sin pronóstico</td>
-</tr></table>
 </body></html>`;
 
   const blob = new Blob(['﻿' + html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
@@ -1962,10 +1942,21 @@ async function loadAdminUsers() {
              data-user-id="${u.id}" data-display="${safeDisplay}">
              ⭐ Hacer admin
            </button>`);
+      const participates = u.participates_predictions !== 0 && u.participates_predictions !== false;
+      const participationBadge = participates ? '' : '<span class="user-badge-no-predictions">SOLO GARRAS SARIA</span>';
+      const participationToggleBtn = participates
+        ? `<button class="btn btn-secondary btn-sm" data-action="revoke-predictions"
+             data-user-id="${u.id}" data-display="${safeDisplay}">
+             🙈 No participa en pronósticos
+           </button>`
+        : `<button class="btn btn-secondary btn-sm" data-action="grant-predictions"
+             data-user-id="${u.id}" data-display="${safeDisplay}">
+             👁️ Sí participa en pronósticos
+           </button>`;
       return `
         <tr data-user-id="${u.id}">
           <td data-label="Usuario">
-            <strong>${safeDisplay}</strong> ${adminBadge}
+            <strong>${safeDisplay}</strong> ${adminBadge} ${participationBadge}
             <div class="user-username">@${safeUsername}</div>
           </td>
           <td data-label="Contraseña">
@@ -1985,6 +1976,7 @@ async function loadAdminUsers() {
               🔑 Resetear
             </button>
             ${adminToggleBtn}
+            ${participationToggleBtn}
             <button class="btn btn-danger btn-sm" data-action="delete-user"
               data-user-id="${u.id}" data-username="${safeUsername}" data-display="${safeDisplay}">
               🗑️ Borrar
@@ -2050,6 +2042,18 @@ async function loadAdminUsers() {
         toggleUserAdmin(parseInt(btn.dataset.userId), btn.dataset.display, false);
       });
     });
+
+    container.querySelectorAll('button[data-action="grant-predictions"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        toggleUserPredictionsParticipation(parseInt(btn.dataset.userId), btn.dataset.display, true);
+      });
+    });
+
+    container.querySelectorAll('button[data-action="revoke-predictions"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        toggleUserPredictionsParticipation(parseInt(btn.dataset.userId), btn.dataset.display, false);
+      });
+    });
   } catch (err) {
     console.error(err);
     container.innerHTML = '<p>Error al cargar usuarios</p>';
@@ -2070,6 +2074,29 @@ async function toggleUserAdmin(userId, displayName, makeAdmin) {
       loadAdminUsers();
     } else {
       showToast(data.error || 'Error al cambiar el rol', 'error');
+    }
+  } catch (err) {
+    console.error(err);
+    showToast('Error de conexión', 'error');
+  }
+}
+
+async function toggleUserPredictionsParticipation(userId, displayName, participates) {
+  try {
+    const res = await fetchWithRetry(`/api/admin/users/${userId}/predictions-participation`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ participates })
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok) {
+      showToast(participates
+        ? `${displayName} vuelve a salir en la clasificación de pronósticos`
+        : `${displayName} ya no sale en la clasificación (sigue votando en Garras Saria)`, 'success');
+      loadAdminUsers();
+    } else {
+      showToast(data.error || 'Error al cambiar la participación', 'error');
     }
   } catch (err) {
     console.error(err);
