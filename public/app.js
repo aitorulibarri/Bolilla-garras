@@ -2463,7 +2463,7 @@ async function loadAdminStats() {
     const { totalUsers, upcomingMatches, usersWithoutPredictions } = stats;
 
     container.innerHTML = `
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 20px;">
         <!-- Total Users Card -->
         <div style="padding: 20px; background: var(--bg-tertiary); border-radius: var(--radius-lg); border: 1px solid rgba(255,255,255,0.06);">
           <h4 style="margin-bottom: 12px; color: var(--text-secondary); font-size: 14px;">👥 Usuarios Activos</h4>
@@ -2471,7 +2471,7 @@ async function loadAdminStats() {
         </div>
 
         <!-- Upcoming Matches Participation -->
-        <div style="padding: 20px; background: var(--bg-tertiary); border-radius: var(--radius-lg); border: 1px solid rgba(255,255,255,0.06); grid-column: span 2;">
+        <div style="padding: 20px; background: var(--bg-tertiary); border-radius: var(--radius-lg); border: 1px solid rgba(255,255,255,0.06); grid-column: 1 / -1;">
           <h4 style="margin-bottom: 16px; color: var(--text-secondary); font-size: 14px;">📊 Participación en Próximos Partidos</h4>
           ${upcomingMatches.length === 0 ? '<p style="color: var(--text-muted);">No hay partidos próximos</p>' : upcomingMatches.map(m => {
       const homeTeam = escapeHtml(m.is_home ? m.team : m.opponent);
@@ -2493,7 +2493,7 @@ async function loadAdminStats() {
         </div>
 
         <!-- Users Without Predictions -->
-        <div style="padding: 20px; background: var(--bg-tertiary); border-radius: var(--radius-lg); border: 1px solid rgba(255,255,255,0.06); grid-column: span 3;">
+        <div style="padding: 20px; background: var(--bg-tertiary); border-radius: var(--radius-lg); border: 1px solid rgba(255,255,255,0.06); grid-column: 1 / -1;">
           <h4 style="margin-bottom: 12px; color: var(--text-secondary); font-size: 14px;">⚠️ Usuarios sin Pronósticos (Top 10)</h4>
           ${usersWithoutPredictions.length === 0
         ? '<p style="color: var(--success);">¡Todos los usuarios han pronosticado! 🎉</p>'
