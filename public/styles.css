@@ -874,6 +874,15 @@ body::before {
   background: rgba(255, 51, 51, 0.05);
 }
 
+.leaderboard-table tbody tr.leaderboard-row-me {
+  background: rgba(255, 51, 51, 0.12);
+  box-shadow: inset 3px 0 0 var(--neon-red);
+}
+
+.leaderboard-table tbody tr.leaderboard-row-me:hover {
+  background: rgba(255, 51, 51, 0.18);
+}
+
 .leaderboard-table td {
   padding: 16px;
   font-weight: 600;

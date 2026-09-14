@@ -626,7 +626,7 @@ async function loadMatches() {
 
     // Single save-all button if there are pending predictions
     const pendingIds = matches
-      .filter(m => new Date() < new Date(m.deadline))
+      .filter(m => new Date() < parseMatchDate(m.deadline))
       .map(m => m.id);
 
     if (pendingIds.length > 0) {
@@ -904,15 +904,19 @@ function renderPlayerAvatar(name, sizeFrameClass) {
   const photo = getPlayerPhotoUrl(name);
   const frameCls = `garras-avatar-frame ${sizeFrameClass || ''}`.trim();
   if (photo) {
-    return `<div class="${frameCls}"><img class="garras-avatar" src="${photo}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'), {className:'garras-avatar-fallback', textContent:'${getInitials(name)}', style:'background:${playerAvatarColor(name)}'}))"></div>`;
+    // Mismo desplazamiento horizontal que en el podio PNG (PLAYER_PHOTO_CROP_OFFSET),
+    // aplicado aquí vía object-position en vez del recorte manual de canvas.
+    const offset = getPlayerCropOffsetX(name);
+    const posStyle = offset ? ` style="object-position:${(50 - offset * 100).toFixed(1)}% top"` : '';
+    return `<div class="${frameCls}"><img class="garras-avatar" src="${photo}" alt="" loading="lazy"${posStyle} onerror="this.replaceWith(Object.assign(document.createElement('div'), {className:'garras-avatar-fallback', textContent:'${getInitials(name)}', style:'background:${playerAvatarColor(name)}'}))"></div>`;
   }
   return `<div class="${frameCls}"><div class="garras-avatar-fallback" style="background:${playerAvatarColor(name)}">${getInitials(name)}</div></div>`;
 }
 
 
 function renderMatchCard(match, userPrediction) {
-  const matchDate = new Date(match.match_date);
-  const deadline = new Date(match.deadline);
+  const matchDate = parseMatchDate(match.match_date);
+  const deadline = parseMatchDate(match.deadline);
   const now = new Date();
   const canPredict = now < deadline;
   const hasPrediction = !!userPrediction;
@@ -1143,8 +1147,9 @@ async function loadLeaderboard() {
           <tbody>
             ${leaderboard.map((user, index) => {
       const rankEmoji = index === 0 ? '<img src="/assets/trofeo-v2.png" class="rank-crown-img" alt="Copa del Rey">' : (index === 1 ? '<img src="/assets/garras-lion.png" class="rank-crown-img" alt="🦁">' : (index === 2 ? '<img src="/assets/lion-paw.png" class="rank-crown-img" alt="🐾">' : `#${index + 1}`));
+      const isMe = currentUser && user.name && currentUser.username && user.name.toLowerCase() === currentUser.username.toLowerCase();
       return `
-              <tr>
+              <tr${isMe ? ' class="leaderboard-row-me"' : ''}>
                 <td class="rank">${rankEmoji}</td>
                 <td>
                     <div style="font-weight: 700; color: var(--text-primary); font-size: 16px;">${escapeHtml(user.display_name || user.name)}</div>
@@ -1391,7 +1396,7 @@ async function loadAdminMatches() {
     }
 
     container.innerHTML = matches.map(match => {
-      const matchDate = new Date(match.match_date);
+      const matchDate = parseMatchDate(match.match_date);
       const homeTeam = match.is_home ? match.team : match.opponent;
       const awayTeam = match.is_home ? match.opponent : match.team;
 
