@@ -794,7 +794,6 @@ function getShieldUrl(teamName) {
 const PLAYER_PHOTO_MAP = {
   // ── Masculino ──
   'Unai Simón':              'players/masculino/unai-simon-mendibil_L.png',
-  'Andoni Gorosabel':        'players/masculino/andoni-gorosabel-espinosa.png',
   'Dani Vivian':              'players/masculino/daniel-vivian-moreno.png',
   'Aitor Paredes':            'players/masculino/aitor-paredes-casamichana.png',
   'Yeray Álvarez':            'players/masculino/yeray-alvarez-lopez_L.png',
@@ -809,7 +808,6 @@ const PLAYER_PHOTO_MAP = {
   'Iñigo R. De Galarreta':    'players/masculino/inigo-ruiz-de-galarreta-etxeberria.png',
   'Yuri Berchiche':           'players/masculino/yuri-berchiche-izeta.png',
   'Mikel Jauregizar':         'players/masculino/mikel-jauregizar-alboniga.png',
-  'Adama Boiro':              'players/masculino/adama-boiro-boiro.png',
   'Alejandro Rego':           'players/masculino/alejandro-rego-mora.png',
   'Maroan Sannadi':           'players/masculino/maroan-sannadi-harrouch.png',
   'Nico Serrano':             'players/masculino/nicolas-serrano-galdeano.png',
@@ -819,7 +817,6 @@ const PLAYER_PHOTO_MAP = {
   'Peio Canales':             'players/masculino/peio-canales-urtasun.png',
   'Johaneko Louis-Jean':      'players/masculino/johaneko-louis-jean_L.png',
   'Asier Hierro':             'players/masculino/asier-hierro-campo_L.png',
-  'Elijah Gift':              'players/masculino/elijah-gift.png',
   'Unai Egiluz':              'players/masculino/unai-egiluz-arroyo_L.png',
   'Beñat Prados':             'players/masculino/benat-prados-diaz.png',
   'Mikel Santos':             'players/masculino/mikel-santos-linares.png',

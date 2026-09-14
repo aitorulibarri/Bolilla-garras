@@ -327,7 +327,6 @@ async function dbInit() {
             // (que corrige dorsales/altas/bajas en una DB ya poblada, ya que no hay CRUD admin para garras_players).
             const MASCULINO_ROSTER = [
                 { name: 'Unai Simón', dorsal: 1 },
-                { name: 'Andoni Gorosabel', dorsal: 2 },
                 { name: 'Dani Vivian', dorsal: 3 },
                 { name: 'Aitor Paredes', dorsal: 4 },
                 { name: 'Yeray Álvarez', dorsal: 5 },
@@ -344,7 +343,6 @@ async function dbInit() {
                 { name: 'Iñigo R. De Galarreta', dorsal: 16 },
                 { name: 'Yuri Berchiche', dorsal: 17 },
                 { name: 'Mikel Jauregizar', dorsal: 18 },
-                { name: 'Adama Boiro', dorsal: 19 },
                 { name: 'Alejandro Rego', dorsal: 20 },
                 { name: 'Maroan Sannadi', dorsal: 21 },
                 { name: 'Nico Serrano', dorsal: 22 },
@@ -358,7 +356,6 @@ async function dbInit() {
                 // Jugadores del Bilbao Athletic inscritos en LaLiga con el primer equipo
                 // (dorsales oficiales: ver "Dorsales del Athletic Club 2026/27", athletic-club.eus 17/08/2026)
                 { name: 'Mikel Santos', dorsal: 26 },
-                { name: 'Elijah Gift', dorsal: 27 },
                 { name: 'Asier Hierro', dorsal: 29 },
                 { name: 'Iker Monreal', dorsal: 30 },
                 { name: 'Johaneko Louis-Jean', dorsal: 31 },
@@ -432,11 +429,18 @@ async function dbInit() {
                         );
                     }
                 }
-                // Baja: Mikel Vesga ya no está en la plantilla. Soft-delete (active=0) para conservar
-                // su histórico en match_mvp_votes / match_mvp_players (FK a garras_players.id).
-                await pool.query(
-                    `UPDATE garras_players SET active = 0 WHERE category = 'masculino' AND LOWER(name) = LOWER('Mikel Vesga')`
-                );
+                // Bajas masculino: ya no están en la plantilla (mercado de verano 2026: Gift, Adama
+                // y Gorosabel salieron; Vesga ya estaba de baja de antes). Soft-delete (active=0) para
+                // conservar su histórico en match_mvp_votes / match_mvp_players (FK a garras_players.id).
+                const masculinoBajas = [
+                    'Mikel Vesga', 'Elijah Gift', 'Adama Boiro', 'Andoni Gorosabel'
+                ];
+                for (const name of masculinoBajas) {
+                    await pool.query(
+                        `UPDATE garras_players SET active = 0 WHERE category = 'masculino' AND LOWER(name) = LOWER($1)`,
+                        [name]
+                    );
+                }
 
                 // Corrección de nombre: "Daniela Agote Helguera" del seed original era un segundo
                 // apellido erróneo — la ficha oficial (temporada 2026-27) confirma "Daniela Agote
