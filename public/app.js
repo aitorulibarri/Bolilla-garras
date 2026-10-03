@@ -1075,24 +1075,36 @@ async function saveAllPredictions(matchIds) {
   let errors = 0;
   const token = sessionStorage.getItem('bolilla_token') || '';
 
-  for (const { matchId, homeGoals, awayGoals } of predictions) {
+  // Una sola petición para todos los partidos (antes: un POST secuencial por partido)
+  const payload = JSON.stringify({
+    predictions: predictions.map(p => ({
+      matchId: parseInt(p.matchId),
+      homeGoals: parseInt(p.homeGoals),
+      awayGoals: parseInt(p.awayGoals)
+    }))
+  });
+  // Un reintento ante fallo de red / 5xx (cold start de Neon)
+  for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      const res = await fetch('/api/predictions', {
+      const res = await fetch('/api/predictions/batch', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({
-          matchId: parseInt(matchId),
-          homeGoals: parseInt(homeGoals),
-          awayGoals: parseInt(awayGoals)
-        })
+        body: payload
       });
-      if (res.ok) saved++;
-      else errors++;
+      if (res.status >= 500 && attempt === 1) continue;
+      if (res.ok) {
+        const data = await res.json();
+        saved = data.results.filter(r => r.ok).length;
+        errors = data.results.length - saved;
+      } else {
+        errors = predictions.length;
+      }
+      break;
     } catch {
-      errors++;
+      if (attempt === 2) errors = predictions.length;
     }
   }
 

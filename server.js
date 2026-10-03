@@ -1109,6 +1109,79 @@ app.post('/api/predictions', requireAuth, async (req, res) => {
     }
 });
 
+// Save many predictions in one request (3 DB round-trips regardless of count)
+app.post('/api/predictions/batch', requireAuth, async (req, res) => {
+    try {
+        const items = Array.isArray(req.body.predictions) ? req.body.predictions : null;
+        if (!items || items.length === 0 || items.length > 50) {
+            return res.status(400).json({ error: 'Lista de pronósticos inválida' });
+        }
+        if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
+
+        const playerName = req.user.username;
+        const userId = req.user.id;
+
+        const clean = new Map(); // matchId -> { home, away }
+        for (const it of items) {
+            const matchId = parseInt(it.matchId);
+            const home = parseInt(it.homeGoals);
+            const away = parseInt(it.awayGoals);
+            if (isNaN(matchId) || isNaN(home) || isNaN(away) || home < 0 || home > 20 || away < 0 || away > 20) {
+                return res.status(400).json({ error: 'Los goles deben ser números entre 0 y 20' });
+            }
+            clean.set(matchId, { home, away });
+        }
+        const ids = [...clean.keys()];
+
+        const [matches, existingRows] = await Promise.all([
+            query(
+                `SELECT id, (NOW() AT TIME ZONE 'Europe/Madrid') > deadline AS past_deadline FROM matches WHERE id = ANY($1::int[])`,
+                [ids]
+            ),
+            query(
+                'SELECT id, match_id FROM predictions WHERE LOWER(player_name) = LOWER($1) AND match_id = ANY($2::int[])',
+                [playerName, ids]
+            )
+        ]);
+        const matchById = new Map(matches.map(m => [m.id, m]));
+        const existingByMatch = new Map(existingRows.map(r => [r.match_id, r.id]));
+
+        const results = await Promise.all(ids.map(async (matchId) => {
+            const m = matchById.get(matchId);
+            if (!m) return { matchId, ok: false, error: 'Partido no encontrado' };
+            if (m.past_deadline) return { matchId, ok: false, error: 'El plazo para pronósticos ha terminado' };
+            const { home, away } = clean.get(matchId);
+            try {
+                const existingId = existingByMatch.get(matchId);
+                if (existingId) {
+                    await pool.query('UPDATE predictions SET home_goals = $1, away_goals = $2 WHERE id = $3', [home, away, existingId]);
+                } else {
+                    try {
+                        await pool.query(
+                            'INSERT INTO predictions (player_name, match_id, home_goals, away_goals, user_id) VALUES ($1, $2, $3, $4, $5)',
+                            [playerName, matchId, home, away, userId]
+                        );
+                    } catch (insertErr) {
+                        await pool.query(
+                            'INSERT INTO predictions (player_name, match_id, home_goals, away_goals) VALUES ($1, $2, $3, $4)',
+                            [playerName, matchId, home, away]
+                        );
+                    }
+                }
+                return { matchId, ok: true };
+            } catch (err) {
+                console.error('Batch prediction error:', err);
+                return { matchId, ok: false, error: 'Error al guardar pronóstico' };
+            }
+        }));
+
+        res.json({ success: true, results });
+    } catch (err) {
+        console.error('Batch predictions error:', err);
+        res.status(500).json({ error: 'Error al guardar pronósticos' });
+    }
+});
+
 // Get predictions for current user
 app.get('/api/predictions', requireAuth, async (req, res) => {
     try {
