@@ -1003,12 +1003,16 @@ app.put('/api/matches/:id/result', requireAdmin, async (req, res) => {
             [hg, ag, matchId]
         );
 
-        // Calculate points for all predictions
-        const predictions = await query('SELECT * FROM predictions WHERE match_id = $1', [matchId]);
+        // Calculate points for all predictions (un único UPDATE para todo el partido)
+        const predictions = await query('SELECT id, home_goals, away_goals FROM predictions WHERE match_id = $1', [matchId]);
 
-        for (const pred of predictions) {
-            const points = calculatePoints(pred.home_goals, pred.away_goals, hg, ag);
-            await pool.query('UPDATE predictions SET points = $1 WHERE id = $2', [points, pred.id]);
+        if (predictions.length > 0) {
+            await query(
+                `UPDATE predictions p SET points = v.points
+                 FROM unnest($1::int[], $2::int[]) AS v(id, points)
+                 WHERE p.id = v.id`,
+                [predictions.map(p => p.id), predictions.map(p => calculatePoints(p.home_goals, p.away_goals, hg, ag))]
+            );
         }
 
         res.json({ success: true });
@@ -1064,48 +1068,64 @@ app.post('/api/predictions', requireAuth, async (req, res) => {
 
         if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
 
-        // Check deadline (deadline stored as Madrid time, compare consistently in DB)
-        const match = await queryOne(
-            `SELECT id, (NOW() AT TIME ZONE 'Europe/Madrid') > deadline AS past_deadline FROM matches WHERE id = $1`,
-            [matchId]
-        );
+        const matchIdNum = parseInt(matchId);
+        const saved = await upsertPredictions(playerName, [{ matchId: matchIdNum, home: homeGoalsNum, away: awayGoalsNum }]);
+        if (saved.has(matchIdNum)) return res.json({ success: true });
+
+        const match = await queryOne('SELECT id FROM matches WHERE id = $1', [matchIdNum]);
         if (!match) return res.status(404).json({ error: 'Partido no encontrado' });
-        if (match.past_deadline) {
-            return res.status(400).json({ error: 'El plazo para pronósticos ha terminado' });
-        }
-
-        // Check if prediction already exists
-        const userId = req.user.id;
-        const existing = await queryOne(
-            'SELECT id FROM predictions WHERE LOWER(player_name) = LOWER($1) AND match_id = $2',
-            [playerName, matchId]
-        );
-
-        if (existing) {
-            await pool.query(
-                'UPDATE predictions SET home_goals = $1, away_goals = $2 WHERE id = $3',
-                [homeGoalsNum, awayGoalsNum, existing.id]
-            );
-        } else {
-            // Include user_id for legacy DB schemas that have this column
-            try {
-                await pool.query(
-                    'INSERT INTO predictions (player_name, match_id, home_goals, away_goals, user_id) VALUES ($1, $2, $3, $4, $5)',
-                    [playerName, matchId, homeGoalsNum, awayGoalsNum, userId]
-                );
-            } catch (insertErr) {
-                // Fallback: try without user_id (for clean schemas)
-                await pool.query(
-                    'INSERT INTO predictions (player_name, match_id, home_goals, away_goals) VALUES ($1, $2, $3, $4)',
-                    [playerName, matchId, homeGoalsNum, awayGoalsNum]
-                );
-            }
-        }
-
-        res.json({ success: true });
+        return res.status(400).json({ error: 'El plazo para pronósticos ha terminado' });
     } catch (err) {
         console.error('Prediction error:', err);
         res.status(500).json({ error: 'Error al guardar pronóstico' });
+    }
+});
+
+// Upsert de varios pronósticos en UNA consulta. El deadline se comprueba dentro del
+// propio INSERT (solo entran partidos cuyo plazo no ha pasado) y ON CONFLICT hace que
+// reenviar lo mismo (doble toque, reintento tras timeout) sea idempotente.
+// Devuelve el Set de match_id guardados; los que falten estaban cerrados o no existen.
+async function upsertPredictions(playerName, items) {
+    const rows = await query(`
+        INSERT INTO predictions (player_name, match_id, home_goals, away_goals)
+        SELECT $1, v.match_id, v.home, v.away
+        FROM unnest($2::int[], $3::int[], $4::int[]) AS v(match_id, home, away)
+        JOIN matches m ON m.id = v.match_id
+        WHERE (NOW() AT TIME ZONE 'Europe/Madrid') <= m.deadline
+        ON CONFLICT (player_name, match_id)
+        DO UPDATE SET home_goals = EXCLUDED.home_goals, away_goals = EXCLUDED.away_goals
+        RETURNING match_id
+    `, [playerName, items.map(i => i.matchId), items.map(i => i.home), items.map(i => i.away)]);
+    return new Set(rows.map(r => r.match_id));
+}
+
+// Save many predictions in one request
+app.post('/api/predictions/batch', requireAuth, async (req, res) => {
+    try {
+        const list = Array.isArray(req.body.predictions) ? req.body.predictions : null;
+        if (!list || list.length === 0 || list.length > 50) {
+            return res.status(400).json({ error: 'Lista de pronósticos inválida' });
+        }
+
+        const byMatch = new Map(); // matchId -> item (deduplicado)
+        for (const p of list) {
+            const matchId = parseInt(p.matchId);
+            const home = parseInt(p.homeGoals);
+            const away = parseInt(p.awayGoals);
+            if (isNaN(matchId) || isNaN(home) || isNaN(away) || home < 0 || home > 20 || away < 0 || away > 20) {
+                return res.status(400).json({ error: 'Los goles deben ser números entre 0 y 20' });
+            }
+            byMatch.set(matchId, { matchId, home, away });
+        }
+
+        if (!IS_POSTGRES) return res.status(500).json({ error: 'No database' });
+
+        const saved = await upsertPredictions(req.user.username, [...byMatch.values()]);
+        const rejected = [...byMatch.keys()].filter(id => !saved.has(id));
+        res.json({ success: true, saved: [...saved], rejected });
+    } catch (err) {
+        console.error('Batch prediction error:', err);
+        res.status(500).json({ error: 'Error al guardar pronósticos' });
     }
 });
 

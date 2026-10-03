@@ -634,7 +634,7 @@ async function loadMatches() {
       saveAllBtn.className = 'save-btn-gemini';
       saveAllBtn.style.cssText = 'width:100%; margin-top:16px;';
       saveAllBtn.textContent = 'GUARDAR PRONÓSTICOS';
-      saveAllBtn.addEventListener('click', () => saveAllPredictions(pendingIds));
+      saveAllBtn.addEventListener('click', () => saveAllPredictions(pendingIds, saveAllBtn));
       container.appendChild(saveAllBtn);
     }
   } catch (err) {
@@ -1053,7 +1053,7 @@ async function loadLeaderboardWidget() {
   }
 }
 
-async function saveAllPredictions(matchIds) {
+async function saveAllPredictions(matchIds, btn) {
   const predictions = [];
   for (const matchId of matchIds) {
     const homeInput = document.getElementById(`home-${matchId}`);
@@ -1071,33 +1071,43 @@ async function saveAllPredictions(matchIds) {
     return;
   }
 
-  let saved = 0;
-  let errors = 0;
-  const token = sessionStorage.getItem('bolilla_token') || '';
-
-  for (const { matchId, homeGoals, awayGoals } of predictions) {
-    try {
-      const res = await fetch('/api/predictions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({
-          matchId: parseInt(matchId),
-          homeGoals: parseInt(homeGoals),
-          awayGoals: parseInt(awayGoals)
-        })
-      });
-      if (res.ok) saved++;
-      else errors++;
-    } catch {
-      errors++;
-    }
+  // Evita el doble toque mientras se guarda
+  if (btn) {
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.textContent = 'Guardando…';
   }
 
-  if (saved > 0) showToast(`${saved} pronóstico${saved > 1 ? 's' : ''} guardado${saved > 1 ? 's' : ''}`, 'success');
-  if (errors > 0) showToast(`Error guardando ${errors} pronóstico${errors > 1 ? 's' : ''}`, 'error');
+  // Una sola petición para todos los partidos. El servidor hace un UPSERT idempotente,
+  // así que reintentar tras un 5xx o un corte de red no duplica nada.
+  try {
+    const res = await fetchWithRetry('/api/predictions/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        predictions: predictions.map(p => ({
+          matchId: parseInt(p.matchId),
+          homeGoals: parseInt(p.homeGoals),
+          awayGoals: parseInt(p.awayGoals)
+        }))
+      })
+    }, 3, 1500);
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok) {
+      const saved = data.saved ? data.saved.length : 0;
+      const rejected = data.rejected ? data.rejected.length : 0;
+      if (saved > 0) showToast(`${saved} pronóstico${saved > 1 ? 's' : ''} guardado${saved > 1 ? 's' : ''}`, 'success');
+      if (rejected > 0) showToast(`${rejected} partido${rejected > 1 ? 's' : ''} ya cerrado${rejected > 1 ? 's' : ''}: no se ha guardado`, 'error');
+    } else if (res.status === 401 || res.status === 403) {
+      showToast('Sesión caducada: cierra sesión y vuelve a entrar', 'error');
+    } else {
+      showToast(data.error || 'Error del servidor al guardar. Inténtalo de nuevo', 'error');
+    }
+  } catch {
+    showToast('Sin conexión: no se han podido guardar los pronósticos', 'error');
+  }
+
   loadMatches();
 }
 
