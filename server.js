@@ -1947,7 +1947,7 @@ app.get('/api/mvp/admin/matches', requireAdmin, async (req, res) => {
             FROM matches m
             LEFT JOIN match_mvp_votes mmv ON m.id = mmv.match_id
             WHERE m.team IN ('Athletic Club', 'Athletic Femenino')
-            GROUP BY m.id
+            GROUP BY m.id, m.team, m.opponent, m.is_home, m.match_date, m.mvp_voting_open
             ORDER BY m.match_date DESC
             LIMIT 30
         `);
