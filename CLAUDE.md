@@ -50,13 +50,13 @@ vercel.json           Config deploy: rutas, headers, builds
 
 - `sw.js`, `app.js`, `podium.js`, `styles.css`, `index.html` → `no-cache, no-store`
 - `/manifest.json` → `Content-Type: application/manifest+json`
-- `/assets/(.*)` → `no-cache, no-store`
+- `/assets/(.*)`, `/players/(.*)`, `/logos/(.*)` → caché 1 semana (ver Imágenes)
 - `/api/(.*)` → `server.js`
 - `(.*)` fallback → `server.js` (Express sirve el SPA)
 
 **Cache busting**: incrementar `?v=X.Y` en `app.js` y `podium.js` en `index.html` cada vez que se modifiquen (ver versión actual en `public/index.html`, cerca de `</body>`). Tras un push, los usuarios deben hacer **Ctrl+Shift+R**.
 
-**Imágenes en assets**: usar siempre nombre de archivo nuevo al sustituir una imagen. Vercel deduplica por hash de contenido.
+**Imágenes**: `/assets/`, `/players/` y `/logos/` se sirven estáticos con `Cache-Control: public, max-age=604800` (rutas propias en `vercel.json`) — al sustituir una imagen usar SIEMPRE un nombre de archivo nuevo o los usuarios verán la vieja hasta una semana. La UI usa versiones optimizadas: fotos de jugadores `.webp` (mismas dimensiones que el PNG original, el export del podio las usa a resolución completa), escudos `*-sm.webp` (240 px), iconos top 3 `*-sm.webp` (174 px), logo `garras-logo-sm.png` (360 px). Los PNG originales siguen en el repo: `exportMatchResult` usa `garras-logo.png` y la plantilla del podio. Para generar nuevas versiones: `sharp` (no está en package.json; instalar en una carpeta temporal).
 
 ## Middleware stack (server.js)
 
@@ -83,7 +83,7 @@ match_mvp_players   jugadoras disponibles por partido femenino (match_id, player
 
 La conexión solo se activa si `DATABASE_URL` está presente (`IS_POSTGRES` flag). La inicialización es lazy: `dbInit()` se llama antes de cualquier query y reintenta 3 veces (backoff 2s/4s) para manejar el cold-start de Neon. Se llama también al arrancar el servidor (warm-up no bloqueante).
 
-**Quirk crítico**: `predictions` en producción tiene columna legacy `user_id` (NOT NULL). El INSERT incluye `user_id` con fallback para compatibilidad.
+**Esquema real de producción (verificado 2026-10-03)**: `predictions` ya **no** tiene columna `user_id` (la nota antigua de "user_id NOT NULL" está obsoleta) y tiene UNIQUE `(player_name, match_id)`. `matches` **no tiene PRIMARY KEY** en producción: un `GROUP BY m.id` falla con "column m.x must appear in the GROUP BY clause" — hay que listar todas las columnas seleccionadas de `m` en el `GROUP BY` (rompía `/api/mvp/history` y `/api/mvp/admin/matches`).
 
 **`predictions.player_name`** almacena el username (no display_name). JOINs deben usar `LOWER(player_name) = LOWER(username)`.
 
@@ -210,7 +210,7 @@ Todos los datos de la API insertados en `innerHTML` deben pasar por `escapeHtml(
 
 ### Guardar pronósticos
 
-Un único botón "GUARDAR PRONÓSTICOS" al final del container. Handler: `saveAllPredictions(matchIds[])`. Los pronósticos son modificables (UPDATE) hasta que pasa el `deadline` del partido; a partir de ahí quedan bloqueados en modo solo lectura. `saveAllPredictions` reenvía todos los partidos abiertos (incluidos los ya pronosticados) cada vez que se pulsa el botón — sin dirty-checking, aceptable dado el volumen bajo de la app.
+Un único botón "GUARDAR PRONÓSTICOS" al final del container. Handler: `saveAllPredictions(matchIds[], btn)` — desactiva el botón ("Guardando…") y manda todo en una sola petición a `/api/predictions/batch` vía `fetchWithRetry`. Los pronósticos son modificables (UPDATE) hasta que pasa el `deadline` del partido; a partir de ahí quedan bloqueados en modo solo lectura. `saveAllPredictions` reenvía todos los partidos abiertos (incluidos los ya pronosticados) cada vez que se pulsa el botón — sin dirty-checking, aceptable dado el volumen bajo de la app.
 
 ### Historial (`loadHistory`)
 
@@ -235,13 +235,15 @@ Primera subpestaña "Por jornada": `renderByWeek()` agrupa por semana lunes-domi
 - **`parseMatchDate(raw)`** (app.js): elimina la `Z` de TIMESTAMP naive del driver `pg`. Usar siempre para fechas de partido.
 - **`escapeHtml(str)`** (app.js): usar siempre al insertar datos de la API en `innerHTML`. Para canvas usar escape manual inline.
 - **Deadline check** (server.js): usa `NOW() AT TIME ZONE 'Europe/Madrid' > deadline` — los deadlines se almacenan en hora de Madrid.
-- **Upsert predictions**: SELECT + INSERT/UPDATE manual (no ON CONFLICT) por schema legacy.
+- **Upsert predictions**: `upsertPredictions()` (server.js) — un único `INSERT … SELECT FROM unnest(...) JOIN matches … ON CONFLICT (player_name, match_id) DO UPDATE` con el deadline comprobado dentro de la consulta. Idempotente (doble toque / reintento no da error). Lo usan `POST /api/predictions` y `POST /api/predictions/batch` (el que usa el frontend); devuelve `{ saved: [ids], rejected: [ids] }` — rechazado = plazo cerrado o partido inexistente.
 - **Borrar partidos**: `DELETE /api/matches/:id` rechaza con 400 si `is_finished = 1`.
 - **Orden fijo por liga**: Athletic Club → Athletic Femenino → Bilbao Athletic, luego fecha ASC.
 - **Event delegation en admin MVP**: `container.addEventListener('click', _mvpAdminClick)` — nunca usar `onclick` en strings de `innerHTML` para botones del panel admin.
 - **Confirmación de acciones destructivas**: usar SIEMPRE un modal in-page (patrón `#rules-modal` / `#reset-season-modal`: `.modal` + `.modal-overlay` + `.modal-content`, toggle vía `style.display` + clase `.show`), nunca `window.confirm()`/`window.prompt()`/`window.alert()`. Los diálogos nativos del navegador no se disparan de forma fiable en la PWA instalada (Edge en escritorio) — un botón que llama a `confirm()` puede no hacer nada visible al pulsarlo.
 
 ## Performance
+
+**Región**: la función corre en `fra1` (`"regions"` en `vercel.json`), la misma zona que Neon (`eu-central-1`, Frankfurt). Antes corría en `iad1` (Washington): ~90 ms por consulta y ~17 s de arranque en frío por las ~150 consultas secuenciales de `dbInit()`. Ahora el arranque en frío es de ~0,65 s y las APIs ~0,2 s (medido 2026-10-03). Si se añaden consultas en bucle, preferir `unnest`/`ANY($1::int[])` en una sola consulta.
 
 **Neon cold start**: 300ms–2.6s. El free tier hiberna tras 5 min de inactividad. Mitigación:
 - `GET /api/ping` hace `SELECT 1` sin auth — configurar cron externo (cron-job.org, gratis) para llamarlo cada 4 min.
@@ -295,5 +297,4 @@ Primera subpestaña "Por jornada": `renderByWeek()` agrupa por semana lunes-domi
 
 - **JWT_SECRET fallback público**: si `JWT_SECRET` no está en Vercel, usa `'bolilla-garras-secret-2026-seguro'` (visible en repo). Configurar en Vercel → Settings → Environment Variables.
 - **Registro concede admin por nombre**: username `admin` o `garras` recibe `is_admin=1`. Por diseño.
-- **`saveAllPredictions`** usa `fetch()` nativo, no `fetchWithRetry` — sin retry en cold start de Neon.
 - ~~Fotos descentradas fuera del podio~~ — **resuelto**: `renderPlayerAvatar` ahora aplica el mismo `PLAYER_PHOTO_CROP_OFFSET` que `exportMatchResult`, traducido a `object-position` inline en el `<img>` (`(50 - offset*100).toFixed(1) + '% top'`) en vez del recorte manual de canvas. Verificado visualmente contra los 59 jugadores/as (rejilla con línea de referencia central) — solo los 4 de `PLAYER_PHOTO_CROP_OFFSET` necesitaban corrección, el resto del roster (incluidas las altas femeninas nuevas) ya está centrado por defecto.
