@@ -1,6 +1,8 @@
 {
     "version": 2,
-    "regions": ["fra1"],
+    "regions": [
+        "fra1"
+    ],
     "builds": [
         {
             "src": "server.js",
@@ -60,7 +62,21 @@
             "src": "/assets/(.*)",
             "dest": "/public/assets/$1",
             "headers": {
-                "Cache-Control": "no-cache, no-store, must-revalidate"
+                "Cache-Control": "public, max-age=604800, stale-while-revalidate=86400"
+            }
+        },
+        {
+            "src": "/players/(.*)",
+            "dest": "/public/players/$1",
+            "headers": {
+                "Cache-Control": "public, max-age=604800, stale-while-revalidate=86400"
+            }
+        },
+        {
+            "src": "/logos/(.*)",
+            "dest": "/public/logos/$1",
+            "headers": {
+                "Cache-Control": "public, max-age=604800, stale-while-revalidate=86400"
             }
         },
         {

@@ -793,64 +793,64 @@ function getShieldUrl(teamName) {
 // fichero daniela-agote-aguirre.png que antes no se enlazaba por la duda de la coincidencia).
 const PLAYER_PHOTO_MAP = {
   // ── Masculino ──
-  'Unai Simón':              'players/masculino/unai-simon-mendibil_L.png',
-  'Dani Vivian':              'players/masculino/daniel-vivian-moreno.png',
-  'Aitor Paredes':            'players/masculino/aitor-paredes-casamichana.png',
-  'Yeray Álvarez':            'players/masculino/yeray-alvarez-lopez_L.png',
-  'Alex Berenguer':           'players/masculino/alejandro-berenguer-remiro.png',
-  'Oihan Sancet':             'players/masculino/oihan-sancet-tirapu.png',
-  'Iñaki Williams':           'players/masculino/inaki-williams-arthuer_L.png',
-  'Nico Williams':            'players/masculino/nico-williams-arthuer_L.png',
-  'Gorka Guruzeta':           'players/masculino/gorka-guruzeta-rodriguez.png',
-  'Jesús Areso':              'players/masculino/jesus-areso-blanco.png',
-  'Aymeric Laporte':          'players/masculino/aymeric-laporte.png',
-  'Hugo Rincón':              'players/masculino/hugo-rincon-lumbreras.png',
-  'Iñigo R. De Galarreta':    'players/masculino/inigo-ruiz-de-galarreta-etxeberria.png',
-  'Yuri Berchiche':           'players/masculino/yuri-berchiche-izeta.png',
-  'Mikel Jauregizar':         'players/masculino/mikel-jauregizar-alboniga.png',
-  'Alejandro Rego':           'players/masculino/alejandro-rego-mora.png',
-  'Maroan Sannadi':           'players/masculino/maroan-sannadi-harrouch.png',
-  'Nico Serrano':             'players/masculino/nicolas-serrano-galdeano.png',
-  'Robert Navarro':           'players/masculino/robert-navarro-munoz.png',
-  'Beñat Gerenabarrena':      'players/masculino/benat-gerenabarrena-zendoia.png',
-  'Álvaro Djaló':             'players/masculino/alvaro-djalo-dias-fernandes.png',
-  'Peio Canales':             'players/masculino/peio-canales-urtasun.png',
-  'Johaneko Louis-Jean':      'players/masculino/johaneko-louis-jean_L.png',
-  'Asier Hierro':             'players/masculino/asier-hierro-campo_L.png',
-  'Unai Egiluz':              'players/masculino/unai-egiluz-arroyo_L.png',
-  'Beñat Prados':             'players/masculino/benat-prados-diaz.png',
-  'Mikel Santos':             'players/masculino/mikel-santos-linares.png',
-  'Alex Padilla':             'players/masculino/alex-padilla-perez.png',
-  'Selton Sánchez':           'players/masculino/selton-sued-sanchez-camilo.png',
-  'Iker Monreal':             'players/masculino/iker-monreal-agundez.png',
+  'Unai Simón':              'players/masculino/unai-simon-mendibil_L.webp',
+  'Dani Vivian':              'players/masculino/daniel-vivian-moreno.webp',
+  'Aitor Paredes':            'players/masculino/aitor-paredes-casamichana.webp',
+  'Yeray Álvarez':            'players/masculino/yeray-alvarez-lopez_L.webp',
+  'Alex Berenguer':           'players/masculino/alejandro-berenguer-remiro.webp',
+  'Oihan Sancet':             'players/masculino/oihan-sancet-tirapu.webp',
+  'Iñaki Williams':           'players/masculino/inaki-williams-arthuer_L.webp',
+  'Nico Williams':            'players/masculino/nico-williams-arthuer_L.webp',
+  'Gorka Guruzeta':           'players/masculino/gorka-guruzeta-rodriguez.webp',
+  'Jesús Areso':              'players/masculino/jesus-areso-blanco.webp',
+  'Aymeric Laporte':          'players/masculino/aymeric-laporte.webp',
+  'Hugo Rincón':              'players/masculino/hugo-rincon-lumbreras.webp',
+  'Iñigo R. De Galarreta':    'players/masculino/inigo-ruiz-de-galarreta-etxeberria.webp',
+  'Yuri Berchiche':           'players/masculino/yuri-berchiche-izeta.webp',
+  'Mikel Jauregizar':         'players/masculino/mikel-jauregizar-alboniga.webp',
+  'Alejandro Rego':           'players/masculino/alejandro-rego-mora.webp',
+  'Maroan Sannadi':           'players/masculino/maroan-sannadi-harrouch.webp',
+  'Nico Serrano':             'players/masculino/nicolas-serrano-galdeano.webp',
+  'Robert Navarro':           'players/masculino/robert-navarro-munoz.webp',
+  'Beñat Gerenabarrena':      'players/masculino/benat-gerenabarrena-zendoia.webp',
+  'Álvaro Djaló':             'players/masculino/alvaro-djalo-dias-fernandes.webp',
+  'Peio Canales':             'players/masculino/peio-canales-urtasun.webp',
+  'Johaneko Louis-Jean':      'players/masculino/johaneko-louis-jean_L.webp',
+  'Asier Hierro':             'players/masculino/asier-hierro-campo_L.webp',
+  'Unai Egiluz':              'players/masculino/unai-egiluz-arroyo_L.webp',
+  'Beñat Prados':             'players/masculino/benat-prados-diaz.webp',
+  'Mikel Santos':             'players/masculino/mikel-santos-linares.webp',
+  'Alex Padilla':             'players/masculino/alex-padilla-perez.webp',
+  'Selton Sánchez':           'players/masculino/selton-sued-sanchez-camilo.webp',
+  'Iker Monreal':             'players/masculino/iker-monreal-agundez.webp',
 
   // ── Femenino ──
-  'Adriana Nanclares Romero':     'players/femenino/1-adriana-nanclares-romero.png',
-  'Eunate Astralaga Aranguren':   'players/femenino/eunate-astralaga-aranguren.png',
-  'Elene Aldekoa Arrue':          'players/femenino/elene-aldekoa-arrue.png',
-  'Ziara Vega Uribarri':          'players/femenino/ziara-vega-uribarri.png',
-  'Maddi Torre Larrañaga':        'players/femenino/maddi-torre-larranaga.png',
-  'Naia Landaluze Marquínez':     'players/femenino/naia-landaluze-marquinez.png',
-  'Bibiane Schulze Solano':       'players/femenino/bibiane-schulze-solano.png',
-  'Ane Elexpuru Añorga':          'players/femenino/ane-elexpuru-anorga.png',
-  'Eider Arana Mugueta':          'players/femenino/eider-arana-mugueta.png',
-  'Garazi Fácila Giralte':        'players/femenino/garazi-facila-giralte.png',
-  'Amaia Martínez De la Peña':    'players/femenino/amaia-martinez-de-la-pena.png',
-  'Nerea Benito Zaldibar':        'players/femenino/nerea-benito-zaldibar.png',
-  'Maite Valero Elía':            'players/femenino/maite-valero-elia.png',
-  'Irene Oguiza Martínez':        'players/femenino/irene-oguiza-martinez.png',
-  'Leire Baños Indakoetxea':      'players/femenino/leire-banos-indakoetxea.png',
-  'Clara Pinedo Castresana':      'players/femenino/clara-pinedo-castresana.png',
-  'Amaia Iribarren Arteta':       'players/femenino/amaia-iribarren-arteta.png',
-  'Marina Artero Moreno':         'players/femenino/marina-artero-moreno.png',
-  'Elene Gurtubay Loyo':          'players/femenino/elene-gurtubay-loyo.png',
-  'Jone Amezaga Martínez':        'players/femenino/jone-amezaga-martinez.png',
-  'Patricia Zugasti Oses':        'players/femenino/patricia-zugasti-oses.png',
-  'Ane Azkona Fuente':            'players/femenino/ane-azkona-fuente.png',
-  'Sara Ortega Ruiz':             'players/femenino/sara-ortega-ruiz.png',
-  'Maitane Vilariño Mendinueta':  'players/femenino/maitane-vilarino-mendinueta.png',
-  'Ane Campos Andueza':           'players/femenino/ane-campos-andueza.png',
-  'Daniela Agote Aguirre':        'players/femenino/daniela-agote-aguirre.png',
+  'Adriana Nanclares Romero':     'players/femenino/1-adriana-nanclares-romero.webp',
+  'Eunate Astralaga Aranguren':   'players/femenino/eunate-astralaga-aranguren.webp',
+  'Elene Aldekoa Arrue':          'players/femenino/elene-aldekoa-arrue.webp',
+  'Ziara Vega Uribarri':          'players/femenino/ziara-vega-uribarri.webp',
+  'Maddi Torre Larrañaga':        'players/femenino/maddi-torre-larranaga.webp',
+  'Naia Landaluze Marquínez':     'players/femenino/naia-landaluze-marquinez.webp',
+  'Bibiane Schulze Solano':       'players/femenino/bibiane-schulze-solano.webp',
+  'Ane Elexpuru Añorga':          'players/femenino/ane-elexpuru-anorga.webp',
+  'Eider Arana Mugueta':          'players/femenino/eider-arana-mugueta.webp',
+  'Garazi Fácila Giralte':        'players/femenino/garazi-facila-giralte.webp',
+  'Amaia Martínez De la Peña':    'players/femenino/amaia-martinez-de-la-pena.webp',
+  'Nerea Benito Zaldibar':        'players/femenino/nerea-benito-zaldibar.webp',
+  'Maite Valero Elía':            'players/femenino/maite-valero-elia.webp',
+  'Irene Oguiza Martínez':        'players/femenino/irene-oguiza-martinez.webp',
+  'Leire Baños Indakoetxea':      'players/femenino/leire-banos-indakoetxea.webp',
+  'Clara Pinedo Castresana':      'players/femenino/clara-pinedo-castresana.webp',
+  'Amaia Iribarren Arteta':       'players/femenino/amaia-iribarren-arteta.webp',
+  'Marina Artero Moreno':         'players/femenino/marina-artero-moreno.webp',
+  'Elene Gurtubay Loyo':          'players/femenino/elene-gurtubay-loyo.webp',
+  'Jone Amezaga Martínez':        'players/femenino/jone-amezaga-martinez.webp',
+  'Patricia Zugasti Oses':        'players/femenino/patricia-zugasti-oses.webp',
+  'Ane Azkona Fuente':            'players/femenino/ane-azkona-fuente.webp',
+  'Sara Ortega Ruiz':             'players/femenino/sara-ortega-ruiz.webp',
+  'Maitane Vilariño Mendinueta':  'players/femenino/maitane-vilarino-mendinueta.webp',
+  'Ane Campos Andueza':           'players/femenino/ane-campos-andueza.webp',
+  'Daniela Agote Aguirre':        'players/femenino/daniela-agote-aguirre.webp',
 };
 
 // Algunas fotos del pendrive no tienen al jugador/a centrado en el encuadre
@@ -1032,9 +1032,9 @@ async function loadLeaderboardWidget() {
     container.innerHTML = top5.map((user, index) => {
       let rankClass = '';
       let icon = `#${index + 1}`;
-      if (index === 0) { rankClass = 'row-rank-1'; icon = '<img src="/assets/trofeo-v2.png" class="rank-crown-img" alt="Copa del Rey">'; }
-      if (index === 1) { rankClass = 'row-rank-2'; icon = '<img src="/assets/garras-lion.png" class="rank-crown-img" alt="🦁">'; }
-      if (index === 2) { rankClass = 'row-rank-3'; icon = '<img src="/assets/lion-paw.png" class="rank-crown-img" alt="🐾">'; }
+      if (index === 0) { rankClass = 'row-rank-1'; icon = '<img src="/assets/trofeo-v3-sm.webp" class="rank-crown-img" alt="Copa del Rey">'; }
+      if (index === 1) { rankClass = 'row-rank-2'; icon = '<img src="/assets/garras-lion-sm.webp" class="rank-crown-img" alt="🦁">'; }
+      if (index === 2) { rankClass = 'row-rank-3'; icon = '<img src="/assets/lion-paw-sm.webp" class="rank-crown-img" alt="🐾">'; }
 
       return `
             <div class="leaderboard-row ${rankClass}">
@@ -1153,7 +1153,7 @@ async function loadLeaderboard() {
           </thead>
           <tbody>
             ${leaderboard.map((user, index) => {
-      const rankEmoji = index === 0 ? '<img src="/assets/trofeo-v2.png" class="rank-crown-img" alt="Copa del Rey">' : (index === 1 ? '<img src="/assets/garras-lion.png" class="rank-crown-img" alt="🦁">' : (index === 2 ? '<img src="/assets/lion-paw.png" class="rank-crown-img" alt="🐾">' : `#${index + 1}`));
+      const rankEmoji = index === 0 ? '<img src="/assets/trofeo-v3-sm.webp" class="rank-crown-img" alt="Copa del Rey">' : (index === 1 ? '<img src="/assets/garras-lion-sm.webp" class="rank-crown-img" alt="🦁">' : (index === 2 ? '<img src="/assets/lion-paw-sm.webp" class="rank-crown-img" alt="🐾">' : `#${index + 1}`));
       const isMe = currentUser && user.name && currentUser.username && user.name.toLowerCase() === currentUser.username.toLowerCase();
       return `
               <tr${isMe ? ' class="leaderboard-row-me"' : ''}>
