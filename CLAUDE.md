@@ -44,7 +44,7 @@ public/players/       Fotos oficiales de jugadores/as del primer equipo: masculi
 vercel.json           Config deploy: rutas, headers, builds
 ```
 
-**Assets estáticos sin ruta explícita en `vercel.json`**: `public/logos/` y `public/players/` no tienen entrada propia en el array `routes` — caen en el catch-all `/(.*) → /server.js`, que los sirve vía `express.static(path.join(__dirname, 'public'))` (server.js:165). Por eso una carpeta nueva bajo `public/` funciona en producción sin tocar `vercel.json`.
+**Assets estáticos**: `public/assets/`, `public/players/` y `public/logos/` tienen ruta propia en `vercel.json` (estático + caché). Una carpeta nueva bajo `public/` sin ruta propia cae en el catch-all `/(.*) → /server.js` y la sirve `express.static` (funciona, pero cada petición pasa por la función y sin caché): añadirle ruta en `vercel.json`.
 
 ## Routing (vercel.json)
 
@@ -218,7 +218,7 @@ Primera subpestaña "Por jornada": `renderByWeek()` agrupa por semana lunes-domi
 
 ### Clasificación (Leaderboard)
 
-- Iconos: 1º `trofeo-v2.png`, 2º `garras-lion.png`, 3º `lion-paw.png`
+- Iconos: 1º `trofeo-v3-sm.webp`, 2º `garras-lion-sm.webp`, 3º `lion-paw-sm.webp` (versiones de 174 px de `trofeo-v2.png` / `garras-lion.png` / `lion-paw.png`)
 - Export PDF (solo admins): `printRankingOnly()`. Export Excel: `exportLeaderboardCSV()` — ver Exports.
 - Todos los usuarios registrados aparecen aunque tengan 0 puntos, **salvo** los que tengan `users.participates_predictions = 0` (ver Sistema de puntos / Participación en pronósticos) — esos no salen en `/api/leaderboard` ni en el tracker de Seguimiento, pero sí siguen votando en Garras Saria con normalidad.
 
