@@ -1873,23 +1873,22 @@ app.get('/api/mvp/history', requireAuth, async (req, res) => {
             JOIN match_mvp_votes mmv ON m.id = mmv.match_id
             WHERE m.mvp_voting_open = 0
               AND m.team IN ('Athletic Club', 'Athletic Femenino')
-            GROUP BY m.id
+            GROUP BY m.id, m.team, m.opponent, m.is_home, m.match_date -- matches no tiene PK en producción: hay que listar todas las columnas
             ORDER BY m.match_date DESC
             LIMIT 20
         `);
-        const result = [];
-        for (const match of matches) {
-            const results = await query(`
-                SELECT gp.id, gp.name, gp.dorsal, COUNT(mmv.id) AS votes
-                FROM match_mvp_votes mmv
-                JOIN garras_players gp ON mmv.player_id = gp.id
-                WHERE mmv.match_id = $1
-                GROUP BY gp.id, gp.name, gp.dorsal
-                ORDER BY votes DESC, gp.name ASC
-            `, [match.id]);
-            result.push({ ...match, results });
-        }
-        res.json(result);
+        // Resultados de todos los partidos en una sola consulta (antes una por partido)
+        const rows = matches.length === 0 ? [] : await query(`
+            SELECT mmv.match_id, gp.id, gp.name, gp.dorsal, COUNT(mmv.id) AS votes
+            FROM match_mvp_votes mmv
+            JOIN garras_players gp ON mmv.player_id = gp.id
+            WHERE mmv.match_id = ANY($1::int[])
+            GROUP BY mmv.match_id, gp.id, gp.name, gp.dorsal
+            ORDER BY votes DESC, gp.name ASC
+        `, [matches.map(m => m.id)]);
+        const byMatch = new Map(matches.map(m => [m.id, []]));
+        for (const { match_id, ...player } of rows) byMatch.get(match_id).push(player);
+        res.json(matches.map(m => ({ ...m, results: byMatch.get(m.id) })));
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
