@@ -20,9 +20,25 @@ npm start            # arrancar server.js en puerto 3000
 git push origin main # auto-deploy en Vercel vía GitHub integration
 ```
 
-No hay tests ni linter configurados.
+No hay tests ni linter configurados. Validación mínima: `node --check server.js && node --check public/app.js`.
 
-**Desarrollo local sin `DATABASE_URL`**: el repo no trae `.env` (solo `.env.example`) ni `node_modules/`. `npm install` + `node server.js` arranca igualmente — `IS_POSTGRES` queda en `false` y las rutas `/api/*` que dependen de Postgres devuelven vacío/error, pero el SPA (`index.html`, `app.js`, `styles.css`) y todos los assets estáticos (`public/logos/`, `public/players/`, `public/assets/`) se sirven con normalidad. Sirve para validar sintaxis (`node --check public/app.js`) y que los ficheros nuevos bajo `public/` responden 200, pero no para probar flujos que requieren login/datos reales (auth, predicciones, MVP voting) — eso solo se puede verificar contra producción (Neon).
+**Desarrollo local sin `DATABASE_URL`**: el repo no trae `.env` (solo `.env.example`) ni `node_modules/`. `npm install` + `node server.js` arranca igualmente — `IS_POSTGRES` queda en `false` y las rutas `/api/*` que dependen de Postgres devuelven vacío/error, pero el SPA (`index.html`, `app.js`, `styles.css`) y todos los assets estáticos (`public/logos/`, `public/players/`, `public/assets/`) se sirven con normalidad. Sirve para validar sintaxis y que los ficheros nuevos bajo `public/` responden 200, pero no para probar flujos con login/datos reales.
+
+**Desarrollo local CONTRA la DB de producción** (la carpeta está enlazada con la CLI de Vercel al proyecto `bolilla-garras-kwz7`):
+
+```bash
+npx vercel env pull .env.local --yes                               # baja DATABASE_URL (gitignored)
+PORT=3123 node -r dotenv/config server.js dotenv_config_path=.env.local
+```
+
+`server.js` solo lee `.env`, de ahí el `-r dotenv/config`. Ojo: arrancar el servidor ejecuta `dbInit()` (DDL `IF NOT EXISTS` + sync del roster) sobre producción — es idempotente y lo mismo que hace cada cold start en Vercel, pero es escritura.
+
+### Probar sin romper datos de producción
+
+- **SQL nuevo**: probarlo sobre tablas temporales que tapan a las reales en la misma sesión (`pg_temp` va primero en el `search_path`): `CREATE TEMP TABLE matches AS SELECT * FROM public.matches; CREATE TEMP TABLE predictions (LIKE public.predictions INCLUDING ALL); INSERT INTO predictions SELECT * FROM public.predictions;` y ejecutar la consulta tal cual. La tabla real no se toca.
+- **Flujo completo (API o navegador)**: crear usuario de prueba vía `/api/register`, ocultarlo con `PUT /api/admin/users/:id/predictions-participation` (`participates:false`), crear partidos con `opponent = 'PRUEBA – borrar'` y deadline en 2030, y en un `finally` borrar `predictions` + `matches` de esos ids por SQL (un partido finalizado no se puede borrar por API) y el usuario con `DELETE /api/admin/users/:id`. Comparar `COUNT(*)` de `matches/users/predictions/match_mvp_votes` antes y después.
+- **Rate limit de login (10/15 min por IP, cuentan también los intentos correctos)**: al probar contra producción, hacer UN login y reutilizar el token (en Playwright: `addInitScript` que mete `bolilla_token` y `bolilla_user` en `sessionStorage`). Si se agota, también bloquea al usuario humano desde la misma IP ~15 min; no hacer bucles de sondeo contra `/api/login`. Contra el servidor local el límite es independiente.
+- Playwright: `playwright-core` + `chromium.launch({ channel: 'msedge' })` (Edge instalado, no hace falta descargar navegadores). El Service Worker oculta las peticiones a CDP: usar `serviceWorkers: 'block'` para medir red. Móvil de gama media = `Emulation.setCPUThrottlingRate {rate:4}` + `Network.emulateNetworkConditions` (150 ms, 1,6 Mb/s).
 
 ## Architecture
 
@@ -120,7 +136,7 @@ Verificado contra "NORMAS BOLILLA GARRAS 26/27" (documento de la peña, no versi
 
 ### Participación en pronósticos (`users.participates_predictions`)
 
-Columna `INTEGER DEFAULT 1` en `users` (migración vía `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` en `dbInit()`, mismo patrón que `password_encrypted`). Marca si un usuario sale en la clasificación de pronósticos. Gestión **manual desde Admin → Usuarios** (botón "🙈 No participa en pronósticos" / "👁️ Sí participa"), sin heurística automática — se decidió así a propósito: con ~20-30 usuarios cualquier detección automática por partidos fallados genera falsos positivos (alguien que se olvida un par de veces no debe desaparecer de la clasificación).
+Columna `INTEGER DEFAULT 1` en `users` (migración vía `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` en `dbInit()`, mismo patrón que `password_encrypted`). Marca si un usuario sale en la clasificación de pronósticos. Gestión **manual desde Admin → Usuarios** (botón "🙈 No participa en pronósticos" / "👁️ Sí participa"), sin heurística automática — se decidió así a propósito: con pocos usuarios activos (110 registrados en oct-2026) cualquier detección automática por partidos fallados genera falsos positivos (alguien que se olvida un par de veces no debe desaparecer de la clasificación).
 
 - `PUT /api/admin/users/:id/predictions-participation` (`{ participates: true|false }`) — mismo patrón que `PUT /api/admin/users/:id/admin`. Frontend: `toggleUserPredictionsParticipation()` en `app.js`, botón "🙈 No participa" / "👁️ Sí participa" en Admin → Usuarios (badge "SOLO GARRAS SARIA" junto al nombre cuando está desactivado).
 - `GET /api/leaderboard` filtra `WHERE u.participates_predictions = 1`.
@@ -245,10 +261,11 @@ Primera subpestaña "Por jornada": `renderByWeek()` agrupa por semana lunes-domi
 
 **Región**: la función corre en `fra1` (`"regions"` en `vercel.json`), la misma zona que Neon (`eu-central-1`, Frankfurt). Antes corría en `iad1` (Washington): ~90 ms por consulta y ~17 s de arranque en frío por las ~150 consultas secuenciales de `dbInit()`. Ahora el arranque en frío es de ~0,65 s y las APIs ~0,2 s (medido 2026-10-03). Si se añaden consultas en bucle, preferir `unnest`/`ANY($1::int[])` en una sola consulta.
 
-**Neon cold start**: 300ms–2.6s. El free tier hiberna tras 5 min de inactividad. Mitigación:
-- `GET /api/ping` hace `SELECT 1` sin auth — configurar cron externo (cron-job.org, gratis) para llamarlo cada 4 min.
-- `DATABASE_URL` debe usar la URL del **Connection Pooler** de Neon (`-pooler.` en el hostname) — reduce latencia de conexión.
-- Verificar que **Fluid Compute** está activo en Vercel → Settings → Functions.
+**Neon cold start**: 300ms–2.6s. El free tier hiberna tras 5 min de inactividad. `DATABASE_URL` ya usa el **Connection Pooler** (`-pooler.` en el hostname, verificado). `GET /api/ping` hace `SELECT 1` sin auth por si se quiere un cron keep-warm externo; con la función en `fra1` no ha hecho falta (un workflow de GitHub con ese fin se añadió y revirtió el 2026-10-03).
+
+**Medido en móvil de gama media simulado** (CPU ×4, 4G lento, sin caché, 2026-10-03): abrir app 2,1 s (~150 KB), login→partidos 1,0 s, guardar 3 pronósticos 0,4 s, Clasificación 0,6 s, primera pantalla de Garras Saria 4,9 s (~500 KB: las fotos de jugadores son 640×900 y en el historial se ven a 44-64 px — candidato a miniaturas solo para la UI, manteniendo las grandes para `exportMatchResult`).
+
+**Tres proyectos de Vercel despliegan este mismo repo** (`bolilla-garras-kwz7` = producción real, más `-m68t` y `-nv58`). En el plan Hobby se construyen de uno en uno, así que cada push encola 3 builds y el deploy tarda más; algún push puede no desplegarse hasta el siguiente. Comprobar con `npx vercel ls bolilla-garras-kwz7` o mirando el `?v=` de `app.js` en el HTML servido.
 
 ## Admin endpoints relevantes
 
@@ -295,6 +312,6 @@ Primera subpestaña "Por jornada": `renderByWeek()` agrupa por semana lunes-domi
 
 ## Known Issues
 
-- **JWT_SECRET fallback público**: si `JWT_SECRET` no está en Vercel, usa `'bolilla-garras-secret-2026-seguro'` (visible en repo). Configurar en Vercel → Settings → Environment Variables.
+- **JWT_SECRET NO está configurado en producción** (verificado con `vercel env ls` el 2026-10-03: solo existen `DATABASE_URL` y `SESSION_SECRET`), así que los tokens se firman con el fallback `'bolilla-garras-secret-2026-seguro'` visible en el repo — cualquiera podría fabricar un JWT de admin. Arreglo: añadir `JWT_SECRET` en Vercel; invalida todas las sesiones abiertas (todos tendrán que volver a entrar). Si además falta `PASSWORD_ENCRYPTION_KEY`, la clave AES deriva de `JWT_SECRET`: antes de cambiarlo, fijar `PASSWORD_ENCRYPTION_KEY` al valor derivado actual o las contraseñas cifradas existentes dejarán de poder verse en Admin.
 - **Registro concede admin por nombre**: username `admin` o `garras` recibe `is_admin=1`. Por diseño.
 - ~~Fotos descentradas fuera del podio~~ — **resuelto**: `renderPlayerAvatar` ahora aplica el mismo `PLAYER_PHOTO_CROP_OFFSET` que `exportMatchResult`, traducido a `object-position` inline en el `<img>` (`(50 - offset*100).toFixed(1) + '% top'`) en vez del recorte manual de canvas. Verificado visualmente contra los 59 jugadores/as (rejilla con línea de referencia central) — solo los 4 de `PLAYER_PHOTO_CROP_OFFSET` necesitaban corrección, el resto del roster (incluidas las altas femeninas nuevas) ya está centrado por defecto.
