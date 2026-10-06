@@ -3,6 +3,118 @@ console.log('📱 Bolilla Garras App v8.5 loaded');
 // ==================== STATE ====================
 let currentUser = null;
 
+// ==================== COMPAT MÓVILES ANTIGUOS ====================
+// iOS < 14 no decodifica WebP. Cada imagen .webp tiene al lado una copia ligera
+// "-sm.png" (X-sm.webp -> X-sm.png, foto.webp -> foto-sm.png) generada con sharp.
+let _webpOk = true;
+(function detectWebp() {
+  const img = new Image();
+  img.onload = () => { _webpOk = img.width > 0; };
+  img.onerror = () => { _webpOk = false; };
+  img.src = 'data:image/webp;base64,UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA';
+})();
+
+function webpFallbackUrl(url) {
+  return url.replace(/(-sm)?\.webp$/, '-sm.png');
+}
+
+function compatImgUrl(url) {
+  return (_webpOk || !url) ? url : webpFallbackUrl(url);
+}
+
+// Red de seguridad: si una <img> .webp falla (render antes de terminar la
+// detección, o rutas fijas como los iconos del top 3), se cambia a su PNG antes
+// de que salte su onerror inline. Si el PNG también falla, el onerror normal actúa.
+document.addEventListener('error', (e) => {
+  const t = e.target;
+  if (!t || t.tagName !== 'IMG' || t.getAttribute('data-webp-fb')) return;
+  const src = t.getAttribute('src') || '';
+  if (!/\.webp$/.test(src)) return;
+  _webpOk = false;
+  t.setAttribute('data-webp-fb', '1');
+  e.stopPropagation();
+  t.src = webpFallbackUrl(src);
+}, true);
+
+// iOS < 14.5, Chrome < 84 y Samsung Internet < 14 ignoran `gap` en flexbox
+// (sí en grid, por eso @supports no sirve) y los elementos salen pegados.
+// En esos navegadores se emula con márgenes en los hijos; en el resto no hace nada.
+(function flexGapPolyfill() {
+  const probe = document.createElement('div');
+  probe.style.cssText = 'display:flex;flex-direction:column;row-gap:1px;position:absolute;visibility:hidden';
+  probe.appendChild(document.createElement('div'));
+  probe.appendChild(document.createElement('div'));
+  document.body.appendChild(probe);
+  const supported = probe.scrollHeight === 1;
+  document.body.removeChild(probe);
+  if (supported) return;
+  document.documentElement.classList.add('no-flexgap');
+
+  // Selectores de las reglas CSS que declaran gap (+ estilos inline con gap)
+  const selectors = ['[style*="gap"]'];
+  const collect = (rules) => {
+    for (let i = 0; i < rules.length; i++) {
+      const r = rules[i];
+      if (r.cssRules) collect(r.cssRules);
+      else if (r.selectorText && r.style && (r.style.rowGap || r.style.columnGap || r.style.gap)) selectors.push(r.selectorText);
+    }
+  };
+  for (let i = 0; i < document.styleSheets.length; i++) {
+    try { collect(document.styleSheets[i].cssRules); } catch (e) { /* hoja de otro origen */ }
+  }
+  const query = selectors.join(',');
+
+  const apply = () => {
+    const containers = document.querySelectorAll(query);
+    for (let i = 0; i < containers.length; i++) {
+      const el = containers[i];
+      const cs = getComputedStyle(el);
+      if (cs.display.indexOf('flex') === -1) continue;
+      const rg = parseFloat(cs.rowGap) || 0;
+      const cg = parseFloat(cs.columnGap) || 0;
+      if (!rg && !cg) continue;
+      const isCol = cs.flexDirection.indexOf('column') === 0;
+      const reverse = cs.flexDirection.indexOf('reverse') !== -1;
+      const wraps = cs.flexWrap !== 'nowrap';
+      const kids = [];
+      for (let k = 0; k < el.children.length; k++) {
+        const c = el.children[k];
+        const ccs = getComputedStyle(c);
+        if (ccs.display !== 'none' && ccs.position !== 'absolute' && ccs.position !== 'fixed') kids.push(c);
+      }
+      kids.forEach((c, idx) => {
+        const last = idx === kids.length - 1;
+        // Lado del hueco en el eje principal (respetando *-reverse)
+        const mainSide = isCol ? (reverse ? 'marginTop' : 'marginBottom') : (reverse ? 'marginLeft' : 'marginRight');
+        const crossSide = isCol ? 'marginRight' : 'marginBottom';
+        const mainGap = isCol ? rg : cg;
+        const crossGap = isCol ? cg : rg;
+        setGap(c, mainSide, last && !wraps ? 0 : mainGap);
+        if (wraps) setGap(c, crossSide, crossGap);
+      });
+    }
+  };
+  // No pisar márgenes propios del CSS (p. ej. margin-left:auto); solo los que puso el polyfill
+  const setGap = (c, side, px) => {
+    const key = 'fg' + side;
+    if (c.dataset[key] === undefined) {
+      if (parseFloat(getComputedStyle(c)[side]) !== 0) return;
+      c.dataset[key] = '1';
+    }
+    c.style[side] = px ? px + 'px' : '';
+  };
+
+  let pending = false;
+  const schedule = () => {
+    if (pending) return;
+    pending = true;
+    setTimeout(() => { pending = false; apply(); }, 50);
+  };
+  new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
+  window.addEventListener('resize', schedule);
+  schedule();
+})();
+
 // ==================== PWA INSTALL PROMPT ====================
 let deferredInstallPrompt = null;
 
@@ -180,7 +292,16 @@ async function fetchWithRetry(url, options = {}, retries = 3, delay = 1000) {
 }
 
 // ==================== INIT ====================
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
+  checkSavedUser();
+  setupEventListeners();
+  showIOSInstallBanner();
+  // En segundo plano: si se esperaba aquí, en móviles lentos el login no
+  // respondía hasta que terminaba de descargarse sw.js
+  resetServiceWorker();
+});
+
+async function resetServiceWorker() {
   // FORCE UNREGISTER OLD SERVICE WORKERS
   if ('serviceWorker' in navigator) {
     try {
@@ -197,11 +318,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.error('Service Worker error:', err);
     }
   }
-
-  checkSavedUser();
-  setupEventListeners();
-  showIOSInstallBanner();
-});
+}
 
 function checkSavedUser() {
   const savedUser = sessionStorage.getItem('bolilla_user');
@@ -389,7 +506,7 @@ function setupEventListeners() {
   const rulesBtn = document.getElementById('rules-btn');
   const rulesModal = document.getElementById('rules-modal');
   const closeRules = document.getElementById('close-rules');
-  const modalOverlay = rulesModal?.querySelector('.modal-overlay');
+  const modalOverlay = rulesModal && rulesModal.querySelector('.modal-overlay');
 
   if (rulesBtn && rulesModal) {
     rulesBtn.addEventListener('click', () => {
@@ -402,8 +519,8 @@ function setupEventListeners() {
       setTimeout(() => rulesModal.style.display = 'none', 300);
     };
 
-    closeRules?.addEventListener('click', closeModal);
-    modalOverlay?.addEventListener('click', closeModal);
+    if (closeRules) closeRules.addEventListener('click', closeModal);
+    if (modalOverlay) modalOverlay.addEventListener('click', closeModal);
   }
 
   // Reset full season modal
@@ -413,7 +530,7 @@ function setupEventListeners() {
   const cancelResetBtn = document.getElementById('cancel-reset-season');
   const confirmResetBtn = document.getElementById('confirm-reset-season');
   const resetInput = document.getElementById('reset-season-confirm-input');
-  const resetOverlay = resetModal?.querySelector('.modal-overlay');
+  const resetOverlay = resetModal && resetModal.querySelector('.modal-overlay');
 
   if (openResetBtn && resetModal) {
     const closeResetModal = () => {
@@ -431,15 +548,15 @@ function setupEventListeners() {
       resetInput.focus();
     });
 
-    closeResetBtn?.addEventListener('click', closeResetModal);
-    cancelResetBtn?.addEventListener('click', closeResetModal);
-    resetOverlay?.addEventListener('click', closeResetModal);
+    if (closeResetBtn) closeResetBtn.addEventListener('click', closeResetModal);
+    if (cancelResetBtn) cancelResetBtn.addEventListener('click', closeResetModal);
+    if (resetOverlay) resetOverlay.addEventListener('click', closeResetModal);
 
-    resetInput?.addEventListener('input', () => {
+    resetInput.addEventListener('input', () => {
       confirmResetBtn.disabled = resetInput.value !== 'RESETEAR';
     });
 
-    confirmResetBtn?.addEventListener('click', async () => {
+    confirmResetBtn.addEventListener('click', async () => {
       confirmResetBtn.disabled = true;
       confirmResetBtn.textContent = 'Reseteando...';
       await executeFullSeasonReset();
@@ -760,6 +877,10 @@ const LOGO_MAP = {
 };
 
 function getShieldUrl(teamName) {
+  return compatImgUrl(_getShieldUrlRaw(teamName));
+}
+
+function _getShieldUrlRaw(teamName) {
   // 1. Búsqueda directa exacta
   if (LOGO_MAP[teamName]) return LOGO_MAP[teamName];
 
@@ -871,6 +992,10 @@ function getPlayerCropOffsetX(name) {
 }
 
 function getPlayerPhotoUrl(name) {
+  return compatImgUrl(_getPlayerPhotoUrlRaw(name));
+}
+
+function _getPlayerPhotoUrlRaw(name) {
   if (!name) return null;
   if (PLAYER_PHOTO_MAP[name]) return PLAYER_PHOTO_MAP[name];
   const lower = name.toLowerCase();
@@ -883,8 +1008,8 @@ function getPlayerPhotoUrl(name) {
 function getInitials(name) {
   if (!name) return '?';
   const parts = String(name).trim().split(/\s+/);
-  const first = parts[0]?.[0] || '';
-  const second = parts[1]?.[0] || '';
+  const first = (parts[0] && parts[0][0]) || '';
+  const second = (parts[1] && parts[1][0]) || '';
   return (first + second).toUpperCase();
 }
 
@@ -1175,9 +1300,9 @@ async function loadLeaderboard() {
 
     // Mostrar botones PDF
     const printBtn = document.getElementById('leaderboard-print-btn');
-    if (printBtn) printBtn.style.display = (leaderboard.length > 0 && currentUser?.isAdmin) ? 'inline-flex' : 'none';
+    if (printBtn) printBtn.style.display = (leaderboard.length > 0 && (currentUser && currentUser.isAdmin)) ? 'inline-flex' : 'none';
     const rankingBtn = document.getElementById('leaderboard-ranking-btn');
-    if (rankingBtn) rankingBtn.style.display = (leaderboard.length > 0 && currentUser?.isAdmin) ? 'inline-flex' : 'none';
+    if (rankingBtn) rankingBtn.style.display = (leaderboard.length > 0 && (currentUser && currentUser.isAdmin)) ? 'inline-flex' : 'none';
 
     container.innerHTML = podiumHtml + tableHtml;
 
@@ -1260,7 +1385,7 @@ async function loadHistory() {
 
       const weeksHtml = sortedKeys.map(key => {
         const teamRank = { 'Athletic Club': 0, 'Athletic Femenino': 1, 'Bilbao Athletic': 2 };
-        const preds = weeks[key].slice().sort((a, b) => (teamRank[a.team] ?? 3) - (teamRank[b.team] ?? 3));
+        const preds = weeks[key].slice().sort((a, b) => (a.team in teamRank ? teamRank[a.team] : 3) - (b.team in teamRank ? teamRank[b.team] : 3));
         const finished = preds.filter(p => p.is_finished);
         const weekPts = finished.reduce((s, p) => s + (p.points || 0), 0);
         const pending = preds.length - finished.length;
@@ -1619,7 +1744,7 @@ async function printTrackerReport() {
     return;
   }
 
-  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const teamRank = { 'Athletic Club': 1, 'Athletic Femenino': 2, 'Bilbao Athletic': 3 };
   matches.sort((a, b) =>
     (teamRank[a.team] || 9) - (teamRank[b.team] || 9) ||
@@ -1657,7 +1782,7 @@ async function printTrackerReport() {
   const dataRows = sortedUsers.map(([ukey, displayName], idx) => {
     const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8f8f8';
     const cells = matches.map(m => {
-      const p = predMap[ukey]?.[m.id];
+      const p = predMap[ukey] && predMap[ukey][m.id];
       if (p !== undefined) {
         return `<td style="background:#c8f7c5;color:#155724;border:1px solid #ccc;text-align:center;font-weight:700;font-size:10px;font-family:monospace;mso-number-format:'\\@';">${p.h}-${p.a}</td>`;
       }
@@ -1725,7 +1850,7 @@ async function printTrackerReport() {
 // ==================== LEADERBOARD PDF ====================
 
 async function printRankingOnly() {
-  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   const win = window.open('', '_blank');
   if (!win) { showToast('Permite ventanas emergentes para exportar el PDF', 'error'); return; }
@@ -1833,7 +1958,7 @@ async function exportLeaderboardCSV() {
     return;
   }
 
-  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const teamRank = { 'Athletic Club': 1, 'Athletic Femenino': 2, 'Bilbao Athletic': 3 };
 
   // Collect all unique finished matches
@@ -2335,12 +2460,12 @@ async function executeFullSeasonReset() {
 
     if (res.ok && data.success) {
       const d = data.deleted || {};
-      showToast(`Temporada reseteada: ${d.matches ?? 0} partidos, ${d.predictions ?? 0} pronósticos, ${d.mvp_votes ?? 0} votos MVP eliminados`, 'success');
+      showToast(`Temporada reseteada: ${d.matches || 0} partidos, ${d.predictions || 0} pronósticos, ${d.mvp_votes || 0} votos MVP eliminados`, 'success');
       _mvpCacheClear('mvp_history', 'mvp_ranking');
       await Promise.all([
         loadAdminStats(),
         loadAdminMatches(),
-        currentUser?.isAdmin ? loadGarrasSaria() : Promise.resolve()
+        (currentUser && currentUser.isAdmin) ? loadGarrasSaria() : Promise.resolve()
       ]);
     } else {
       showToast(data.error || 'Error al resetear la temporada', 'error');
@@ -2630,9 +2755,9 @@ function _mvpCacheClear(...keys) { keys.forEach(k => delete _mvpCache[k]); }
 
 async function loadGarrasSaria() {
   const adminSection = document.getElementById('garras-admin-section');
-  if (adminSection) adminSection.style.display = currentUser?.isAdmin ? 'block' : 'none';
+  if (adminSection) adminSection.style.display = (currentUser && currentUser.isAdmin) ? 'block' : 'none';
 
-  if (currentUser?.isAdmin) await loadMvpAdmin();
+  if ((currentUser && currentUser.isAdmin)) await loadMvpAdmin();
 
   await Promise.all([
     loadMvpVoteSection(),
@@ -2730,7 +2855,7 @@ function renderMvpVoteBlock(match) {
       </div>`
     : '';
   const cards = match.players.map(p => {
-    const isSelected = match.userVote?.player_id === p.id;
+    const isSelected = (match.userVote && match.userVote.player_id) === p.id;
     const lockClass = isLocked ? 'voted-lock' : '';
     const selectedClass = isSelected ? 'selected voted-choice' : '';
     return `<div class="garras-player-card ${lockClass} ${selectedClass}" data-player-id="${p.id}">
@@ -2821,7 +2946,7 @@ async function loadMvpHistory() {
           <span class="garras-hrow-votes">${p.votes} voto${parseInt(p.votes) === 1 ? '' : 's'}</span>
         </div>`;
       }).join('');
-      const exportBtn = currentUser?.isAdmin
+      const exportBtn = (currentUser && currentUser.isAdmin)
         ? `<button class="garras-history-export-btn" data-export-idx="${idx}">📥 Descargar imagen</button>`
         : '';
       return `<div class="card garras-history-match">
@@ -2853,7 +2978,7 @@ async function loadMvpRanking() {
     if (!rankData) {
       const res = await fetchWithRetry('/api/mvp/ranking');
       rankData = await res.json();
-      if (rankData?.masculino) _mvpCacheSet('mvp_ranking', rankData);
+      if (rankData && rankData.masculino) _mvpCacheSet('mvp_ranking', rankData);
     }
     const { masculino, femenino } = rankData;
     if (masculino.length === 0 && femenino.length === 0) { section.innerHTML = ''; return; }
@@ -2995,7 +3120,9 @@ async function exportMatchResult(match) {
       ctx.save();
       ctx.beginPath(); ctx.rect(f.x, f.y, f.w, photoH); ctx.clip();
       let drewPhoto = false;
-      const photoRel = getPlayerPhotoUrl(p.name);
+      // Export a resolución completa: WebP original, o el PNG original si no hay WebP
+      const photoRaw = _getPlayerPhotoUrlRaw(p.name);
+      const photoRel = (photoRaw && !_webpOk) ? photoRaw.replace(/\.webp$/, '.png') : photoRaw;
       if (photoRel) {
         try {
           const img = await _loadImage('/' + photoRel);

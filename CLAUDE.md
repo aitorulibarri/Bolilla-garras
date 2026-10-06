@@ -20,7 +20,18 @@ npm start            # arrancar server.js en puerto 3000
 git push origin main # auto-deploy en Vercel vía GitHub integration
 ```
 
-No hay tests ni linter configurados. Validación mínima: `node --check server.js && node --check public/app.js`.
+No hay tests ni linter configurados. Validación mínima: `node --check server.js && node --check public/app.js && npx -y acorn --ecma2019 --silent public/app.js` (la última comprueba la compatibilidad con móviles antiguos, ver abajo).
+
+### Compatibilidad con móviles antiguos (objetivo: iOS 12+ / Chrome 70+ / Samsung Internet 10+)
+
+Varios usuarios de la peña tienen móviles viejos (iPhone 6 = iOS 12.5 máx., iPhone 7 = iOS 15). Verificado el 2026-10-06 con un Chromium 79 real (puppeteer@2.0.0): antes de estos arreglos la app ni arrancaba ahí. Reglas:
+
+- **JS máximo ES2019**: nada de `?.`, `??`, `??=`, `.at()`, `replaceAll`, `structuredClone`, campos `#privados`… Un solo `?.` es un `SyntaxError` que tumba TODO `app.js` en iOS < 13.4 / Chrome < 80 (el formulario de login recarga la página y no se puede entrar). Comprobar con el `acorn --ecma2019` de arriba.
+- **Imágenes WebP**: iOS < 14 no las decodifica. Cada `.webp` tiene al lado una copia ligera `-sm.png` (`X-sm.webp → X-sm.png`, `foto.webp → foto-sm.png`; fotos a 360 px de ancho, PNG con paleta). `getShieldUrl`/`getPlayerPhotoUrl` pasan por `compatImgUrl()` y hay un listener `error` en captura que cambia cualquier `<img>` .webp fallida a su PNG. **Al añadir una imagen .webp nueva, generar también su `-sm.png`** o en móviles viejos caerá al `onerror`. `exportMatchResult` usa el PNG original a resolución completa si no hay WebP.
+- **`gap` en flexbox**: no existe en iOS < 14.5, Chrome < 84, Samsung < 14 (y `@supports (gap)` da falso positivo por el `gap` de grid). `flexGapPolyfill()` en `app.js` lo detecta y, solo en esos navegadores, emula el gap con márgenes en los hijos (añade la clase `no-flexgap` a `<html>`). Se puede seguir usando `gap` con normalidad.
+- **CSS**: `backdrop-filter` siempre con `-webkit-backdrop-filter` delante (Safari ≤ 17 solo entiende el prefijado); no usar `inset:` (iOS < 14.5) sino `top/right/bottom/left`; en gradientes, `linear-gradient(#fff, #fff)` en vez de la sintaxis `#fff 0 0`. Se quitó el `backdrop-filter` de `.card`/`.match-card`: con fondo al 95 % de opacidad no se ve (0 píxeles de diferencia medidos en Edge) y en listas largas hace ir a tirones a móviles viejos.
+- **Init**: `DOMContentLoaded` NO debe esperar (`await`) al registro del Service Worker — antes lo hacía y en móviles lentos el login no respondía hasta descargarse `sw.js`. Ahora `resetServiceWorker()` corre en segundo plano.
+- **Probarlo**: `npm i puppeteer@2.0.0` en una carpeta temporal (si no baja el navegador, descargar a mano `https://storage.googleapis.com/chromium-browser-snapshots/Win_x64/706915/chrome-win.zip` y descomprimir en `node_modules/puppeteer/.local-chromium/win64-706915/`). Es Chrome 79: sin `?.` ni flex gap. Para simular "sin WebP", interceptar las peticiones `.webp` y responder bytes basura.
 
 **Desarrollo local sin `DATABASE_URL`**: el repo no trae `.env` (solo `.env.example`) ni `node_modules/`. `npm install` + `node server.js` arranca igualmente — `IS_POSTGRES` queda en `false` y las rutas `/api/*` que dependen de Postgres devuelven vacío/error, pero el SPA (`index.html`, `app.js`, `styles.css`) y todos los assets estáticos (`public/logos/`, `public/players/`, `public/assets/`) se sirven con normalidad. Sirve para validar sintaxis y que los ficheros nuevos bajo `public/` responden 200, pero no para probar flujos con login/datos reales.
 
