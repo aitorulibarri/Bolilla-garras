@@ -577,8 +577,16 @@ function setupEventListeners() {
       tab.classList.add('active');
       document.getElementById(`tab-${tabId}`).classList.add('active');
 
+      syncMainNav();
       loadTabContent(tabId);
     });
+  });
+
+  // Desplegable de pestañas principales: delega en el botón .nav-tab (oculto) para reutilizar su lógica
+  const mainNav = document.getElementById('main-nav');
+  if (mainNav) mainNav.addEventListener('change', () => {
+    const tab = document.querySelector(`.nav-tab[data-tab="${mainNav.value}"]`);
+    if (tab) tab.click();
   });
 
   // Refresh button
@@ -667,9 +675,23 @@ function showApp() {
   adminTab.style.display = adminVisible;
   if (usersTab) usersTab.style.display = adminVisible;
   if (trackerTab) trackerTab.style.display = adminVisible;
+  syncMainNav();
 
   loadMatches();
   loadLeaderboardWidget();
+}
+
+// Reconstruye el desplegable con las pestañas que este usuario puede ver (las admin llevan inline display:none)
+// y deja seleccionada la activa.
+function syncMainNav() {
+  const select = document.getElementById('main-nav');
+  if (!select) return;
+  const visible = [...navTabs].filter(t => t.style.display !== 'none');
+  const active = [...navTabs].find(t => t.classList.contains('active'));
+  select.innerHTML = visible
+    .map(t => `<option value="${t.dataset.tab}">${escapeHtml(t.textContent.replace(/\s+/g, ' ').trim())}</option>`)
+    .join('');
+  if (active) select.value = active.dataset.tab;
 }
 
 function loadTabContent(tabId) {

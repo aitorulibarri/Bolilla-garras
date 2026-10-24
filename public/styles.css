@@ -563,6 +563,31 @@ body::before {
   box-shadow: var(--glow-red-md);
 }
 
+/* Pestañas principales como desplegable: los botones .nav-tab siguen en el DOM (llevan la lógica) pero ocultos.
+   !important porque showApp() les pone display inline para los admins. */
+.nav-tabs .nav-tab { display: none !important; }
+.main-nav-select {
+  display: block;
+  flex: 1 1 100%;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 44px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid rgba(255, 51, 51, 0.4);
+  border-radius: var(--radius-lg);
+  color: var(--text-primary);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  touch-action: manipulation;
+}
+.main-nav-select:focus { outline: none; border-color: #FF3333; }
+.main-nav-select option { background: #0f172a; color: #f1f5f9; }
+
 /* ==================== MAIN CONTENT ==================== */
 
 .main-content {
