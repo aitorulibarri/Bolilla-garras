@@ -49,6 +49,7 @@ PORT=3123 node -r dotenv/config server.js dotenv_config_path=.env.local
 - **SQL nuevo**: probarlo sobre tablas temporales que tapan a las reales en la misma sesión (`pg_temp` va primero en el `search_path`): `CREATE TEMP TABLE matches AS SELECT * FROM public.matches; CREATE TEMP TABLE predictions (LIKE public.predictions INCLUDING ALL); INSERT INTO predictions SELECT * FROM public.predictions;` y ejecutar la consulta tal cual. La tabla real no se toca.
 - **Flujo completo (API o navegador)**: crear usuario de prueba vía `/api/register`, ocultarlo con `PUT /api/admin/users/:id/predictions-participation` (`participates:false`), crear partidos con `opponent = 'PRUEBA – borrar'` y deadline en 2030, y en un `finally` borrar `predictions` + `matches` de esos ids por SQL (un partido finalizado no se puede borrar por API) y el usuario con `DELETE /api/admin/users/:id`. Comparar `COUNT(*)` de `matches/users/predictions/match_mvp_votes` antes y después.
 - **Rate limit de login (10/15 min por IP, cuentan también los intentos correctos)**: al probar contra producción, hacer UN login y reutilizar el token (en Playwright: `addInitScript` que mete `bolilla_token` y `bolilla_user` en `sessionStorage`). Si se agota, también bloquea al usuario humano desde la misma IP ~15 min; no hacer bucles de sondeo contra `/api/login`. Contra el servidor local el límite es independiente.
+- **UI sin tocar producción**: con `node server.js` local (sin `DATABASE_URL`) + Playwright, `context.route('**/api/**', …)` simula la API y `addInitScript` mete `bolilla_token`/`bolilla_user` (con `isAdmin` true/false) en `sessionStorage` — sirve para probar la UI como admin y como usuario normal sin login ni datos reales.
 - Playwright: `playwright-core` + `chromium.launch({ channel: 'msedge' })` (Edge instalado, no hace falta descargar navegadores). El Service Worker oculta las peticiones a CDP: usar `serviceWorkers: 'block'` para medir red. Móvil de gama media = `Emulation.setCPUThrottlingRate {rate:4}` + `Network.emulateNetworkConditions` (150 ms, 1,6 Mb/s).
 
 ## Architecture
@@ -166,7 +167,7 @@ Tab activo en producción. El sistema MVP por partido (`/api/mvp/*`) es el únic
 | GET | `/api/ping` | — | Keep-warm: hace SELECT 1 a Neon. Sin auth. |
 | GET | `/api/mvp/active` | requireAuth | Partidos con votación abierta + voto del usuario |
 | POST | `/api/mvp/:id/vote` | requireAuth | Votar MVP (UPSERT — se puede cambiar el voto) |
-| GET | `/api/mvp/history` | requireAuth | Últimos 20 partidos cerrados con podio completo |
+| GET | `/api/mvp/history[?category=masculino\|femenino]` | requireAuth | Todos los partidos cerrados con votos (sin límite) y podio completo; `category` filtra por equipo (whitelist en el servidor, parámetro `$1::text IS NULL OR m.team = $1`) |
 | GET | `/api/mvp/ranking` | requireAuth | Ranking temporada separado por masculino/femenino |
 | GET | `/api/mvp/admin/matches` | requireAdmin | Panel admin: últimos 30 partidos con estado votación |
 | PUT | `/api/mvp/admin/:id/open` | requireAdmin | Abrir votación (femenino requiere `player_ids[]`) |
@@ -184,20 +185,22 @@ Tab activo en producción. El sistema MVP por partido (`/api/mvp/*`) es el únic
 
 ### Frontend Garras Saria (app.js)
 
-- `loadGarrasSaria()` — punto de entrada del tab; llama a admin (si admin) + vote + history + ranking en paralelo
+**Estructura del tab (subpestañas)**: un `<select id="garras-subnav">` muestra una sola sección cada vez — `votacion` (por defecto), `historial`, `ranking` y `gestion` (la opción la añade `_syncGarrasGestionOption()` solo si `currentUser.isAdmin`; no usar `hidden` en `<option>`, iOS viejo lo ignora). Historial y Ranking tienen píldoras Masculino/Femenino (`.garras-pill`, 44 px) que fijan `_garrasHistoryCat` / `_garrasRankingCat`. **Carga lazy**: `showGarrasSub(sub)` muestra el contenedor `#garras-sub-<sub>` y carga solo lo suyo; se vuelve a llamar tras abrir/cerrar una votación. `_initGarrasUi()` monta los listeners **una sola vez** (select, píldoras, "Descargar imagen", clicks admin) — nunca añadir `addEventListener` con función anónima dentro de un `load*()`, se acumularía en cada recarga.
+
+- `loadGarrasSaria()` — punto de entrada del tab; inicializa la UI y llama a `showGarrasSub(_garrasSub)`
 - `loadMvpVoteSection()` — partidos abiertos para votar; click en player card marca selección (una por partido) y la guarda en `_mvpSelections` (Map `matchId -> playerId`, se limpia en cada render) — es la fuente de verdad, **no** releer la clase CSS `.selected` del DOM al votar (era frágil: si el DOM se re-renderizaba entre seleccionar y pulsar VOTAR, la selección se perdía en silencio). Botón único "VOTAR" al final se desactiva y muestra "Votando…" mientras envía todas las selecciones vía `submitAllMvpVotes()` (mismo patrón que `saveAllPredictions`), que llama a `submitMvpVote()` por partido — este devuelve `{ success, error }` (no un booleano) para mostrar en el toast el motivo real del fallo (401 sesión caducada / error del servidor / sin conexión) en vez de un mensaje genérico
-- `loadMvpHistory()` — historial con podio (🥇🥈🥉) + lista completa; guarda array en `_mvpHistoryMatches[]`
-- `loadMvpRanking()` — tabla ranking con medallas top 3
-- `loadMvpAdmin()` — panel admin; partidos agrupados por categoría (⚽ Masculino / 👟 Femenino)
-- `_mvpAdminClick(e)` — event delegation para todos los botones del panel admin
-- `_mvpMostrarSelectorFem(matchId)` — carga jugadoras y muestra selector en `#mvp-fem-panel`
+- `loadMvpHistory()` — historial de la categoría activa con podio (🥇🥈🥉) + lista completa; guarda el array en `_mvpHistoryMatches[]` (lo usa "Descargar imagen")
+- `loadMvpRanking()` — tabla de la categoría activa con medallas top 3; el título de temporada (`_garrasSeasonLabel()`, "26/27") se calcula por fecha (la temporada arranca en julio)
+- `loadMvpAdmin(mode)` — `'quick'` (subpestaña Votación, `#garras-quick-container`): solo partidos abiertos o sin votar, el resto en `<details>` "Ver anteriores"; `'full'` (subpestaña Gestión, `#garras-admin-container`): todos. Agrupados por categoría (⚽ Masculino / 👟 Femenino)
+- `_mvpAdminClick(e)` — event delegation para los botones del panel admin; usa `e.currentTarget` como raíz porque el mismo handler sirve a los dos contenedores
+- `_mvpMostrarSelectorFem(matchId, root)` — carga jugadoras y muestra el selector `.mvp-fem-selector` dentro de `root` (sin id global: hay dos paneles admin en el DOM)
+- `_mvpAskClose(label)` — modal in-page `#mvp-close-modal` para confirmar el cierre (devuelve `Promise<boolean>`)
 - `exportMatchResult(match)` — genera PNG del podio top 3 componiendo sobre la plantilla fija `garras-saria-podio-template.png` (ver detalle completo en la sección Exports); descarga directa en Android/desktop, abre en nueva pestaña en iOS
 - `_rrPath(ctx, x, y, w, h, r)` — helper: rounded rect path para canvas
 
-**Cache in-memory**: `_mvpCache` (TTL 5 min) para `mvp_history` y `mvp_ranking`. Se invalida en `_mvpAdminClick` al cerrar votación. Funciones: `_mvpCacheGet(key)`, `_mvpCacheSet(key, data)`, `_mvpCacheClear(...keys)`.
+**Cache in-memory**: `_mvpCache` (TTL 5 min) con claves `mvp_history_masculino`, `mvp_history_femenino` y `mvp_ranking`. Se invalida con `_mvpCacheClearAll()` al cerrar votación y al resetear temporada. Funciones: `_mvpCacheGet(key)`, `_mvpCacheSet(key, data)`, `_mvpCacheClear(...keys)`.
 
-**Tras abrir votación**: llama `Promise.all([loadMvpAdmin(), loadMvpVoteSection()])` — el admin ve el cambio sin recargar.  
-**Tras cerrar votación**: llama `Promise.all([loadMvpAdmin(), loadMvpVoteSection(), loadMvpHistory(), loadMvpRanking()])` e invalida caché.
+**Tras abrir o cerrar votación**: `await showGarrasSub(_garrasSub)` recarga la subpestaña visible (al cerrar, antes `_mvpCacheClearAll()`); las demás se cargan al entrar.
 
 **Orden de rutas crítico** (server.js): `/api/garras/jornadas/active` debe estar definida ANTES de `/api/garras/jornadas/:id/results`.
 
@@ -265,8 +268,8 @@ Primera subpestaña "Por jornada": `renderByWeek()` agrupa por semana lunes-domi
 - **Upsert predictions**: `upsertPredictions()` (server.js) — un único `INSERT … SELECT FROM unnest(...) JOIN matches … ON CONFLICT (player_name, match_id) DO UPDATE` con el deadline comprobado dentro de la consulta. Idempotente (doble toque / reintento no da error). Lo usan `POST /api/predictions` y `POST /api/predictions/batch` (el que usa el frontend); devuelve `{ saved: [ids], rejected: [ids] }` — rechazado = plazo cerrado o partido inexistente.
 - **Borrar partidos**: `DELETE /api/matches/:id` rechaza con 400 si `is_finished = 1`.
 - **Orden fijo por liga**: Athletic Club → Athletic Femenino → Bilbao Athletic, luego fecha ASC.
-- **Event delegation en admin MVP**: `container.addEventListener('click', _mvpAdminClick)` — nunca usar `onclick` en strings de `innerHTML` para botones del panel admin.
-- **Confirmación de acciones destructivas**: usar SIEMPRE un modal in-page (patrón `#rules-modal` / `#reset-season-modal`: `.modal` + `.modal-overlay` + `.modal-content`, toggle vía `style.display` + clase `.show`), nunca `window.confirm()`/`window.prompt()`/`window.alert()`. Los diálogos nativos del navegador no se disparan de forma fiable en la PWA instalada (Edge en escritorio) — un botón que llama a `confirm()` puede no hacer nada visible al pulsarlo.
+- **Event delegation en admin MVP**: `_initGarrasUi()` hace `addEventListener('click', _mvpAdminClick)` sobre `#garras-quick-container` y `#garras-admin-container` — nunca usar `onclick` en strings de `innerHTML` para botones del panel admin.
+- **Confirmación de acciones destructivas**: usar SIEMPRE un modal in-page (patrón `#rules-modal` / `#reset-season-modal`: `.modal` + `.modal-overlay` + `.modal-content`, toggle vía `style.display` + clase `.show`), nunca `window.confirm()`/`window.prompt()`/`window.alert()`. Los diálogos nativos del navegador no se disparan de forma fiable en la PWA instalada (Edge en escritorio) — un botón que llama a `confirm()` puede no hacer nada visible al pulsarlo. Cerrar votación MVP ya usa `#mvp-close-modal`; **quedan `confirm()` nativos en la gestión de pronósticos** (`app.js`: borrar partido, confirmar resultado, borrar pronóstico y otro en Admin) pendientes de migrar.
 
 ## Performance
 
