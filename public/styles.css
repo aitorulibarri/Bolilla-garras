@@ -2811,6 +2811,56 @@ body::before {
 .mvp-dorsal { font-size: 11px; color: var(--text-secondary); }
 .mvp-selector-actions { display: flex; gap: 8px; padding-top: 4px; }
 
+/* Garras Saria: desplegable de sección, píldoras y "Ver anteriores" */
+.garras-subnav-wrap { margin-bottom: 16px; }
+.garras-subnav {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  touch-action: manipulation;
+}
+.garras-subnav:focus { outline: none; border-color: var(--neon-red); }
+.garras-subnav option { background: #0f172a; color: #f1f5f9; }
+
+.garras-pills { display: flex; gap: 8px; margin-bottom: 16px; }
+.garras-pill {
+  flex: 1 1 0;
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.05);
+  color: #94A3B8;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.garras-pill:active { background: rgba(255,255,255,0.12); }
+.garras-pill.active { background: rgba(204,0,0,0.2); border-color: #CC0000; color: #FF3333; }
+
+.garras-previous { margin-top: 14px; }
+.garras-previous summary {
+  min-height: 44px;
+  padding: 12px 4px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.garras-previous summary:active { color: var(--text-primary); }
+.garras-previous[open] summary { margin-bottom: 4px; }
+
 /* Inline create form */
 .garras-create-form { padding: 12px 0 4px; }
 .garras-create-row { display: flex; gap: 12px; flex-wrap: wrap; }

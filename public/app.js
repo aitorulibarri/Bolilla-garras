@@ -2461,7 +2461,7 @@ async function executeFullSeasonReset() {
     if (res.ok && data.success) {
       const d = data.deleted || {};
       showToast(`Temporada reseteada: ${d.matches || 0} partidos, ${d.predictions || 0} pronósticos, ${d.mvp_votes || 0} votos MVP eliminados`, 'success');
-      _mvpCacheClear('mvp_history', 'mvp_ranking');
+      _mvpCacheClearAll();
       await Promise.all([
         loadAdminStats(),
         loadAdminMatches(),
@@ -2750,20 +2750,101 @@ function _mvpCacheGet(key) {
 }
 function _mvpCacheSet(key, data) { _mvpCache[key] = { data, ts: Date.now() }; }
 function _mvpCacheClear(...keys) { keys.forEach(k => delete _mvpCache[k]); }
+function _mvpCacheClearAll() { _mvpCacheClear('mvp_history_masculino', 'mvp_history_femenino', 'mvp_ranking'); }
 
 // ==================== GARRAS SARIA (MVP por partido) ====================
 
+const GARRAS_SUBS = ['votacion', 'historial', 'ranking', 'gestion'];
+let _garrasSub = 'votacion';
+let _garrasHistoryCat = 'masculino';
+let _garrasRankingCat = 'masculino';
+let _garrasUiReady = false;
+
+// Temporada en curso a partir de la fecha (arranca en julio): "26/27"
+function _garrasSeasonLabel() {
+  const now = new Date();
+  const y = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+  return String(y).slice(-2) + '/' + String(y + 1).slice(-2);
+}
+
+// Listeners de la pestaña: se montan una sola vez (el HTML de los contenedores es fijo)
+function _initGarrasUi() {
+  if (_garrasUiReady) return;
+  _garrasUiReady = true;
+
+  const select = document.getElementById('garras-subnav');
+  if (select) select.addEventListener('change', () => showGarrasSub(select.value));
+
+  const bindPills = (id, onPick) => {
+    const box = document.getElementById(id);
+    if (!box) return;
+    box.addEventListener('click', e => {
+      const pill = e.target.closest('.garras-pill');
+      if (!pill) return;
+      box.querySelectorAll('.garras-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      onPick(pill.dataset.category);
+    });
+  };
+  bindPills('garras-history-pills', cat => { _garrasHistoryCat = cat; loadMvpHistory(); });
+  bindPills('garras-ranking-pills', cat => { _garrasRankingCat = cat; loadMvpRanking(); });
+
+  // Un único listener para "Descargar imagen" (antes se acumulaba uno por cada recarga del historial)
+  const history = document.getElementById('garras-history-section');
+  if (history) history.addEventListener('click', e => {
+    const btn = e.target.closest('.garras-history-export-btn');
+    if (btn) exportMatchResult(_mvpHistoryMatches[parseInt(btn.dataset.exportIdx)]);
+  });
+
+  ['garras-quick-container', 'garras-admin-container'].forEach(id => {
+    const c = document.getElementById(id);
+    if (c) c.addEventListener('click', _mvpAdminClick);
+  });
+}
+
+// La opción "Gestión" solo existe en el desplegable para admins
+function _syncGarrasGestionOption() {
+  const select = document.getElementById('garras-subnav');
+  if (!select) return;
+  const isAdmin = !!(currentUser && currentUser.isAdmin);
+  const existing = select.querySelector('option[value="gestion"]');
+  if (isAdmin && !existing) {
+    const opt = document.createElement('option');
+    opt.value = 'gestion';
+    opt.textContent = '⚙️ Gestión';
+    select.appendChild(opt);
+  } else if (!isAdmin && existing) {
+    select.removeChild(existing);
+  }
+}
+
+// Muestra una subpestaña y carga solo sus datos
+function showGarrasSub(sub) {
+  const isAdmin = !!(currentUser && currentUser.isAdmin);
+  if (GARRAS_SUBS.indexOf(sub) === -1 || (sub === 'gestion' && !isAdmin)) sub = 'votacion';
+  _garrasSub = sub;
+
+  const select = document.getElementById('garras-subnav');
+  if (select) select.value = sub;
+  GARRAS_SUBS.forEach(k => {
+    const el = document.getElementById('garras-sub-' + k);
+    if (el) el.style.display = k === sub ? 'block' : 'none';
+  });
+
+  if (sub === 'votacion') {
+    const quick = document.getElementById('garras-quick-admin');
+    if (quick) quick.style.display = isAdmin ? 'block' : 'none';
+    return Promise.all([isAdmin ? loadMvpAdmin('quick') : null, loadMvpVoteSection()]);
+  }
+  if (sub === 'historial') return loadMvpHistory();
+  if (sub === 'ranking') return loadMvpRanking();
+  return loadMvpAdmin('full');
+}
+
 async function loadGarrasSaria() {
-  const adminSection = document.getElementById('garras-admin-section');
-  if (adminSection) adminSection.style.display = (currentUser && currentUser.isAdmin) ? 'block' : 'none';
-
-  if ((currentUser && currentUser.isAdmin)) await loadMvpAdmin();
-
-  await Promise.all([
-    loadMvpVoteSection(),
-    loadMvpHistory(),
-    loadMvpRanking()
-  ]);
+  _initGarrasUi();
+  _syncGarrasGestionOption();
+  await showGarrasSub(_garrasSub);
 }
 
 async function loadMvpVoteSection() {
@@ -2915,14 +2996,23 @@ async function submitAllMvpVotes(matchIds, btn) {
 async function loadMvpHistory() {
   const section = document.getElementById('garras-history-section');
   if (!section) return;
+  const cat = _garrasHistoryCat;
   try {
-    let matches = _mvpCacheGet('mvp_history');
+    let matches = _mvpCacheGet('mvp_history_' + cat);
     if (!matches) {
-      const res = await fetchWithRetry('/api/mvp/history');
+      section.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+      const res = await fetchWithRetry('/api/mvp/history?category=' + cat);
+      if (!res.ok) throw new Error(`API ${res.status}`);
       matches = await res.json();
-      if (Array.isArray(matches)) _mvpCacheSet('mvp_history', matches);
+      if (!Array.isArray(matches)) throw new Error('Respuesta inesperada');
+      _mvpCacheSet('mvp_history_' + cat, matches);
     }
-    if (!Array.isArray(matches) || matches.length === 0) { section.innerHTML = ''; return; }
+    if (cat !== _garrasHistoryCat) return; // el usuario cambió de píldora mientras cargaba
+    if (matches.length === 0) {
+      section.innerHTML = `<div class="garras-no-vote card"><div class="garras-no-vote-icon">📋</div><h3>Sin partidos todavía</h3><p>Aún no hay votaciones cerradas de ${cat === 'femenino' ? 'Athletic Femenino' : 'Athletic Club'}.</p></div>`;
+      _mvpHistoryMatches = [];
+      return;
+    }
 
     _mvpHistoryMatches = matches;
     const MEDALS = ['🥇', '🥈', '🥉'];
@@ -2959,11 +3049,7 @@ async function loadMvpHistory() {
       </div>`;
     };
 
-    section.innerHTML = `<div class="garras-history-heading">📋 Historial de Partidos</div>${matches.map((m, i) => renderMatch(m, i)).join('')}`;
-    section.addEventListener('click', e => {
-      const btn = e.target.closest('.garras-history-export-btn');
-      if (btn) exportMatchResult(_mvpHistoryMatches[parseInt(btn.dataset.exportIdx)]);
-    });
+    section.innerHTML = matches.map((m, i) => renderMatch(m, i)).join('');
   } catch (err) {
     section.innerHTML = '<p style="color:var(--text-secondary);text-align:center;padding:16px;font-size:13px;">Error al cargar el historial. Recarga el tab.</p>';
     console.error(err);
@@ -2974,17 +3060,24 @@ async function loadMvpRanking() {
   const section = document.getElementById('garras-ranking-section');
   if (!section) return;
   try {
+    const cat = _garrasRankingCat;
     let rankData = _mvpCacheGet('mvp_ranking');
     if (!rankData) {
+      section.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
       const res = await fetchWithRetry('/api/mvp/ranking');
+      if (!res.ok) throw new Error(`API ${res.status}`);
       rankData = await res.json();
-      if (rankData && rankData.masculino) _mvpCacheSet('mvp_ranking', rankData);
+      if (!rankData || !Array.isArray(rankData.masculino) || !Array.isArray(rankData.femenino)) throw new Error('Respuesta inesperada');
+      _mvpCacheSet('mvp_ranking', rankData);
     }
-    const { masculino, femenino } = rankData;
-    if (masculino.length === 0 && femenino.length === 0) { section.innerHTML = ''; return; }
+    if (cat !== _garrasRankingCat) return; // el usuario cambió de píldora mientras cargaba
+    const players = rankData[cat];
+    if (players.length === 0) {
+      section.innerHTML = `<div class="garras-no-vote card"><div class="garras-no-vote-icon">🏆</div><h3>Sin ranking todavía</h3><p>Aún no hay votaciones cerradas de ${cat === 'femenino' ? 'Athletic Femenino' : 'Athletic Club'}.</p></div>`;
+      return;
+    }
 
-    const renderTable = (players, title) => {
-      if (players.length === 0) return '';
+    const renderTable = (players) => {
       const rows = players.map((p, i) => {
         const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
         return `<tr>
@@ -3001,7 +3094,6 @@ async function loadMvpRanking() {
       }).join('');
       return `
         <div class="garras-ranking-block">
-          <div class="garras-category-title">${title}</div>
           <table class="garras-rank-table">
             <thead><tr><th>#</th><th>Jugador/a</th><th>🏅 Partidos</th><th>Votos</th></tr></thead>
             <tbody>${rows}</tbody>
@@ -3011,11 +3103,8 @@ async function loadMvpRanking() {
 
     section.innerHTML = `
       <div class="card">
-        <div class="card-header"><h3 class="card-title">🏆 Ranking Temporada 26/27</h3></div>
-        <div class="garras-ranking-grid">
-          ${renderTable(masculino, '⚽ Masculino')}
-          ${renderTable(femenino, '⚽ Femenino')}
-        </div>
+        <div class="card-header"><h3 class="card-title">🏆 Ranking Temporada ${_garrasSeasonLabel()}</h3></div>
+        ${renderTable(players)}
       </div>`;
   } catch (err) {
     section.innerHTML = '<p style="color:var(--text-secondary);text-align:center;padding:16px;font-size:13px;">Error al cargar el ranking. Recarga el tab.</p>';
@@ -3230,8 +3319,11 @@ function _rrPath(ctx, x, y, w, h, r) {
 
 // ---- Admin: MVP voting panel ----
 
-async function loadMvpAdmin() {
-  const container = document.getElementById('garras-admin-container');
+// mode 'quick' (pestaña Votación): solo abiertos y pendientes de abrir, el resto plegado.
+// mode 'full' (pestaña Gestión): todos los partidos.
+async function loadMvpAdmin(mode) {
+  const isQuick = mode === 'quick';
+  const container = document.getElementById(isQuick ? 'garras-quick-container' : 'garras-admin-container');
   if (!container) return;
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
@@ -3272,22 +3364,34 @@ async function loadMvpAdmin() {
         </div>`;
     };
 
-    const masc = matches.filter(m => m.team !== 'Athletic Femenino');
-    const fem = matches.filter(m => m.team === 'Athletic Femenino');
-    const renderGroup = (group, title) => group.length === 0 ? '' : `
-      <div class="garras-admin-group">
-        <div class="garras-admin-group-title">${title}</div>
-        ${group.map(renderAdminItem).join('')}
+    const renderList = list => {
+      const masc = list.filter(m => m.team !== 'Athletic Femenino');
+      const fem = list.filter(m => m.team === 'Athletic Femenino');
+      const renderGroup = (group, title) => group.length === 0 ? '' : `
+        <div class="garras-admin-group">
+          <div class="garras-admin-group-title">${title}</div>
+          ${group.map(renderAdminItem).join('')}
+        </div>`;
+      return `<div class="garras-admin-list">
+        ${renderGroup(masc, '⚽ Masculino')}
+        ${renderGroup(fem, '👟 Femenino')}
       </div>`;
+    };
 
-    container.innerHTML = `<div class="garras-admin-list">
-      ${renderGroup(masc, '⚽ Masculino')}
-      ${renderGroup(fem, '👟 Femenino')}
-    </div>
-    <div id="mvp-fem-panel" style="display:none;" class="mvp-fem-selector"></div>`;
+    // Cerrada = votación terminada con votos; el resto (abierta o sin votación) sigue en juego
+    const isClosed = m => !m.mvp_voting_open && parseInt(m.vote_count) > 0;
+    let body;
+    if (isQuick) {
+      const active = matches.filter(m => !isClosed(m));
+      const previous = matches.filter(isClosed);
+      body = (active.length ? renderList(active) : '<p class="garras-empty">No hay partidos abiertos ni pendientes de abrir.</p>')
+        + (previous.length ? `<details class="garras-previous"><summary>Ver anteriores (${previous.length})</summary>${renderList(previous)}</details>` : '');
+    } else {
+      body = renderList(matches);
+    }
 
-    // Event delegation — un solo listener, no onclick en HTML
-    container.addEventListener('click', _mvpAdminClick);
+    // El listener delegado (_mvpAdminClick) lo monta _initGarrasUi una sola vez sobre el contenedor
+    container.innerHTML = `${body}<div style="display:none;" class="mvp-fem-selector"></div>`;
 
   } catch (err) {
     container.innerHTML = `<p class="garras-error">Error al cargar partidos: ${escapeHtml(err.message)}</p>`;
@@ -3295,7 +3399,29 @@ async function loadMvpAdmin() {
   }
 }
 
+// Modal in-page de confirmación (no confirm(): no se dispara de forma fiable en la PWA instalada)
+function _mvpAskClose(label) {
+  return new Promise(resolve => {
+    const modal = document.getElementById('mvp-close-modal');
+    if (!modal) { resolve(false); return; }
+    document.getElementById('mvp-close-label').textContent = label;
+    const finish = ok => {
+      modal.classList.remove('show');
+      setTimeout(() => { modal.style.display = 'none'; }, 300);
+      resolve(ok);
+    };
+    // onclick (no addEventListener): reasignar sustituye el handler anterior, sin acumular
+    document.getElementById('confirm-mvp-close').onclick = () => finish(true);
+    document.getElementById('cancel-mvp-close').onclick = () => finish(false);
+    document.getElementById('close-mvp-close').onclick = () => finish(false);
+    modal.querySelector('.modal-overlay').onclick = () => finish(false);
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('show'), 10);
+  });
+}
+
 async function _mvpAdminClick(e) {
+  const root = e.currentTarget;
   const btnAbrir = e.target.closest('.mvp-btn-abrir');
   const btnCerrar = e.target.closest('.mvp-btn-cerrar');
   const btnConfirmar = e.target.closest('.mvp-btn-confirmar');
@@ -3312,30 +3438,31 @@ async function _mvpAdminClick(e) {
           method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({})
         });
         const data = await res.json();
-        if (data.success) { showToast('Votación abierta ✅', 'success'); await Promise.all([loadMvpAdmin(), loadMvpVoteSection()]); }
+        if (data.success) { showToast('Votación abierta ✅', 'success'); await showGarrasSub(_garrasSub); }
         else { btnAbrir.disabled = false; btnAbrir.textContent = '▶ Abrir'; showToast(data.error || 'Error al abrir', 'error'); }
       } catch { btnAbrir.disabled = false; btnAbrir.textContent = '▶ Abrir'; showToast('Error de conexión', 'error'); }
     } else {
-      await _mvpMostrarSelectorFem(matchId);
+      await _mvpMostrarSelectorFem(matchId, root);
     }
   }
 
   if (btnCerrar) {
     const matchId = parseInt(btnCerrar.dataset.matchId);
-    if (!confirm('¿Cerrar la votación de este partido?')) return;
+    const labelEl = btnCerrar.closest('.garras-admin-item') && btnCerrar.closest('.garras-admin-item').querySelector('.garras-admin-label');
+    if (!(await _mvpAskClose(labelEl ? labelEl.textContent : 'este partido'))) return;
     btnCerrar.disabled = true;
     btnCerrar.textContent = '⏳ Cerrando...';
     try {
       const res = await fetchWithRetry(`/api/mvp/admin/${matchId}/close`, { method: 'PUT' });
       const data = await res.json();
-      if (data.success) { _mvpCacheClear('mvp_history', 'mvp_ranking'); showToast('Votación cerrada ✅', 'success'); await Promise.all([loadMvpAdmin(), loadMvpVoteSection(), loadMvpHistory(), loadMvpRanking()]); }
+      if (data.success) { _mvpCacheClearAll(); showToast('Votación cerrada ✅', 'success'); await showGarrasSub(_garrasSub); }
       else { btnCerrar.disabled = false; btnCerrar.textContent = '■ Cerrar'; showToast(data.error || 'Error', 'error'); }
     } catch { btnCerrar.disabled = false; btnCerrar.textContent = '■ Cerrar'; showToast('Error de conexión', 'error'); }
   }
 
   if (btnConfirmar) {
     const matchId = parseInt(btnConfirmar.dataset.matchId);
-    const panel = document.getElementById('mvp-fem-panel');
+    const panel = root.querySelector('.mvp-fem-selector');
     const checked = [...panel.querySelectorAll('.mvp-player-check:checked')].map(el => parseInt(el.value));
     if (checked.length === 0) { showToast('Selecciona al menos una jugadora', 'error'); return; }
     btnConfirmar.disabled = true;
@@ -3346,19 +3473,19 @@ async function _mvpAdminClick(e) {
         body: JSON.stringify({ player_ids: checked })
       });
       const data = await res.json();
-      if (data.success) { showToast('Votación abierta ✅', 'success'); await Promise.all([loadMvpAdmin(), loadMvpVoteSection()]); }
+      if (data.success) { showToast('Votación abierta ✅', 'success'); await showGarrasSub(_garrasSub); }
       else { btnConfirmar.disabled = false; btnConfirmar.textContent = '✅ Abrir votación'; showToast(data.error || 'Error', 'error'); }
     } catch { btnConfirmar.disabled = false; btnConfirmar.textContent = '✅ Abrir votación'; showToast('Error de conexión', 'error'); }
   }
 
   if (btnCancelar) {
-    const panel = document.getElementById('mvp-fem-panel');
+    const panel = root.querySelector('.mvp-fem-selector');
     if (panel) panel.style.display = 'none';
   }
 }
 
-async function _mvpMostrarSelectorFem(matchId) {
-  const panel = document.getElementById('mvp-fem-panel');
+async function _mvpMostrarSelectorFem(matchId, root) {
+  const panel = root.querySelector('.mvp-fem-selector');
   if (!panel) { showToast('Error interno: panel no encontrado', 'error'); return; }
 
   panel.style.display = 'block';

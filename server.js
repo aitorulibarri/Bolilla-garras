@@ -1862,10 +1862,12 @@ app.post('/api/mvp/:id/vote', requireAuth, async (req, res) => {
     }
 });
 
-// GET /api/mvp/history — closed matches with vote results
+// GET /api/mvp/history[?category=masculino|femenino] — todos los partidos cerrados con votos
 app.get('/api/mvp/history', requireAuth, async (req, res) => {
     try {
         if (!IS_POSTGRES) return res.json([]);
+        const teamByCategory = { masculino: 'Athletic Club', femenino: 'Athletic Femenino' };
+        const team = teamByCategory[req.query.category];
         const matches = await query(`
             SELECT m.id, m.team, m.opponent, m.is_home, m.match_date,
                    COUNT(mmv.id) AS total_votes
@@ -1873,10 +1875,10 @@ app.get('/api/mvp/history', requireAuth, async (req, res) => {
             JOIN match_mvp_votes mmv ON m.id = mmv.match_id
             WHERE m.mvp_voting_open = 0
               AND m.team IN ('Athletic Club', 'Athletic Femenino')
+              AND ($1::text IS NULL OR m.team = $1)
             GROUP BY m.id, m.team, m.opponent, m.is_home, m.match_date -- matches no tiene PK en producción: hay que listar todas las columnas
             ORDER BY m.match_date DESC
-            LIMIT 20
-        `);
+        `, [team || null]);
         // Resultados de todos los partidos en una sola consulta (antes una por partido)
         const rows = matches.length === 0 ? [] : await query(`
             SELECT mmv.match_id, gp.id, gp.name, gp.dorsal, COUNT(mmv.id) AS votes

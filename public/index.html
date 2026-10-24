@@ -377,24 +377,53 @@
                     <p class="section-subtitle">Vota al jugador/a con más garra de la jornada</p>
                 </div>
 
-                <!-- Admin: Gestión MVP votación (solo visible para admins) -->
-                <div class="card garras-admin-card" id="garras-admin-section" style="display:none;">
-                    <div class="card-header">
-                        <h3 class="card-title">⚙️ Votación MVP</h3>
-                    </div>
-                    <div id="garras-admin-container">
-                        <div class="loading"><div class="spinner"></div></div>
-                    </div>
+                <!-- Selector de sección (la opción "Gestión" la añade app.js solo para admins) -->
+                <div class="garras-subnav-wrap">
+                    <select id="garras-subnav" class="garras-subnav" aria-label="Sección de Garras Saria">
+                        <option value="votacion">🗳️ Votación MVP</option>
+                        <option value="historial">📋 Historial de partidos</option>
+                        <option value="ranking">🏆 Ranking</option>
+                    </select>
                 </div>
 
-                <!-- Votación activa -->
-                <div id="garras-vote-section"></div>
+                <!-- Votación MVP: acceso rápido admin + votación activa -->
+                <div class="garras-sub" id="garras-sub-votacion">
+                    <div class="card garras-admin-card" id="garras-quick-admin" style="display:none;">
+                        <div class="card-header">
+                            <h3 class="card-title">⚙️ Votación MVP</h3>
+                        </div>
+                        <div id="garras-quick-container"></div>
+                    </div>
+                    <div id="garras-vote-section"></div>
+                </div>
 
-                <!-- Historial de jornadas cerradas -->
-                <div id="garras-history-section"></div>
+                <!-- Historial de partidos cerrados -->
+                <div class="garras-sub" id="garras-sub-historial" style="display:none;">
+                    <div class="garras-pills" id="garras-history-pills">
+                        <button type="button" class="garras-pill active" data-category="masculino">⚽ Masculino</button>
+                        <button type="button" class="garras-pill" data-category="femenino">👟 Femenino</button>
+                    </div>
+                    <div id="garras-history-section"></div>
+                </div>
 
                 <!-- Ranking de temporada -->
-                <div id="garras-ranking-section"></div>
+                <div class="garras-sub" id="garras-sub-ranking" style="display:none;">
+                    <div class="garras-pills" id="garras-ranking-pills">
+                        <button type="button" class="garras-pill active" data-category="masculino">⚽ Masculino</button>
+                        <button type="button" class="garras-pill" data-category="femenino">👟 Femenino</button>
+                    </div>
+                    <div id="garras-ranking-section"></div>
+                </div>
+
+                <!-- Gestión completa (solo admin) -->
+                <div class="garras-sub" id="garras-sub-gestion" style="display:none;">
+                    <div class="card garras-admin-card">
+                        <div class="card-header">
+                            <h3 class="card-title">⚙️ Gestión de votaciones</h3>
+                        </div>
+                        <div id="garras-admin-container"></div>
+                    </div>
+                </div>
             </section>
         </main>
 
@@ -463,11 +492,29 @@
         </div>
     </div>
 
+    <!-- Close MVP voting Modal -->
+    <div id="mvp-close-modal" class="modal" style="display: none;">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>■ Cerrar votación</h2>
+                <button class="modal-close" id="close-mvp-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 20px;">¿Cerrar la votación de <strong id="mvp-close-label">este partido</strong>? Dejará de aceptar votos y pasará al historial y al ranking.</p>
+                <div style="display: flex; gap: 12px;">
+                    <button type="button" class="btn btn-secondary" id="cancel-mvp-close" style="flex:1; min-height:44px; touch-action: manipulation;">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="confirm-mvp-close" style="flex:1; min-height:44px; touch-action: manipulation;">■ Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notifications -->
     <div class="toast-container" id="toast-container" aria-live="polite"></div>
 
     <script src="podium.js?v=6.5"></script>
-    <script src="app.js?v=8.49"></script>
+    <script src="app.js?v=8.50"></script>
 </body>
 
 </html>
