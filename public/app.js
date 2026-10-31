@@ -1008,6 +1008,7 @@ const PLAYER_PHOTO_MAP = {
 const PLAYER_PHOTO_CROP_OFFSET = {
   'Alex Padilla': -0.05,
   'Maroan Sannadi': -0.06,
+  'Christian Imga': -0.06,
   'Nerea Benito Zaldibar': -0.04,
 };
 
