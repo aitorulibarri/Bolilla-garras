@@ -350,6 +350,9 @@ async function dbInit() {
                 { name: 'Beñat Gerenabarrena', dorsal: 24 },
                 { name: 'Álvaro Djaló', dorsal: 25 },
                 { name: 'Peio Canales', dorsal: 28 },
+                { name: 'Christian Imga', dorsal: 33 },
+                { name: 'Jesús Vizcay', dorsal: 34 },
+                { name: 'Aritz Conde', dorsal: 35 },
                 // Central del primer equipo, de baja por lesión de rodilla — sin dorsal asignado
                 // en este tramo de temporada (ver nota oficial citada abajo)
                 { name: 'Unai Egiluz', dorsal: null },

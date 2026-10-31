@@ -966,6 +966,9 @@ const PLAYER_PHOTO_MAP = {
   'Alex Padilla':             'players/masculino/alex-padilla-perez.webp',
   'Selton Sánchez':           'players/masculino/selton-sued-sanchez-camilo.webp',
   'Iker Monreal':             'players/masculino/iker-monreal-agundez.webp',
+  'Christian Imga':           'players/masculino/christian-imga-mitogo.webp',
+  'Jesús Vizcay':             'players/masculino/jesus-vizcay-hurtado.webp',
+  'Aritz Conde':              'players/masculino/aritz-conde-albiol.webp',
 
   // ── Femenino ──
   'Adriana Nanclares Romero':     'players/femenino/1-adriana-nanclares-romero.webp',
