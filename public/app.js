@@ -1008,7 +1008,12 @@ const PLAYER_PHOTO_MAP = {
 const PLAYER_PHOTO_CROP_OFFSET = {
   'Alex Padilla': -0.05,
   'Maroan Sannadi': -0.06,
-  'Christian Imga': -0.06,
+  'Christian Imga': -0.09,
+  'Unai Simón': 0.04,
+  'Aymeric Laporte': 0.06,
+  'Iñaki Williams': 0.03,
+  'Nico Williams': 0.06,
+  'Aritz Conde': -0.03,
   'Nerea Benito Zaldibar': -0.04,
 };
 
@@ -1051,10 +1056,13 @@ function renderPlayerAvatar(name, sizeFrameClass) {
   const photo = getPlayerPhotoUrl(name);
   const frameCls = `garras-avatar-frame ${sizeFrameClass || ''}`.trim();
   if (photo) {
-    // Mismo desplazamiento horizontal que en el podio PNG (PLAYER_PHOTO_CROP_OFFSET),
-    // aplicado aquí vía object-position en vez del recorte manual de canvas.
+    // Mismo desplazamiento horizontal que en el podio PNG (PLAYER_PHOTO_CROP_OFFSET).
+    // OJO: object-position NO sirve aquí (el marco y la foto tienen casi la misma proporción,
+    // no hay recorrido horizontal). Con scale(2) la ventana visible está centrada en
+    // 0.25 + origenX/2 de la foto, así que para centrarla en 0.5 + offset el origen del zoom
+    // debe ser 50% + offset*200%.
     const offset = getPlayerCropOffsetX(name);
-    const posStyle = offset ? ` style="object-position:${(50 - offset * 100).toFixed(1)}% top"` : '';
+    const posStyle = offset ? ` style="transform-origin:${(50 + offset * 200).toFixed(1)}% 0%"` : '';
     return `<div class="${frameCls}"><img class="garras-avatar" src="${photo}" alt="" loading="lazy"${posStyle} onerror="this.replaceWith(Object.assign(document.createElement('div'), {className:'garras-avatar-fallback', textContent:'${getInitials(name)}', style:'background:${playerAvatarColor(name)}'}))"></div>`;
   }
   return `<div class="${frameCls}"><div class="garras-avatar-fallback" style="background:${playerAvatarColor(name)}">${getInitials(name)}</div></div>`;
