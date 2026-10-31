@@ -936,17 +936,17 @@ function _getShieldUrlRaw(teamName) {
 // fichero daniela-agote-aguirre.png que antes no se enlazaba por la duda de la coincidencia).
 const PLAYER_PHOTO_MAP = {
   // ── Masculino ──
-  'Unai Simón':              'players/masculino/unai-simon-mendibil_L.webp',
+  'Unai Simón':              'players/masculino/unai-simon-mendibil-v2.webp',
   'Dani Vivian':              'players/masculino/daniel-vivian-moreno.webp',
   'Aitor Paredes':            'players/masculino/aitor-paredes-casamichana.webp',
   'Yeray Álvarez':            'players/masculino/yeray-alvarez-lopez_L.webp',
   'Alex Berenguer':           'players/masculino/alejandro-berenguer-remiro.webp',
   'Oihan Sancet':             'players/masculino/oihan-sancet-tirapu.webp',
-  'Iñaki Williams':           'players/masculino/inaki-williams-arthuer_L.webp',
-  'Nico Williams':            'players/masculino/nico-williams-arthuer_L.webp',
+  'Iñaki Williams':           'players/masculino/inaki-williams-arthuer-v2.webp',
+  'Nico Williams':            'players/masculino/nico-williams-arthuer-v2.webp',
   'Gorka Guruzeta':           'players/masculino/gorka-guruzeta-rodriguez.webp',
   'Jesús Areso':              'players/masculino/jesus-areso-blanco.webp',
-  'Aymeric Laporte':          'players/masculino/aymeric-laporte.webp',
+  'Aymeric Laporte':          'players/masculino/aymeric-laporte-v2.webp',
   'Hugo Rincón':              'players/masculino/hugo-rincon-lumbreras.webp',
   'Iñigo R. De Galarreta':    'players/masculino/inigo-ruiz-de-galarreta-etxeberria.webp',
   'Yuri Berchiche':           'players/masculino/yuri-berchiche-izeta.webp',
@@ -1008,7 +1008,6 @@ const PLAYER_PHOTO_MAP = {
 const PLAYER_PHOTO_CROP_OFFSET = {
   'Alex Padilla': -0.05,
   'Maroan Sannadi': -0.06,
-  'Unai Simón': -0.11,
   'Nerea Benito Zaldibar': -0.04,
 };
 
